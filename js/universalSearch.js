@@ -15,6 +15,7 @@ function initUniversalSearch(data) {
   const sourceSelect = document.getElementById("universal-source-select");
   const columnSelect = document.getElementById("universal-column-select");
   const searchInput = document.getElementById("universal-search-input");
+  const viewMoreBtn = document.getElementById("universal-view-more-btn");
 
   if (!sourceSelect || !columnSelect || !searchInput) return;
 
@@ -24,6 +25,7 @@ function initUniversalSearch(data) {
   // Bind change event on source selection
   if (!sourceSelect.dataset.listenerBound) {
     sourceSelect.addEventListener("change", () => {
+      window.tablePaginationLimit["universal"] = 25;
       populateUniversalSearchColumns();
       executeUniversalSearch();
     });
@@ -33,6 +35,7 @@ function initUniversalSearch(data) {
   // Bind change event on column selection
   if (!columnSelect.dataset.listenerBound) {
     columnSelect.addEventListener("change", () => {
+      window.tablePaginationLimit["universal"] = 25;
       executeUniversalSearch();
     });
     columnSelect.dataset.listenerBound = "true";
@@ -41,9 +44,19 @@ function initUniversalSearch(data) {
   // Bind input event on search query
   if (!searchInput.dataset.listenerBound) {
     searchInput.addEventListener("input", () => {
+      window.tablePaginationLimit["universal"] = 25;
       executeUniversalSearch();
     });
     searchInput.dataset.listenerBound = "true";
+  }
+
+  // Bind view more button
+  if (viewMoreBtn && !viewMoreBtn.dataset.listenerBound) {
+    viewMoreBtn.addEventListener("click", () => {
+      window.tablePaginationLimit["universal"] = (window.tablePaginationLimit["universal"] || 25) + 25;
+      executeUniversalSearch();
+    });
+    viewMoreBtn.dataset.listenerBound = "true";
   }
 
   // Initial column populate
@@ -145,6 +158,11 @@ function executeUniversalSearch() {
     }
     
     rowCountSpan.textContent = "No search executed";
+    
+    // Hide pagination container when empty
+    const paginationContainer = document.getElementById("universal-pagination-container");
+    if (paginationContainer) paginationContainer.classList.add("hidden");
+    
     return;
   }
 
@@ -194,6 +212,10 @@ function executeUniversalSearch() {
       icon.setAttribute("data-lucide", "search-code");
       if (typeof lucide !== 'undefined') lucide.createIcons();
     }
+
+    const paginationContainer = document.getElementById("universal-pagination-container");
+    if (paginationContainer) paginationContainer.classList.add("hidden");
+
     return;
   }
 
@@ -201,7 +223,7 @@ function executeUniversalSearch() {
   table.classList.remove("hidden");
   emptyState.classList.add("hidden");
 
-  // 5. Render appropriate table headers & rows
+  // 5. Render appropriate table headers & rows (using compact columns)
   let headersToRender = [];
 
   if (isCombined) {
@@ -214,76 +236,91 @@ function executeUniversalSearch() {
       threeCols.includes(col) && schoolCols.includes(col)
     );
     
-    // Set rendering headers (Make sure Name, Class, Section come first for visual coherence)
-    const priority = ["Name", "Class", "Section"];
-    const rest = commonCols.filter(c => !priority.includes(c));
-    
-    headersToRender = ["Source", ...priority, ...rest];
-    
-    // Render Head
-    const tr = document.createElement("tr");
-    headersToRender.forEach(h => {
-      const th = document.createElement("th");
-      th.textContent = h;
-      tr.appendChild(th);
-    });
-    thead.appendChild(tr);
-
-    // Render Body
-    results.forEach(row => {
-      const tr = document.createElement("tr");
-      
-      headersToRender.forEach(h => {
-        const td = document.createElement("td");
-        
-        if (h === "Source") {
-          // Source badge rendering
-          const badge = document.createElement("span");
-          const src = row._sourceSheet;
-          let badgeClass = "school-data";
-          
-          if (src === "UDISE") badgeClass = "udise";
-          else if (src === "3.0") badgeClass = "three-point-zero";
-          
-          badge.className = `source-badge ${badgeClass}`;
-          badge.textContent = src;
-          td.appendChild(badge);
-        } else {
-          const val = row[h];
-          td.textContent = (val !== undefined && val !== null) ? val.toString() : "";
-        }
-        
-        tr.appendChild(td);
-      });
-      
-      tbody.appendChild(tr);
-    });
-
+    const compactCommon = window.getCompactHeaders(commonCols);
+    headersToRender = ["Source", ...compactCommon];
   } else {
-    // Headers for single sheet search: display all sheet columns
-    headersToRender = getSheetHeaders(selectedSource);
+    // Headers for single sheet search: display compact columns
+    headersToRender = window.getCompactHeaders(getSheetHeaders(selectedSource));
+  }
 
-    // Render Head
+  // Create Header Row
+  const tr = document.createElement("tr");
+  headersToRender.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    tr.appendChild(th);
+  });
+  
+  // Action header
+  const actionTh = document.createElement("th");
+  actionTh.textContent = "Action";
+  actionTh.style.width = "80px";
+  tr.appendChild(actionTh);
+  thead.appendChild(tr);
+
+  // Pagination bounds slice
+  const limit = window.tablePaginationLimit["universal"] || 25;
+  const slicedRows = results.slice(0, limit);
+
+  // Update pagination footer container display
+  const paginationContainer = document.getElementById("universal-pagination-container");
+  if (paginationContainer) {
+    if (limit < results.length) {
+      paginationContainer.classList.remove("hidden");
+    } else {
+      paginationContainer.classList.add("hidden");
+    }
+  }
+
+  // Render Body
+  slicedRows.forEach(row => {
     const tr = document.createElement("tr");
+    
     headersToRender.forEach(h => {
-      const th = document.createElement("th");
-      th.textContent = h;
-      tr.appendChild(th);
-    });
-    thead.appendChild(tr);
-
-    // Render Body
-    results.forEach(row => {
-      const tr = document.createElement("tr");
+      const td = document.createElement("td");
       
-      headersToRender.forEach(h => {
-        const td = document.createElement("td");
+      if (h === "Source") {
+        const badge = document.createElement("span");
+        const src = row._sourceSheet;
+        let badgeClass = "school-data";
+        
+        if (src === "UDISE") badgeClass = "udise";
+        else if (src === "3.0") badgeClass = "three-point-zero";
+        
+        badge.className = `source-badge ${badgeClass}`;
+        badge.textContent = src;
+        td.appendChild(badge);
+      } else {
         const val = row[h];
         td.textContent = (val !== undefined && val !== null) ? val.toString() : "";
-        tr.appendChild(td);
-      });
+      }
       
-      tbody.appendChild(tr);
+      tr.appendChild(td);
     });
+
+    // View action button
+    const actionTd = document.createElement("td");
+    const viewBtn = document.createElement("button");
+    viewBtn.className = "btn-secondary btn-view-row";
+    viewBtn.style.padding = "6px 12px";
+    viewBtn.style.fontSize = "0.8rem";
+    viewBtn.style.display = "inline-flex";
+    viewBtn.style.alignItems = "center";
+    viewBtn.style.gap = "4px";
+    viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i>View`;
+    
+    viewBtn.addEventListener("click", () => {
+      window.openStudentDetailModal(row);
+    });
+    
+    actionTd.appendChild(viewBtn);
+    tr.appendChild(actionTd);
+    
+    tbody.appendChild(tr);
+  });
+
+  // Re-create icons inside view buttons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
   }
 }

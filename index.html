@@ -72,6 +72,10 @@
     <!-- HEADER -->
     <header class="app-header">
       <div class="header-brand">
+        <!-- Drawer Toggle for Mobile -->
+        <button id="mobile-menu-toggle" class="icon-btn mobile-only-inline" title="Open Menu">
+          <i data-lucide="menu"></i>
+        </button>
         <div class="logo-wrapper">
           <img src="assets/icon.svg" alt="Logo" class="header-logo">
         </div>
@@ -83,12 +87,6 @@
       
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
-        <!-- Status Indicator / Toast Trigger -->
-        <div id="sync-status" class="sync-status text-muted" title="Last Sync Time">
-          <i data-lucide="clock" class="size-4"></i>
-          <span id="sync-time-text">Syncing...</span>
-        </div>
-        
         <!-- Refresh Button -->
         <button id="manual-refresh-btn" class="icon-btn" title="Sync Live Data">
           <i data-lucide="refresh-cw" id="refresh-icon-spin"></i>
@@ -131,7 +129,8 @@
         </button>
         <button class="nav-item" data-target="universal-search">
           <i data-lucide="search"></i>
-          <span>Universal Search</span>
+          <span class="desktop-only-text">Universal Search</span>
+          <span class="mobile-only-text" style="display: none;">Search</span>
         </button>
       </nav>
 
@@ -177,47 +176,36 @@
           
           <!-- Key Metrics Grid -->
           <div class="metrics-grid">
-            <!-- Stat 1 -->
-            <div class="metric-card">
+            <!-- UDISE Card -->
+            <div class="metric-card clickable-metric-card" data-target="udise">
               <div class="metric-icon-box primary">
-                <i data-lucide="users"></i>
+                <i data-lucide="file-spreadsheet"></i>
               </div>
               <div class="metric-details">
-                <p class="metric-label">Total Enrolled Students</p>
-                <h3 id="stat-total-students" class="metric-value">-</h3>
+                <p class="metric-label">UDISE Students</p>
+                <h3 id="stat-udise-students" class="metric-value">-</h3>
               </div>
             </div>
             
-            <!-- Stat 2 -->
-            <div class="metric-card">
-              <div class="metric-icon-box success">
-                <i data-lucide="graduation-cap"></i>
-              </div>
-              <div class="metric-details">
-                <p class="metric-label">Total Classes</p>
-                <h3 id="stat-total-classes" class="metric-value">-</h3>
-              </div>
-            </div>
-            
-            <!-- Stat 3 -->
-            <div class="metric-card">
+            <!-- 3.0 Card -->
+            <div class="metric-card clickable-metric-card" data-target="three-point-zero">
               <div class="metric-icon-box warning">
-                <i data-lucide="layers"></i>
+                <i data-lucide="file-check-2"></i>
               </div>
               <div class="metric-details">
-                <p class="metric-label">Total Sections</p>
-                <h3 id="stat-total-sections" class="metric-value">-</h3>
+                <p class="metric-label">3.0 Students</p>
+                <h3 id="stat-three-point-zero-students" class="metric-value">-</h3>
               </div>
             </div>
-
-            <!-- Stat 4 -->
-            <div class="metric-card">
-              <div class="metric-icon-box info">
-                <i data-lucide="bookmark"></i>
+            
+            <!-- School Data Card -->
+            <div class="metric-card clickable-metric-card" data-target="school-data">
+              <div class="metric-icon-box success">
+                <i data-lucide="database"></i>
               </div>
               <div class="metric-details">
-                <p class="metric-label">Current Data Source</p>
-                <h3 id="stat-current-source" class="metric-value">-</h3>
+                <p class="metric-label">School Data Students</p>
+                <h3 id="stat-school-data-students" class="metric-value">-</h3>
               </div>
             </div>
           </div>
@@ -230,11 +218,19 @@
               <div class="chart-wrapper">
                 <canvas id="genderChart"></canvas>
               </div>
-              <!-- Custom legend or fallback if no gender column -->
               <p id="gender-chart-fallback" class="chart-fallback-text hidden">No gender/sex column found in the current worksheet.</p>
             </div>
 
-            <!-- Chart 2: Grade/Class Distribution -->
+            <!-- Chart 2: Category Distribution -->
+            <div class="chart-card">
+              <h4 class="chart-title">Category Distribution</h4>
+              <div class="chart-wrapper">
+                <canvas id="categoryChart"></canvas>
+              </div>
+              <p id="category-chart-fallback" class="chart-fallback-text hidden">No category/caste column found in the current worksheet.</p>
+            </div>
+
+            <!-- Chart 3: Grade/Class Distribution -->
             <div class="chart-card large-chart">
               <h4 class="chart-title">Class Distribution</h4>
               <div class="chart-wrapper">
@@ -302,6 +298,13 @@
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
             </div>
+            <!-- Pagination footer -->
+            <div class="table-pagination-footer hidden" id="udise-pagination-container">
+              <button class="btn-secondary" id="udise-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i data-lucide="chevron-down"></i>
+                <span>View More</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -363,6 +366,13 @@
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
             </div>
+            <!-- Pagination footer -->
+            <div class="table-pagination-footer hidden" id="three-point-zero-pagination-container">
+              <button class="btn-secondary" id="three-point-zero-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i data-lucide="chevron-down"></i>
+                <span>View More</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -423,6 +433,13 @@
             <div id="school-data-empty-state" class="empty-state hidden">
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
+            </div>
+            <!-- Pagination footer -->
+            <div class="table-pagination-footer hidden" id="school-data-pagination-container">
+              <button class="btn-secondary" id="school-data-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i data-lucide="chevron-down"></i>
+                <span>View More</span>
+              </button>
             </div>
           </div>
         </section>
@@ -487,6 +504,13 @@
               <i data-lucide="search" class="large-icon"></i>
               <p>Type a keyword above to find students.</p>
             </div>
+            <!-- Pagination footer -->
+            <div class="table-pagination-footer hidden" id="universal-pagination-container">
+              <button class="btn-secondary" id="universal-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i data-lucide="chevron-down"></i>
+                <span>View More</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -508,7 +532,7 @@
       
       <div class="modal-body">
         <p class="modal-description text-muted">
-          Select columns to include in the PDF export. Hold and drag column items to reorder them.
+          Select columns to include in the PDF export. Clicking determines the column order in the PDF.
         </p>
 
         <!-- Convenience Options -->
@@ -536,12 +560,76 @@
     </div>
   </div>
 
+  <!-- STUDENT DETAIL MODAL -->
+  <div id="student-detail-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Student Details</h3>
+        <button id="close-student-modal" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body" id="student-modal-body" style="padding-top: 10px;">
+        <!-- Filled dynamically -->
+      </div>
+      
+      <div class="modal-footer">
+        <button id="close-student-modal-btn" class="btn-primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE MENU DRAWER -->
+  <div id="mobile-drawer" class="mobile-drawer-overlay hidden">
+    <div class="mobile-drawer-content">
+      <div class="mobile-drawer-header">
+        <h3 class="mobile-drawer-title">School Menu</h3>
+        <button id="close-mobile-drawer" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="mobile-drawer-body">
+        <div class="mobile-drawer-nav">
+          <button class="drawer-nav-item active" data-target="dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+          </button>
+          <button class="drawer-nav-item" data-target="udise">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>UDISE</span>
+          </button>
+          <button class="drawer-nav-item" data-target="three-point-zero">
+            <i data-lucide="file-check-2"></i>
+            <span>3.0</span>
+          </button>
+          <button class="drawer-nav-item" data-target="school-data">
+            <i data-lucide="database"></i>
+            <span>School Data</span>
+          </button>
+          <button class="drawer-nav-item" data-target="universal-search">
+            <i data-lucide="search"></i>
+            <span>Search</span>
+          </button>
+        </div>
+        <div class="mobile-drawer-footer">
+          <button id="drawer-logout-btn" class="drawer-nav-item" style="color: var(--danger);">
+            <i data-lucide="log-out" style="color: var(--danger);"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FLOATING TOAST CONTAINER -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- ================= SCRIPTS ================= -->
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Datalabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <!-- jsPDF CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- jsPDF AutoTable CDN -->

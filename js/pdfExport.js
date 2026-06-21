@@ -1,24 +1,20 @@
 /**
  * PDF Export Configurator & Generator Module
- * Provides column select checklist, drag-less reordering, and jsPDF integration.
+ * Provides column select checklist, grid-tile reordering, and jsPDF integration.
  */
 
 let activePdfSheetKey = null;
-let pdfColumnsState = []; // Array of { name: string, checked: boolean }
+let pdfOriginalHeaders = [];
+let selectedPdfColumnsOrdered = []; // List of column names in the exact order selected
 
-/**
- * Initialize PDF Export UI listeners
- */
 /**
  * Initialize PDF Export UI listeners
  */
 function initPdfExport(data) {
-  // Bind close buttons
   const closeModalBtn = document.getElementById("close-pdf-modal");
   const cancelModalBtn = document.getElementById("cancel-pdf-btn");
   const generatePdfBtn = document.getElementById("generate-pdf-btn");
   const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
-  const listContainer = document.getElementById("pdf-columns-list");
 
   if (closeModalBtn && !closeModalBtn.dataset.listenerBound) {
     closeModalBtn.addEventListener("click", closePdfModal);
@@ -41,12 +37,6 @@ function initPdfExport(data) {
     generatePdfBtn.addEventListener("click", generatePdfReport);
     generatePdfBtn.dataset.listenerBound = "true";
   }
-
-  // Bind Drag & Drop, and Touch reordering events
-  if (listContainer && !listContainer.dataset.listenersBound) {
-    setupDragAndDrop(listContainer);
-    listContainer.dataset.listenersBound = "true";
-  }
 }
 
 /**
@@ -64,19 +54,16 @@ function openPdfModalForSheet(sheetKey) {
   }
 
   // Retrieve original column list from the first record
-  const originalHeaders = Object.keys(records[0]);
+  pdfOriginalHeaders = Object.keys(records[0]);
   
-  // Initialize state (keep all checked by default)
-  pdfColumnsState = originalHeaders.map(col => ({
-    name: col,
-    checked: true
-  }));
+  // Initialize state (keep all checked by default in their original order)
+  selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
 
   // Sync Select All checkbox
   const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
   if (selectAllCheckbox) selectAllCheckbox.checked = true;
 
-  // Render the checklist
+  // Render the checklist grid
   renderPdfColumnsList();
 
   // Show Modal Overlay
@@ -91,16 +78,19 @@ function closePdfModal() {
   const modal = document.getElementById("pdf-export-modal");
   if (modal) modal.classList.add("hidden");
   activePdfSheetKey = null;
-  pdfColumnsState = [];
+  pdfOriginalHeaders = [];
+  selectedPdfColumnsOrdered = [];
 }
 
 /**
  * Toggle all column checked states
  */
 function toggleAllPdfColumns(isChecked) {
-  pdfColumnsState.forEach(col => {
-    col.checked = isChecked;
-  });
+  if (isChecked) {
+    selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
+  } else {
+    selectedPdfColumnsOrdered = [];
+  }
   renderPdfColumnsList();
 }
 
@@ -111,13 +101,13 @@ function syncSelectAllHeader() {
   const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
   if (!selectAllCheckbox) return;
 
-  const allChecked = pdfColumnsState.every(col => col.checked);
-  const noneChecked = pdfColumnsState.every(col => !col.checked);
+  const total = pdfOriginalHeaders.length;
+  const selected = selectedPdfColumnsOrdered.length;
 
-  if (allChecked) {
+  if (selected === total) {
     selectAllCheckbox.checked = true;
     selectAllCheckbox.indeterminate = false;
-  } else if (noneChecked) {
+  } else if (selected === 0) {
     selectAllCheckbox.checked = false;
     selectAllCheckbox.indeterminate = false;
   } else {
@@ -127,113 +117,7 @@ function syncSelectAllHeader() {
 }
 
 /**
- * Synchronize state from HTML DOM reordered elements
- */
-function syncPdfStateFromDom() {
-  const listContainer = document.getElementById("pdf-columns-list");
-  if (!listContainer) return;
-  const items = Array.from(listContainer.querySelectorAll(".column-config-item"));
-  
-  pdfColumnsState = items.map(item => {
-    const name = item.dataset.columnName;
-    const checked = item.querySelector("input[type='checkbox']").checked;
-    return { name, checked };
-  });
-}
-
-/**
- * Setup Desktop mouse drag & drop and Mobile touch-drag reordering listeners
- */
-function setupDragAndDrop(list) {
-  // Desktop Drag events
-  list.addEventListener("dragstart", (e) => {
-    const item = e.target.closest(".column-config-item");
-    if (item) {
-      item.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", item.dataset.columnName);
-    }
-  });
-
-  list.addEventListener("dragend", (e) => {
-    const item = e.target.closest(".column-config-item");
-    if (item) {
-      item.classList.remove("dragging");
-    }
-    syncPdfStateFromDom();
-    syncSelectAllHeader();
-  });
-
-  list.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    const draggingEl = list.querySelector(".dragging");
-    if (!draggingEl) return;
-
-    const afterElement = getDragAfterElement(list, e.clientY);
-    if (afterElement == null) {
-      list.appendChild(draggingEl);
-    } else {
-      list.insertBefore(draggingEl, afterElement);
-    }
-  });
-
-  // Mobile Touch events for reordering
-  let touchDraggingEl = null;
-
-  list.addEventListener("touchstart", (e) => {
-    const handle = e.target.closest(".drag-handle");
-    if (!handle) return;
-
-    const item = handle.closest(".column-config-item");
-    if (item) {
-      touchDraggingEl = item;
-      item.classList.add("dragging");
-      e.preventDefault(); // Stop mobile scroll when dragging handle
-    }
-  }, { passive: false });
-
-  list.addEventListener("touchmove", (e) => {
-    if (!touchDraggingEl) return;
-    e.preventDefault();
-
-    const touch = e.touches[0];
-    const afterElement = getDragAfterElement(list, touch.clientY);
-    if (afterElement == null) {
-      list.appendChild(touchDraggingEl);
-    } else {
-      list.insertBefore(touchDraggingEl, afterElement);
-    }
-  }, { passive: false });
-
-  list.addEventListener("touchend", (e) => {
-    if (touchDraggingEl) {
-      touchDraggingEl.classList.remove("dragging");
-      touchDraggingEl = null;
-      syncPdfStateFromDom();
-      syncSelectAllHeader();
-    }
-  });
-}
-
-/**
- * Helper to determine which item the dragging element is hover positioned over
- */
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.column-config-item:not(.dragging)')];
-
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-/**
- * Render columns inside the Modal checklist with Drag Handles
+ * Render columns inside the Modal checklist with click-order tile UI
  */
 function renderPdfColumnsList() {
   const listContainer = document.getElementById("pdf-columns-list");
@@ -241,60 +125,48 @@ function renderPdfColumnsList() {
 
   listContainer.innerHTML = "";
 
-  pdfColumnsState.forEach((col) => {
-    const item = document.createElement("div");
-    item.className = "column-config-item";
-    item.setAttribute("draggable", "true");
-    item.dataset.columnName = col.name;
+  pdfOriginalHeaders.forEach((col) => {
+    const tile = document.createElement("div");
+    tile.className = "column-config-tile";
+    tile.dataset.columnName = col;
 
-    // Left elements (checkbox + name)
-    const leftDiv = document.createElement("div");
-    leftDiv.className = "column-config-item-left";
+    const isSelected = selectedPdfColumnsOrdered.includes(col);
+    if (isSelected) {
+      tile.classList.add("selected");
+      
+      const badge = document.createElement("div");
+      badge.className = "tile-badge";
+      badge.textContent = selectedPdfColumnsOrdered.indexOf(col) + 1;
+      tile.appendChild(badge);
+    }
 
-    const label = document.createElement("label");
-    label.className = "checkbox-container";
-    
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = col.checked;
-    checkbox.addEventListener("change", (e) => {
-      col.checked = e.target.checked;
-      syncSelectAllHeader();
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "tile-name";
+    nameSpan.textContent = col;
+    tile.appendChild(nameSpan);
+
+    // Toggle logic on click
+    tile.addEventListener("click", () => {
+      const index = selectedPdfColumnsOrdered.indexOf(col);
+      if (index > -1) {
+        // Deselect and remove from ordered list
+        selectedPdfColumnsOrdered.splice(index, 1);
+      } else {
+        // Select and push to the end of ordered list
+        selectedPdfColumnsOrdered.push(col);
+      }
+      renderPdfColumnsList();
     });
 
-    const checkmark = document.createElement("span");
-    checkmark.className = "checkmark";
-
-    const spanText = document.createElement("span");
-    spanText.textContent = col.name;
-
-    label.appendChild(checkbox);
-    label.appendChild(checkmark);
-    label.appendChild(spanText);
-    leftDiv.appendChild(label);
-
-    // Right elements (Drag Handle)
-    const rightDiv = document.createElement("div");
-    rightDiv.className = "drag-handle";
-    rightDiv.title = "Drag to reorder";
-    rightDiv.innerHTML = `<i data-lucide="grip-vertical"></i>`;
-
-    item.appendChild(leftDiv);
-    item.appendChild(rightDiv);
-    listContainer.appendChild(item);
+    listContainer.appendChild(tile);
   });
 
   // Sync Select All checkbox state
   syncSelectAllHeader();
-
-  // Create Lucide grip-vertical icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
 }
 
 /**
- * Generate PDF document using jsPDF & AutoTable
+ * Generate PDF document using jsPDF & AutoTable in the exact order selected
  */
 function generatePdfReport() {
   if (!activePdfSheetKey) return;
@@ -303,10 +175,7 @@ function generatePdfReport() {
   const school = getCurrentSchool();
   const schoolName = school ? school.schoolName : "School";
 
-  // Filter out unchecked columns
-  const selectedColumns = pdfColumnsState.filter(c => c.checked).map(c => c.name);
-
-  if (selectedColumns.length === 0) {
+  if (selectedPdfColumnsOrdered.length === 0) {
     showToast("Please select at least one column to export.", "warning");
     return;
   }
@@ -318,7 +187,7 @@ function generatePdfReport() {
     const { jsPDF } = window.jspdf;
     
     // Choose orientation based on number of columns selected
-    const orientation = selectedColumns.length > 5 ? "landscape" : "portrait";
+    const orientation = selectedPdfColumnsOrdered.length > 5 ? "landscape" : "portrait";
     const doc = new jsPDF({
       orientation: orientation,
       unit: "mm",
@@ -349,9 +218,9 @@ function generatePdfReport() {
     doc.setLineWidth(0.5);
     doc.line(14, 25, pageWidth - 14, 25);
 
-    // 3. Map rows data for AutoTable input
+    // 3. Map rows data for AutoTable input using order
     const tableBody = records.map(row => {
-      return selectedColumns.map(colName => {
+      return selectedPdfColumnsOrdered.map(colName => {
         const val = row[colName];
         return (val !== undefined && val !== null) ? val.toString() : "";
       });
@@ -359,7 +228,7 @@ function generatePdfReport() {
 
     // 4. Generate AutoTable
     doc.autoTable({
-      head: [selectedColumns],
+      head: [selectedPdfColumnsOrdered],
       body: tableBody,
       startY: 28,
       theme: 'striped',

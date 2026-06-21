@@ -52,6 +52,12 @@
         const currentTheme = htmlEl.getAttribute("data-theme");
         const newTheme = currentTheme === "dark" ? "light" : "dark";
         applyTheme(newTheme);
+
+        // Re-render dashboard charts to update label/grid colors
+        const selectSource = document.getElementById("dashboard-source-select");
+        if (selectSource && typeof calculateAndRenderDashboard === 'function') {
+          calculateAndRenderDashboard(selectSource.value);
+        }
       });
     }
   });

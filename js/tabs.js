@@ -12,9 +12,97 @@ window.activeFilteredData = {
 window.activeOriginalData = null;
 window.currentActiveTab = "dashboard";
 
+// Global table pagination limits
+window.tablePaginationLimit = {
+  "udise": 25,
+  "three-point-zero": 25,
+  "school-data": 25,
+  "universal": 25
+};
+
+/**
+ * Helper to get 3 compact columns to display in table
+ */
+window.getCompactHeaders = function(originalHeaders) {
+  const preferred = ["Name", "Class", "Section"];
+  const matched = [];
+  preferred.forEach(pref => {
+    const key = originalHeaders.find(h => h.toLowerCase() === pref.toLowerCase());
+    if (key) matched.push(key);
+  });
+  
+  // Fill up to 3 columns if we don't have enough preferred ones
+  if (matched.length < 3) {
+    originalHeaders.forEach(h => {
+      if (!matched.includes(h) && matched.length < 3) {
+        matched.push(h);
+      }
+    });
+  }
+  return matched;
+};
+
+/**
+ * Open Student Detail Modal
+ */
+window.openStudentDetailModal = function(studentData) {
+  const modal = document.getElementById("student-detail-modal");
+  const body = document.getElementById("student-modal-body");
+  if (!modal || !body) return;
+
+  body.innerHTML = "";
+  
+  const grid = document.createElement("div");
+  grid.className = "student-detail-grid";
+
+  Object.keys(studentData).forEach(key => {
+    if (key.startsWith("_")) return;
+
+    const group = document.createElement("div");
+    group.className = "detail-group";
+
+    const label = document.createElement("span");
+    label.className = "detail-label";
+    label.textContent = key;
+
+    const value = document.createElement("span");
+    value.className = "detail-value";
+    value.textContent = (studentData[key] !== undefined && studentData[key] !== null && studentData[key] !== "") 
+      ? studentData[key].toString() 
+      : "-";
+
+    group.appendChild(label);
+    group.appendChild(value);
+    grid.appendChild(group);
+  });
+
+  body.appendChild(grid);
+  modal.classList.remove("hidden");
+};
+
+/**
+ * Close Student Detail Modal
+ */
+window.closeStudentDetailModal = function() {
+  const modal = document.getElementById("student-detail-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+};
+
+/**
+ * Global function to navigate to a tab programmatically
+ */
+window.navigateToTab = function(target) {
+  const navItem = Array.from(document.querySelectorAll(".nav-item")).find(ni => ni.dataset.target === target);
+  if (navItem) {
+    navItem.click();
+  }
+};
+
 /**
  * Initialize all worksheet tabs
- * @param {object} data - Complete spreadsheet JSON
+ * @param {object} data - Complete school sheets data
  */
 function initTabs(data) {
   window.activeOriginalData = data;
@@ -33,6 +121,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   const classSelect = document.getElementById(`${domPrefix}-class-select`);
   const sectionSelect = document.getElementById(`${domPrefix}-section-select`);
   const pdfBtn = document.getElementById(`${domPrefix}-pdf-btn`);
+  const viewMoreBtn = document.getElementById(`${domPrefix}-view-more-btn`);
 
   // 1. Populate Filter Dropdowns dynamically
   populateDropdownFilters(rows, classSelect, sectionSelect, domPrefix);
@@ -43,6 +132,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 3. Bind Search input (real-time filtering)
   if (searchInput && !searchInput.dataset.listenerBound) {
     searchInput.addEventListener("input", () => {
+      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     searchInput.dataset.listenerBound = "true";
@@ -51,6 +141,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 4. Bind Dropdowns changes
   if (classSelect && !classSelect.dataset.listenerBound) {
     classSelect.addEventListener("change", () => {
+      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     classSelect.dataset.listenerBound = "true";
@@ -58,6 +149,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
 
   if (sectionSelect && !sectionSelect.dataset.listenerBound) {
     sectionSelect.addEventListener("change", () => {
+      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     sectionSelect.dataset.listenerBound = "true";
@@ -69,6 +161,15 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
       openPdfModalForSheet(sheetKey);
     });
     pdfBtn.dataset.listenerBound = "true";
+  }
+
+  // 6. Bind View More button
+  if (viewMoreBtn && !viewMoreBtn.dataset.listenerBound) {
+    viewMoreBtn.addEventListener("click", () => {
+      window.tablePaginationLimit[domPrefix] = (window.tablePaginationLimit[domPrefix] || 25) + 25;
+      applyFiltersAndRender(sheetKey, domPrefix, rows);
+    });
+    viewMoreBtn.dataset.listenerBound = "true";
   }
 }
 
@@ -187,7 +288,7 @@ function applyFiltersAndRender(sheetKey, domPrefix, rows) {
 }
 
 /**
- * Render standard tabular HTML from dataset and headers
+ * Render standard tabular HTML with compact column selection & view detail options
  */
 function renderTable(domPrefix, filteredRows, originalHeaders) {
   const table = document.getElementById(`${domPrefix}-table`);
@@ -217,40 +318,94 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
   table.classList.remove("hidden");
   if (emptyState) emptyState.classList.add("hidden");
 
+  // Get compact columns
+  const compactHeaders = window.getCompactHeaders(originalHeaders);
+
   // Create Header Row
   const headerTr = document.createElement("tr");
-  originalHeaders.forEach(header => {
+  compactHeaders.forEach(header => {
     const th = document.createElement("th");
     th.textContent = header;
     headerTr.appendChild(th);
   });
+  
+  // Action header
+  const actionTh = document.createElement("th");
+  actionTh.textContent = "Action";
+  actionTh.style.width = "80px";
+  headerTr.appendChild(actionTh);
+  
   thead.appendChild(headerTr);
 
+  // Pagination bounds slice
+  const limit = window.tablePaginationLimit[domPrefix] || 25;
+  const slicedRows = filteredRows.slice(0, limit);
+
+  // Update pagination footer container display
+  const paginationContainer = document.getElementById(`${domPrefix}-pagination-container`);
+  if (paginationContainer) {
+    if (limit < filteredRows.length) {
+      paginationContainer.classList.remove("hidden");
+    } else {
+      paginationContainer.classList.add("hidden");
+    }
+  }
+
   // Create Body Rows
-  filteredRows.forEach(row => {
+  slicedRows.forEach(row => {
     const tr = document.createElement("tr");
-    originalHeaders.forEach(header => {
+    compactHeaders.forEach(header => {
       const td = document.createElement("td");
-      // Format null/undefined cleanly
       const cellVal = row[header];
       td.textContent = (cellVal !== undefined && cellVal !== null) ? cellVal.toString() : "";
       tr.appendChild(td);
     });
+
+    // Actions cell
+    const actionTd = document.createElement("td");
+    const viewBtn = document.createElement("button");
+    viewBtn.className = "btn-secondary btn-view-row";
+    viewBtn.style.padding = "6px 12px";
+    viewBtn.style.fontSize = "0.8rem";
+    viewBtn.style.display = "inline-flex";
+    viewBtn.style.alignItems = "center";
+    viewBtn.style.gap = "4px";
+    viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i>View`;
+    
+    viewBtn.addEventListener("click", () => {
+      window.openStudentDetailModal(row);
+    });
+    
+    actionTd.appendChild(viewBtn);
+    tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
+
+  // Re-create icons inside view buttons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
-// Bind Navigation clicks
+// Bind Navigation and Drawer clicks
 document.addEventListener("DOMContentLoaded", () => {
   const navItems = document.querySelectorAll(".nav-item");
+  const drawerItems = document.querySelectorAll(".drawer-nav-item");
 
+  // Handle normal Navigation clicks
   navItems.forEach(item => {
     item.addEventListener("click", () => {
       const target = item.dataset.target;
 
-      // Update active nav state
+      // Sync active state in sidebar/bottom navigation
       navItems.forEach(ni => ni.classList.remove("active"));
       item.classList.add("active");
+
+      // Sync active state in mobile drawer items
+      drawerItems.forEach(di => {
+        if (di.dataset.target === target) di.classList.add("active");
+        else di.classList.remove("active");
+      });
 
       // Update view section visibilities
       const sections = document.querySelectorAll(".view-section");
@@ -268,11 +423,79 @@ document.addEventListener("DOMContentLoaded", () => {
         targetSec.classList.remove("hidden");
         window.currentActiveTab = target;
 
-        // Re-align layouts or update Lucide icons if required
         if (typeof lucide !== 'undefined') {
           lucide.createIcons();
         }
       }
     });
   });
+
+  // Bind Hamburger menu toggles
+  const drawer = document.getElementById("mobile-drawer");
+  const menuToggle = document.getElementById("mobile-menu-toggle");
+  const closeDrawer = document.getElementById("close-mobile-drawer");
+
+  if (menuToggle && drawer) {
+    menuToggle.addEventListener("click", () => {
+      drawer.classList.remove("hidden");
+    });
+  }
+
+  if (closeDrawer && drawer) {
+    closeDrawer.addEventListener("click", () => {
+      drawer.classList.add("hidden");
+    });
+  }
+
+  if (drawer) {
+    drawer.addEventListener("click", (e) => {
+      if (e.target === drawer) {
+        drawer.classList.add("hidden");
+      }
+    });
+  }
+
+  // Drawer nav clicks
+  drawerItems.forEach(dItem => {
+    if (dItem.id === "drawer-logout-btn") return;
+    dItem.addEventListener("click", () => {
+      const target = dItem.dataset.target;
+      if (drawer) drawer.classList.add("hidden");
+
+      // Find normal sidebar nav-item and click it to change tab
+      const navItem = Array.from(document.querySelectorAll(".nav-item")).find(ni => ni.dataset.target === target);
+      if (navItem) {
+        navItem.click();
+      }
+    });
+  });
+
+  // Drawer Sign Out button click
+  const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
+  const mainLogoutBtn = document.getElementById("logout-btn");
+  if (drawerLogoutBtn && mainLogoutBtn) {
+    drawerLogoutBtn.addEventListener("click", () => {
+      if (drawer) drawer.classList.add("hidden");
+      mainLogoutBtn.click();
+    });
+  }
+
+  // Student details modal close actions
+  const closeStudentModalX = document.getElementById("close-student-modal");
+  const closeStudentModalBtn = document.getElementById("close-student-modal-btn");
+  const studentModal = document.getElementById("student-detail-modal");
+
+  if (closeStudentModalX) {
+    closeStudentModalX.addEventListener("click", window.closeStudentDetailModal);
+  }
+  if (closeStudentModalBtn) {
+    closeStudentModalBtn.addEventListener("click", window.closeStudentDetailModal);
+  }
+  if (studentModal) {
+    studentModal.addEventListener("click", (e) => {
+      if (e.target === studentModal) {
+        window.closeStudentDetailModal();
+      }
+    });
+  }
 });
