@@ -122,11 +122,7 @@
           <i data-lucide="moon" id="theme-moon"></i>
         </button>
         
-        <!-- Logout Button -->
-        <button id="logout-btn" class="btn-secondary logout-btn">
-          <i data-lucide="log-out"></i>
-          <span class="btn-text">Sign Out</span>
-        </button>
+
       </div>
     </header>
 
@@ -233,6 +229,14 @@
             </div>
           </div>
 
+          <!-- Grade/Class Strength Overview -->
+          <div class="chart-card" id="class-strength-card" style="margin-bottom: 24px;">
+            <h4 class="chart-title">Class Strength Overview</h4>
+            <div id="class-strength-grid" class="class-strength-grid">
+              <!-- Dynamically filled with chips -->
+            </div>
+          </div>
+
           <!-- Charts Section -->
           <div class="charts-grid">
             <!-- Chart 1: Gender Distribution -->
@@ -251,14 +255,6 @@
                 <canvas id="categoryChart"></canvas>
               </div>
               <p id="category-chart-fallback" class="chart-fallback-text hidden">No category/caste column found in the current worksheet.</p>
-            </div>
-
-            <!-- Chart 3: Grade/Class Strength Overview -->
-            <div class="chart-card large-chart" id="class-strength-card">
-              <h4 class="chart-title">Class Strength Overview</h4>
-              <div id="class-strength-grid" class="class-strength-grid">
-                <!-- Dynamically filled with chips -->
-              </div>
             </div>
           </div>
         </section>
@@ -636,7 +632,7 @@
   </div>
 
   <!-- MOBILE MENU DRAWER -->
-  <div id="mobile-drawer" class="mobile-drawer-overlay hidden">
+  <div id="mobile-drawer" class="mobile-drawer-overlay">
     <div class="mobile-drawer-content">
       <div class="mobile-drawer-header">
         <h3 class="mobile-drawer-title">School Menu</h3>

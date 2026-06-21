@@ -72,7 +72,7 @@ window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColu
 /**
  * Open Student Detail Modal
  */
-window.openStudentDetailModal = function(studentData) {
+window.openStudentDetailModal = function(studentData, sourcePrefix) {
   const modal = document.getElementById("student-detail-modal");
   const body = document.getElementById("student-modal-body");
   if (!modal || !body) return;
@@ -82,9 +82,87 @@ window.openStudentDetailModal = function(studentData) {
   const grid = document.createElement("div");
   grid.className = "student-detail-grid";
 
-  Object.keys(studentData).forEach(key => {
-    if (key.startsWith("_")) return;
+  // Determine the sheet/section type to order columns accordingly
+  let sheetType = ""; // "udise", "school-data", or "three-point-zero"
+  if (sourcePrefix) {
+    const pref = sourcePrefix.toLowerCase();
+    if (pref.includes("udise")) sheetType = "udise";
+    else if (pref.includes("three") || pref.includes("3")) sheetType = "three-point-zero";
+    else sheetType = "school-data";
+  } else if (studentData._sourceSheet) {
+    const src = studentData._sourceSheet.toLowerCase();
+    if (src.includes("udise")) sheetType = "udise";
+    else if (src.includes("3.0")) sheetType = "three-point-zero";
+    else sheetType = "school-data";
+  } else {
+    // Fallback detection from column headers
+    const keys = Object.keys(studentData);
+    if (keys.some(k => /samagra/i.test(k))) {
+      sheetType = "three-point-zero";
+    } else {
+      sheetType = "school-data";
+    }
+  }
 
+  const keys = Object.keys(studentData).filter(k => !k.startsWith("_"));
+  let orderedKeys = [];
+
+  if (sheetType === "udise" || sheetType === "school-data") {
+    // For UDISE and School Data: Class, Section (if it exists), then others
+    const classKey = keys.find(k => k.toLowerCase() === "class");
+    const sectionKey = keys.find(k => k.toLowerCase() === "section");
+    
+    if (classKey) orderedKeys.push(classKey);
+    if (sectionKey) orderedKeys.push(sectionKey);
+    
+    keys.forEach(k => {
+      if (!orderedKeys.includes(k)) {
+        orderedKeys.push(k);
+      }
+    });
+  } else if (sheetType === "three-point-zero") {
+    // For 3.0: Samagra ID, Name, Gender, Category, Father's Name, Mother's Name, then others
+    const leadingKeys = [];
+    const findAndPush = (patterns) => {
+      for (const pattern of patterns) {
+        const found = keys.find(k => {
+          if (leadingKeys.includes(k)) return false;
+          if (pattern instanceof RegExp) {
+            return pattern.test(k);
+          }
+          return k.toLowerCase() === pattern.toLowerCase() || k.toLowerCase().includes(pattern.toLowerCase());
+        });
+        if (found) {
+          leadingKeys.push(found);
+          break;
+        }
+      }
+    };
+
+    // 1. Samagra ID
+    findAndPush([/samagra\s*id/i, /member\s*id/i, /samagra/i, /id/i]);
+    // 2. Name
+    findAndPush([/student\s*name/i, /^name$/i, /name/i]);
+    // 3. Gender
+    findAndPush([/^gender$/i, /^sex$/i, /gender/i]);
+    // 4. Category
+    findAndPush([/^category$/i, /^caste$/i, /social/i, /category/i]);
+    // 5. Father's Name
+    findAndPush([/father/i]);
+    // 6. Mother's Name
+    findAndPush([/mother/i]);
+
+    orderedKeys = [...leadingKeys];
+    keys.forEach(k => {
+      if (!orderedKeys.includes(k)) {
+        orderedKeys.push(k);
+      }
+    });
+  } else {
+    orderedKeys = keys;
+  }
+
+  orderedKeys.forEach(key => {
     const group = document.createElement("div");
     group.className = "detail-group";
 
@@ -401,7 +479,7 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
     viewBtn.innerHTML = `<i data-lucide="eye" style="width: 12px; height: 12px;"></i>View`;
     
     viewBtn.addEventListener("click", () => {
-      window.openStudentDetailModal(row);
+      window.openStudentDetailModal(row, domPrefix);
     });
     
     actionTd.appendChild(viewBtn);
@@ -578,11 +656,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Drawer Sign Out button click
   const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
-  const mainLogoutBtn = document.getElementById("logout-btn");
-  if (drawerLogoutBtn && mainLogoutBtn) {
+  if (drawerLogoutBtn) {
     drawerLogoutBtn.addEventListener("click", () => {
       if (drawer) drawer.classList.remove("active");
-      mainLogoutBtn.click();
+      if (typeof logout === "function") {
+        logout();
+      }
     });
   }
 

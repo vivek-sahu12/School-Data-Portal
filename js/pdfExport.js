@@ -194,6 +194,12 @@ function generatePdfReport() {
       format: "a4"
     });
 
+    // Write school name at the top of the first page of the PDF only
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.text(schoolName, 10, 15);
+
     // 2. Prepend S.No. header
     const pdfHeaders = ["S.No.", ...selectedPdfColumnsOrdered];
 
@@ -206,11 +212,11 @@ function generatePdfReport() {
       return [(idx + 1).toString(), ...rowData];
     });
 
-    // 4. Generate AutoTable starting at the very top with minimal margin
+    // 4. Generate AutoTable starting below the school name on page 1
     doc.autoTable({
       head: [pdfHeaders],
       body: tableBody,
-      startY: 10,
+      startY: 22,
       theme: 'striped',
       headStyles: {
         fillColor: [79, 70, 229], // Indigo-600 primary color
