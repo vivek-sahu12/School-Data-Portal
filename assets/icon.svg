@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+    
+    <!-- Shield/Book Gradient -->
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.6" />
+    </linearGradient>
+
+    <!-- Shadow Filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#090d16" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Maskable Safe Area / Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg-grad)" />
+
+  <!-- Shield Shape (Symbolizing Institution/Security) -->
+  <g filter="url(#shadow)">
+    <path d="M256,80 C310,80 390,110 390,110 C390,110 390,260 350,335 C310,410 256,432 256,432 C256,432 202,410 162,335 C122,260 122,110 122,110 C122,110 202,80 256,80 Z" 
+          fill="none" stroke="url(#shield-grad)" stroke-width="20" stroke-linejoin="round" />
+  </g>
+
+  <!-- Graduation Cap inside Shield -->
+  <g fill="#ffffff" filter="url(#shadow)">
+    <!-- Cap Diamond -->
+    <polygon points="256,160 340,200 256,240 172,200" />
+    <!-- Cap Base -->
+    <path d="M200,225 L200,265 C200,285 225,295 256,295 C287,295 312,285 312,265 L312,225 L256,252 Z" />
+    <!-- Tassel -->
+    <path d="M310,210 L330,245 L330,285 C330,290 327,292 325,290 L320,280 Z" />
+  </g>
+
+  <!-- Star Embellishments -->
+  <g fill="#a5b4fc">
+    <path d="M256,330 L260,340 L270,340 L262,346 L265,356 L256,350 L247,356 L250,346 L242,340 L252,340 Z" />
+    <path d="M216,310 L219,317 L226,317 L220,321 L222,328 L216,324 L210,328 L212,321 L206,317 L213,317 Z" />
+    <path d="M296,310 L299,317 L306,317 L300,321 L302,328 L296,324 L290,328 L292,321 L286,317 L293,317 Z" />
+  </g>
+</svg>

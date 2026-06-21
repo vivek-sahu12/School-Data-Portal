@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>School Portal</title>
+  
+  <!-- Web App Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  
+  <!-- PWA iOS Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="School Portal">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ================= LOGOUT / LOGIN WRAPPER ================= -->
+  
+  <!-- 1. LOGIN SCREEN -->
+  <div id="login-screen" class="login-container hidden">
+    <div class="login-card">
+      <div class="login-logo-container">
+        <img src="assets/icon.svg" alt="School Portal Logo" class="login-logo">
+      </div>
+      <h1 class="login-title">School Portal</h1>
+      <p class="login-subtitle">Sign in to access your student information dashboards.</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">User ID</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="user" class="input-icon"></i>
+            <input type="text" id="username" placeholder="Enter school ID" required autocomplete="username">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" id="password" placeholder="Enter password" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <div id="login-error" class="login-error hidden">
+          <i data-lucide="alert-circle" class="error-icon"></i>
+          <span id="login-error-text">Incorrect User ID or Password.</span>
+        </div>
+        
+        <button type="submit" class="btn-primary w-full btn-login">
+          <span>Sign In</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MAIN APP SCREEN -->
+  <div id="app-screen" class="app-container hidden">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="logo-wrapper">
+          <img src="assets/icon.svg" alt="Logo" class="header-logo">
+        </div>
+        <div>
+          <h1 class="header-title">School Portal</h1>
+          <p id="school-name-display" class="header-subtitle">Loading school...</p>
+        </div>
+      </div>
+      
+      <!-- HEADER ACTIONS -->
+      <div class="header-actions">
+        <!-- Status Indicator / Toast Trigger -->
+        <div id="sync-status" class="sync-status text-muted" title="Last Sync Time">
+          <i data-lucide="clock" class="size-4"></i>
+          <span id="sync-time-text">Syncing...</span>
+        </div>
+        
+        <!-- Refresh Button -->
+        <button id="manual-refresh-btn" class="icon-btn" title="Sync Live Data">
+          <i data-lucide="refresh-cw" id="refresh-icon-spin"></i>
+        </button>
+        
+        <!-- Theme Toggle -->
+        <button id="theme-toggle-btn" class="icon-btn" title="Toggle Theme">
+          <i data-lucide="sun" id="theme-sun" class="hidden"></i>
+          <i data-lucide="moon" id="theme-moon"></i>
+        </button>
+        
+        <!-- Logout Button -->
+        <button id="logout-btn" class="btn-secondary logout-btn">
+          <i data-lucide="log-out"></i>
+          <span class="btn-text">Sign Out</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN APP CONTENT & SIDEBAR / BOTTOM BAR LAYOUT -->
+    <div class="app-body">
+      
+      <!-- NAVIGATION (Sidebar on desktop, bottom navigation on mobile) -->
+      <nav class="app-navigation">
+        <button class="nav-item active" data-target="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-target="udise">
+          <i data-lucide="file-spreadsheet"></i>
+          <span>UDISE</span>
+        </button>
+        <button class="nav-item" data-target="three-point-zero">
+          <i data-lucide="file-check-2"></i>
+          <span>3.0</span>
+        </button>
+        <button class="nav-item" data-target="school-data">
+          <i data-lucide="database"></i>
+          <span>School Data</span>
+        </button>
+        <button class="nav-item" data-target="universal-search">
+          <i data-lucide="search"></i>
+          <span>Universal Search</span>
+        </button>
+      </nav>
+
+      <!-- SCREEN VIEWS -->
+      <main class="app-content-viewport">
+        
+        <!-- FIRST-TIME RETRY CONTAINER (If fetching fails and no cached data exists) -->
+        <div id="retry-container" class="card-retry hidden">
+          <i data-lucide="cloud-off" class="retry-icon"></i>
+          <h2>Failed to Load School Data</h2>
+          <p>We could not fetch data from the school server. Please verify your connection and try again.</p>
+          <button id="retry-fetch-btn" class="btn-primary">
+            <i data-lucide="rotate-ccw"></i>
+            <span>Retry Connection</span>
+          </button>
+        </div>
+
+        <!-- APP LOADING BAR -->
+        <div id="app-loading-bar" class="loading-bar-wrapper hidden">
+          <div class="loading-spinner"></div>
+          <span>Fetching database...</span>
+        </div>
+
+        <!-- 1. DASHBOARD SCREEN -->
+        <section id="dashboard-view" class="view-section">
+          <!-- Screen Header -->
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Dashboard Overview</h2>
+              <p class="view-subtitle">Consolidated analytical reports from school worksheets.</p>
+            </div>
+            
+            <!-- Worksheet Selection for Stats -->
+            <div class="select-source-wrapper">
+              <label for="dashboard-source-select" class="text-sm font-medium">Analyze Worksheet:</label>
+              <select id="dashboard-source-select" class="form-select">
+                <option value="School Data">School Data (Default)</option>
+                <option value="UDISE">UDISE</option>
+                <option value="3.0">3.0</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Key Metrics Grid -->
+          <div class="metrics-grid">
+            <!-- Stat 1 -->
+            <div class="metric-card">
+              <div class="metric-icon-box primary">
+                <i data-lucide="users"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Total Enrolled Students</p>
+                <h3 id="stat-total-students" class="metric-value">-</h3>
+              </div>
+            </div>
+            
+            <!-- Stat 2 -->
+            <div class="metric-card">
+              <div class="metric-icon-box success">
+                <i data-lucide="graduation-cap"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Total Classes</p>
+                <h3 id="stat-total-classes" class="metric-value">-</h3>
+              </div>
+            </div>
+            
+            <!-- Stat 3 -->
+            <div class="metric-card">
+              <div class="metric-icon-box warning">
+                <i data-lucide="layers"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Total Sections</p>
+                <h3 id="stat-total-sections" class="metric-value">-</h3>
+              </div>
+            </div>
+
+            <!-- Stat 4 -->
+            <div class="metric-card">
+              <div class="metric-icon-box info">
+                <i data-lucide="bookmark"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Current Data Source</p>
+                <h3 id="stat-current-source" class="metric-value">-</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Section -->
+          <div class="charts-grid">
+            <!-- Chart 1: Gender Distribution -->
+            <div class="chart-card">
+              <h4 class="chart-title">Gender Distribution</h4>
+              <div class="chart-wrapper">
+                <canvas id="genderChart"></canvas>
+              </div>
+              <!-- Custom legend or fallback if no gender column -->
+              <p id="gender-chart-fallback" class="chart-fallback-text hidden">No gender/sex column found in the current worksheet.</p>
+            </div>
+
+            <!-- Chart 2: Grade/Class Distribution -->
+            <div class="chart-card large-chart">
+              <h4 class="chart-title">Class Distribution</h4>
+              <div class="chart-wrapper">
+                <canvas id="classChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. DYNAMIC SHEET TAB VIEW (UDISE) -->
+        <section id="udise-view" class="view-section hidden">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">UDISE Student Records</h2>
+              <p class="view-subtitle">Manage, filter, and export UDISE worksheet details.</p>
+            </div>
+          </div>
+          
+          <!-- Shared search/filter layout -->
+          <div class="filter-bar" id="udise-filter-bar">
+            <!-- Search by Name -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search by name..." class="search-input" id="udise-search-input">
+            </div>
+            
+            <!-- Class Dropdown -->
+            <div class="filter-dropdown-wrapper" id="udise-class-filter-wrapper">
+              <select id="udise-class-select" class="form-select">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+
+            <!-- Section Dropdown -->
+            <div class="filter-dropdown-wrapper" id="udise-section-filter-wrapper">
+              <select id="udise-section-select" class="form-select">
+                <option value="">All Sections</option>
+              </select>
+            </div>
+
+            <!-- Actions: Export PDF -->
+            <button class="btn-primary pdf-btn" id="udise-pdf-btn">
+              <i data-lucide="file-text"></i>
+              <span>Export PDF</span>
+            </button>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-card">
+            <div class="table-status-bar">
+              <span id="udise-row-count" class="text-sm font-medium text-muted">Showing 0 rows</span>
+            </div>
+            <div class="table-responsive">
+              <table id="udise-table" class="data-table">
+                <thead>
+                  <!-- Rendered dynamically -->
+                </thead>
+                <tbody>
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Empty state -->
+            <div id="udise-empty-state" class="empty-state hidden">
+              <i data-lucide="search-code"></i>
+              <p>No records match your search criteria.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. DYNAMIC SHEET TAB VIEW (3.0) -->
+        <section id="three-point-zero-view" class="view-section hidden">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">3.0 Student Records</h2>
+              <p class="view-subtitle">Manage, filter, and export 3.0 worksheet details.</p>
+            </div>
+          </div>
+          
+          <!-- Shared search/filter layout -->
+          <div class="filter-bar" id="three-point-zero-filter-bar">
+            <!-- Search by Name -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search by name..." class="search-input" id="three-point-zero-search-input">
+            </div>
+            
+            <!-- Class Dropdown -->
+            <div class="filter-dropdown-wrapper" id="three-point-zero-class-filter-wrapper">
+              <select id="three-point-zero-class-select" class="form-select">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+
+            <!-- Section Dropdown -->
+            <div class="filter-dropdown-wrapper" id="three-point-zero-section-filter-wrapper">
+              <select id="three-point-zero-section-select" class="form-select">
+                <option value="">All Sections</option>
+              </select>
+            </div>
+
+            <!-- Actions: Export PDF -->
+            <button class="btn-primary pdf-btn" id="three-point-zero-pdf-btn">
+              <i data-lucide="file-text"></i>
+              <span>Export PDF</span>
+            </button>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-card">
+            <div class="table-status-bar">
+              <span id="three-point-zero-row-count" class="text-sm font-medium text-muted">Showing 0 rows</span>
+            </div>
+            <div class="table-responsive">
+              <table id="three-point-zero-table" class="data-table">
+                <thead>
+                  <!-- Rendered dynamically -->
+                </thead>
+                <tbody>
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Empty state -->
+            <div id="three-point-zero-empty-state" class="empty-state hidden">
+              <i data-lucide="search-code"></i>
+              <p>No records match your search criteria.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. DYNAMIC SHEET TAB VIEW (SCHOOL DATA) -->
+        <section id="school-data-view" class="view-section hidden">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">School Data Records</h2>
+              <p class="view-subtitle">Manage, filter, and export School Data worksheet details.</p>
+            </div>
+          </div>
+          
+          <!-- Shared search/filter layout -->
+          <div class="filter-bar" id="school-data-filter-bar">
+            <!-- Search by Name -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search by name..." class="search-input" id="school-data-search-input">
+            </div>
+            
+            <!-- Class Dropdown -->
+            <div class="filter-dropdown-wrapper" id="school-data-class-filter-wrapper">
+              <select id="school-data-class-select" class="form-select">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+
+            <!-- Section Dropdown -->
+            <div class="filter-dropdown-wrapper" id="school-data-section-filter-wrapper">
+              <select id="school-data-section-select" class="form-select">
+                <option value="">All Sections</option>
+              </select>
+            </div>
+
+            <!-- Actions: Export PDF -->
+            <button class="btn-primary pdf-btn" id="school-data-pdf-btn">
+              <i data-lucide="file-text"></i>
+              <span>Export PDF</span>
+            </button>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-card">
+            <div class="table-status-bar">
+              <span id="school-data-row-count" class="text-sm font-medium text-muted">Showing 0 rows</span>
+            </div>
+            <div class="table-responsive">
+              <table id="school-data-table" class="data-table">
+                <thead>
+                  <!-- Rendered dynamically -->
+                </thead>
+                <tbody>
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Empty state -->
+            <div id="school-data-empty-state" class="empty-state hidden">
+              <i data-lucide="search-code"></i>
+              <p>No records match your search criteria.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. UNIVERSAL SEARCH SCREEN -->
+        <section id="universal-search-view" class="view-section hidden">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Universal Database Search</h2>
+              <p class="view-subtitle">Cross-sheet querying across all school databases.</p>
+            </div>
+          </div>
+
+          <!-- Universal Search Controls -->
+          <div class="universal-filter-bar">
+            <!-- Selector 1: Search In -->
+            <div class="form-group-filter">
+              <label for="universal-source-select" class="filter-label">Search In</label>
+              <select id="universal-source-select" class="form-select">
+                <option value="School Data" selected>School Data</option>
+                <option value="UDISE">UDISE</option>
+                <option value="3.0">3.0</option>
+                <option value="All">All Sheets Combined</option>
+              </select>
+            </div>
+
+            <!-- Selector 2: Column Selection -->
+            <div class="form-group-filter">
+              <label for="universal-column-select" class="filter-label">Search Column</label>
+              <select id="universal-column-select" class="form-select">
+                <!-- Dynamically Populated -->
+              </select>
+            </div>
+
+            <!-- Search Value Input -->
+            <div class="form-group-filter search-query-wrapper">
+              <label for="universal-search-input" class="filter-label">Search Keyword</label>
+              <div class="search-box">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" placeholder="Enter keyword to filter..." class="search-input" id="universal-search-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Results Table Card -->
+          <div class="table-card">
+            <div class="table-status-bar">
+              <span id="universal-row-count" class="text-sm font-medium text-muted">No search executed</span>
+            </div>
+            <div class="table-responsive">
+              <table id="universal-table" class="data-table">
+                <thead>
+                  <!-- Dynamic -->
+                </thead>
+                <tbody>
+                  <!-- Dynamic -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Empty state -->
+            <div id="universal-empty-state" class="empty-state">
+              <i data-lucide="search" class="large-icon"></i>
+              <p>Type a keyword above to find students.</p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= MODALS & OVERLAYS ================= -->
+  
+  <!-- PDF EXPORT MODAL -->
+  <div id="pdf-export-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Export PDF Configuration</h3>
+        <button id="close-pdf-modal" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="modal-description text-muted">
+          Select columns to include in the PDF export. Hold and drag column items to reorder them.
+        </p>
+
+        <!-- Convenience Options -->
+        <div class="modal-actions-inline">
+          <label class="checkbox-container">
+            <input type="checkbox" id="pdf-select-all-checkbox" checked>
+            <span class="checkmark"></span>
+            <span>Select All Columns</span>
+          </label>
+        </div>
+
+        <!-- Columns Checklist -->
+        <div class="columns-config-list" id="pdf-columns-list">
+          <!-- Filled dynamically with checkboxes and drag handles -->
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button id="cancel-pdf-btn" class="btn-secondary">Cancel</button>
+        <button id="generate-pdf-btn" class="btn-primary">
+          <i data-lucide="download"></i>
+          <span>Generate PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- jsPDF AutoTable CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Application Logic -->
+  <script src="js/config.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dataFetch.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/universalSearch.js"></script>
+  <script src="js/pdfExport.js"></script>
+
+  <!-- Main bootstrapper -->
+  <script>
+    // Initialize Lucide Icons globally
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    });
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then((reg) => console.log('Service Worker registered successfully!', reg.scope))
+          .catch((err) => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
+
+</body>
+</html>

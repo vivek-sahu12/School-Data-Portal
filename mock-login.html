@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock Loader</title>
+  <script>
+    // 1. Set mock session and data
+    localStorage.setItem('school-portal-session', JSON.stringify({
+      userId: "school001",
+      schoolName: "ABC Public School",
+      sheetUrl: "https://script.google.com/macros/s/placeholder_abc/exec"
+    }));
+    localStorage.setItem('school-portal-last-fetch', Date.now().toString());
+    localStorage.setItem('school-portal-data', JSON.stringify({
+      "UDISE": [
+        { "Name": "Aarav Sharma", "Class": "10", "Section": "A", "Gender": "Male", "Roll No": "101", "Contact": "9876543210" },
+        { "Name": "Diya Patel", "Class": "10", "Section": "B", "Gender": "Female", "Roll No": "102", "Contact": "9876543211" },
+        { "Name": "Ishaan Verma", "Class": "11", "Section": "A", "Gender": "Male", "Roll No": "103", "Contact": "9876543212" },
+        { "Name": "Ananya Sen", "Class": "12", "Section": "C", "Gender": "Female", "Roll No": "104", "Contact": "9876543213" }
+      ],
+      "3.0": [
+        { "Name": "Aarav Sharma", "Class": "10", "Section": "A", "Gender": "Male", "Aadhar No": "1234-5678-9012" },
+        { "Name": "Diya Patel", "Class": "10", "Section": "B", "Gender": "Female", "Aadhar No": "1234-5678-9013" }
+      ],
+      "School Data": [
+        { "Name": "Aarav Sharma", "Class": "10", "Section": "A", "Gender": "Male", "Father Name": "Rakesh Sharma", "Address": "New Delhi" },
+        { "Name": "Diya Patel", "Class": "10", "Section": "B", "Gender": "Female", "Father Name": "Vijay Patel", "Address": "Mumbai" }
+      ]
+    }));
+
+    // 2. Clear service workers and caches to bypass caching of modified code
+    async function cleanAndRedirect() {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let reg of registrations) {
+            await reg.unregister();
+          }
+        } catch (e) {
+          console.error("Failed to unregister SW:", e);
+        }
+      }
+      
+      if ('caches' in window) {
+        try {
+          const names = await caches.keys();
+          for (let name of names) {
+            await caches.delete(name);
+          }
+        } catch (e) {
+          console.error("Failed to delete cache:", e);
+        }
+      }
+
+      // Small delay to ensure browser register update completes
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 500);
+    }
+
+    window.onload = cleanAndRedirect;
+  </script>
+</head>
+<body>
+  Cleaning cache and redirecting to School Portal with mock database...
+</body>
+</html>

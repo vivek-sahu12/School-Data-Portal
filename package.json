@@ -1,0 +1,17 @@
+{
+  "name": "school-portal",
+  "version": "1.0.0",
+  "description": "School Portal Static PWA Web App",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 8080"
+  },
+  "keywords": [
+    "pwa",
+    "dashboard",
+    "school",
+    "portal"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}
