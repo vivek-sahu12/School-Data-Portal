@@ -41,7 +41,7 @@ function initPdfExport(data) {
 
 /**
  * Open the column selection modal for a specific sheet
- * @param {string} sheetKey - "UDISE", "3.0", or "School Data"
+ * @param {string} sheetKey - "UDISE", "3.0", "School Data", or "universal"
  */
 function openPdfModalForSheet(sheetKey) {
   activePdfSheetKey = sheetKey;
@@ -54,7 +54,7 @@ function openPdfModalForSheet(sheetKey) {
   }
 
   // Retrieve original column list from the first record
-  pdfOriginalHeaders = Object.keys(records[0]);
+  pdfOriginalHeaders = Object.keys(records[0]).filter(col => !col.startsWith("_"));
   
   // Initialize state (keep all checked by default in their original order)
   selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
@@ -194,43 +194,23 @@ function generatePdfReport() {
       format: "a4"
     });
 
-    // 2. Add Branding Header
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(15, 23, 42); // Primary dark slate
-    doc.text(schoolName, 14, 15);
-    
-    doc.setFontSize(11);
-    doc.setFont("Helvetica", "normal");
-    doc.setTextColor(71, 85, 105); // Secondary slate
-    doc.text(`Sheet: ${activePdfSheetKey} Student Records`, 14, 21);
-    
-    // Timestamp
-    const dateStr = new Date().toLocaleString();
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184); // Light slate/muted
-    
-    const pageWidth = doc.internal.pageSize.getWidth();
-    doc.text(`Generated: ${dateStr}`, pageWidth - 14, 21, { align: "right" });
+    // 2. Prepend S.No. header
+    const pdfHeaders = ["S.No.", ...selectedPdfColumnsOrdered];
 
-    // Header separator line
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(14, 25, pageWidth - 14, 25);
-
-    // 3. Map rows data for AutoTable input using order
-    const tableBody = records.map(row => {
-      return selectedPdfColumnsOrdered.map(colName => {
+    // 3. Map rows data for AutoTable input using order, prepending serial number
+    const tableBody = records.map((row, idx) => {
+      const rowData = selectedPdfColumnsOrdered.map(colName => {
         const val = row[colName];
         return (val !== undefined && val !== null) ? val.toString() : "";
       });
+      return [(idx + 1).toString(), ...rowData];
     });
 
-    // 4. Generate AutoTable
+    // 4. Generate AutoTable starting at the very top with minimal margin
     doc.autoTable({
-      head: [selectedPdfColumnsOrdered],
+      head: [pdfHeaders],
       body: tableBody,
-      startY: 28,
+      startY: 10,
       theme: 'striped',
       headStyles: {
         fillColor: [79, 70, 229], // Indigo-600 primary color
@@ -249,16 +229,7 @@ function generatePdfReport() {
       alternateRowStyles: {
         fillColor: [248, 250, 252] // Very light slate zebra-striping
       },
-      margin: { left: 14, right: 14, bottom: 15 },
-      
-      // Page numbering footer
-      didDrawPage: function (data) {
-        const str = `Page ${data.pageNumber} of ${doc.internal.getNumberOfPages()}`;
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184);
-        doc.text(str, 14, doc.internal.pageSize.getHeight() - 10);
-      }
+      margin: { left: 10, right: 10, top: 10, bottom: 10 }
     });
 
     // 5. Download file

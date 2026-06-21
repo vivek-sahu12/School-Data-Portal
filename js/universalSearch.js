@@ -16,6 +16,8 @@ function initUniversalSearch(data) {
   const columnSelect = document.getElementById("universal-column-select");
   const searchInput = document.getElementById("universal-search-input");
   const viewMoreBtn = document.getElementById("universal-view-more-btn");
+  const resetBtn = document.getElementById("universal-reset-btn");
+  const pdfBtn = document.getElementById("universal-pdf-btn");
 
   if (!sourceSelect || !columnSelect || !searchInput) return;
 
@@ -48,6 +50,29 @@ function initUniversalSearch(data) {
       executeUniversalSearch();
     });
     searchInput.dataset.listenerBound = "true";
+  }
+
+  // Bind Reset button
+  if (resetBtn && !resetBtn.dataset.listenerBound) {
+    resetBtn.addEventListener("click", () => {
+      sourceSelect.value = "School Data";
+      searchInput.value = "";
+      window.tablePaginationLimit["universal"] = 25;
+      populateUniversalSearchColumns();
+      executeUniversalSearch();
+    });
+    resetBtn.dataset.listenerBound = "true";
+  }
+
+  // Bind PDF export button
+  if (pdfBtn && !pdfBtn.dataset.listenerBound) {
+    pdfBtn.addEventListener("click", () => {
+      // Open PDF modal passing "universal" as the sheet key
+      if (typeof openPdfModalForSheet === 'function') {
+        openPdfModalForSheet("universal");
+      }
+    });
+    pdfBtn.dataset.listenerBound = "true";
   }
 
   // Bind view more button
@@ -100,11 +125,12 @@ function populateUniversalSearchColumns() {
 
   // Populate drop-down options
   columnsToShow.forEach(col => {
+    if (col.startsWith("_")) return; // skip internal columns
     const opt = document.createElement("option");
     opt.value = col;
     opt.textContent = col;
     // Default to Name column for best UX
-    if (col === "Name") {
+    if (col.toLowerCase() === "name") {
       opt.selected = true;
     }
     columnSelect.appendChild(opt);
@@ -163,6 +189,8 @@ function executeUniversalSearch() {
     const paginationContainer = document.getElementById("universal-pagination-container");
     if (paginationContainer) paginationContainer.classList.add("hidden");
     
+    // Clear active filtered data
+    window.activeFilteredData["universal"] = [];
     return;
   }
 
@@ -171,7 +199,7 @@ function executeUniversalSearch() {
 
   // 2. Perform search query filtering
   if (isCombined) {
-    // Search in all three sheets
+    // Search in all three sheets (School Data first, then UDISE, then 3.0 order)
     const sheets = ["School Data", "UDISE", "3.0"];
     
     sheets.forEach(sheet => {
@@ -198,6 +226,9 @@ function executeUniversalSearch() {
     });
   }
 
+  // Save to active state for PDF export
+  window.activeFilteredData["universal"] = results;
+
   // 3. Update Row count display
   rowCountSpan.textContent = `Found ${results.length} matching record${results.length === 1 ? '' : 's'}`;
 
@@ -223,11 +254,12 @@ function executeUniversalSearch() {
   table.classList.remove("hidden");
   emptyState.classList.add("hidden");
 
-  // 5. Render appropriate table headers & rows (using compact columns)
+  // 5. Render appropriate table headers & rows (using contextual column order logic)
   let headersToRender = [];
+  const isMobile = window.innerWidth <= 768;
 
   if (isCombined) {
-    // Headers for combined search: "Source" + common columns
+    // Headers for combined search: "Source" + Class + Name + Contextual/Section
     const udiseCols = getSheetHeaders("UDISE");
     const threeCols = getSheetHeaders("3.0");
     const schoolCols = getSheetHeaders("School Data");
@@ -236,11 +268,11 @@ function executeUniversalSearch() {
       threeCols.includes(col) && schoolCols.includes(col)
     );
     
-    const compactCommon = window.getCompactHeaders(commonCols);
-    headersToRender = ["Source", ...compactCommon];
+    const columnsToRender = window.getTableHeadersToRender(commonCols, isMobile, selectedColumn);
+    headersToRender = ["Source", ...columnsToRender];
   } else {
-    // Headers for single sheet search: display compact columns
-    headersToRender = window.getCompactHeaders(getSheetHeaders(selectedSource));
+    // Headers for single sheet search: display Class, Name, Contextual/Section
+    headersToRender = window.getTableHeadersToRender(getSheetHeaders(selectedSource), isMobile, selectedColumn);
   }
 
   // Create Header Row
@@ -254,7 +286,7 @@ function executeUniversalSearch() {
   // Action header
   const actionTh = document.createElement("th");
   actionTh.textContent = "Action";
-  actionTh.style.width = "80px";
+  actionTh.style.width = "75px";
   tr.appendChild(actionTh);
   thead.appendChild(tr);
 
@@ -274,7 +306,7 @@ function executeUniversalSearch() {
 
   // Render Body
   slicedRows.forEach(row => {
-    const tr = document.createElement("tr");
+    const bodyTr = document.createElement("tr");
     
     headersToRender.forEach(h => {
       const td = document.createElement("td");
@@ -292,31 +324,39 @@ function executeUniversalSearch() {
         td.appendChild(badge);
       } else {
         const val = row[h];
-        td.textContent = (val !== undefined && val !== null) ? val.toString() : "";
+        const textVal = (val !== undefined && val !== null) ? val.toString() : "";
+        
+        // Highlighting match keyword in selected search column
+        if (query && h === selectedColumn) {
+          const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`(${escapedQuery})`, 'gi');
+          td.innerHTML = textVal.replace(regex, '<mark class="highlight">$1</mark>');
+        } else {
+          td.textContent = textVal;
+        }
       }
       
-      tr.appendChild(td);
+      bodyTr.appendChild(td);
     });
 
     // View action button
     const actionTd = document.createElement("td");
     const viewBtn = document.createElement("button");
     viewBtn.className = "btn-secondary btn-view-row";
-    viewBtn.style.padding = "6px 12px";
-    viewBtn.style.fontSize = "0.8rem";
+    viewBtn.style.padding = "4px 8px";
+    viewBtn.style.fontSize = "0.75rem";
     viewBtn.style.display = "inline-flex";
     viewBtn.style.alignItems = "center";
     viewBtn.style.gap = "4px";
-    viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i>View`;
+    viewBtn.innerHTML = `<i data-lucide="eye" style="width: 12px; height: 12px;"></i>View`;
     
     viewBtn.addEventListener("click", () => {
       window.openStudentDetailModal(row);
     });
     
     actionTd.appendChild(viewBtn);
-    tr.appendChild(actionTd);
-    
-    tbody.appendChild(tr);
+    bodyTr.appendChild(actionTd);
+    tbody.appendChild(bodyTr);
   });
 
   // Re-create icons inside view buttons

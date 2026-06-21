@@ -179,6 +179,14 @@ function renderGenderChart(rows) {
       }]
     },
     options: {
+      onClick: (event, elements, chart) => {
+        if (elements && elements.length > 0 && typeof handleChartSegmentClick === 'function') {
+          const firstElement = elements[0];
+          const dataIndex = firstElement.index;
+          const label = chart.data.labels[dataIndex];
+          handleChartSegmentClick("Gender", label);
+        }
+      },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -290,6 +298,14 @@ function renderCategoryChart(rows) {
       }]
     },
     options: {
+      onClick: (event, elements, chart) => {
+        if (elements && elements.length > 0 && typeof handleChartSegmentClick === 'function') {
+          const firstElement = elements[0];
+          const dataIndex = firstElement.index;
+          const label = chart.data.labels[dataIndex];
+          handleChartSegmentClick("Category", label);
+        }
+      },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -328,18 +344,18 @@ function renderCategoryChart(rows) {
 }
 
 /**
- * Render class distribution chart (Bar chart showing student count)
+ * Render class strength grid (glanceable chips instead of chart)
  */
 function renderClassChart(rows) {
-  const canvas = document.getElementById("classChart");
-  if (!canvas) return;
+  const container = document.getElementById("class-strength-grid");
+  if (!container) return;
 
-  if (classChartInstance) {
-    classChartInstance.destroy();
-    classChartInstance = null;
+  container.innerHTML = "";
+
+  if (rows.length === 0) {
+    container.innerHTML = `<p class="chart-fallback-text">No class distribution data available.</p>`;
+    return;
   }
-
-  if (rows.length === 0) return;
 
   // Aggregate counts per class
   const classCounts = {};
@@ -353,69 +369,25 @@ function renderClassChart(rows) {
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   });
 
-  const datasetValues = sortedClasses.map(cls => classCounts[cls]);
-
-  const ctx = canvas.getContext("2d");
-
-  // Create Indigo to Violet gradient
-  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient.addColorStop(0, '#6366f1');
-  gradient.addColorStop(1, '#4f46e5');
-
-  classChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sortedClasses,
-      datasets: [{
-        label: 'Students Count',
-        data: datasetValues,
-        backgroundColor: gradient,
-        borderRadius: 8,
-        maxBarThickness: 36
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          backgroundColor: '#0f172a',
-          titleFont: { family: 'Inter', weight: 'bold' },
-          bodyFont: { family: 'Inter' }
-        },
-        datalabels: {
-          anchor: 'end',
-          align: 'top',
-          color: document.documentElement.getAttribute("data-theme") === "dark" ? "#f1f5f9" : "#0f172a",
-          font: { family: 'Inter', weight: 'bold', size: 10 },
-          formatter: (value) => value
-        }
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            color: document.documentElement.getAttribute("data-theme") === "dark" ? "#cbd5e1" : "#475569",
-            font: { family: 'Inter', size: 11 }
-          }
-        },
-        y: {
-          grace: '15%', // adds 15% padding at top to avoid labels getting cut off
-          grid: {
-            color: document.documentElement.getAttribute("data-theme") === "dark" ? "#1f2937" : "#e2e8f0"
-          },
-          ticks: {
-            color: document.documentElement.getAttribute("data-theme") === "dark" ? "#cbd5e1" : "#475569",
-            font: { family: 'Inter', size: 11 },
-            stepSize: 1
-          }
-        }
+  sortedClasses.forEach(cls => {
+    const chip = document.createElement("div");
+    chip.className = "class-strength-chip";
+    chip.addEventListener("click", () => {
+      if (typeof handleChartSegmentClick === 'function') {
+        handleChartSegmentClick("Class", cls);
       }
-    }
+    });
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "chip-label";
+    labelEl.textContent = `Class ${cls}`;
+
+    const valEl = document.createElement("span");
+    valEl.className = "chip-value";
+    valEl.textContent = classCounts[cls];
+
+    chip.appendChild(labelEl);
+    chip.appendChild(valEl);
+    container.appendChild(chip);
   });
 }

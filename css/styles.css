@@ -444,17 +444,9 @@ button, select, input {
   position: relative;
 }
 
-/* NAVIGATION (Sidebar default) */
+/* NAVIGATION (Sidebar default) - Hidden on desktop in favor of top nav */
 .app-navigation {
-  width: 240px;
-  background-color: var(--bg-surface);
-  border-right: 1px solid var(--border-color);
-  padding: 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-  overflow-y: auto;
+  display: none !important;
 }
 
 .nav-item {
@@ -513,7 +505,84 @@ button, select, input {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  animation: fadeIn 0.3s ease-out;
+  animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Animations */
+@keyframes slideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header Nav for Desktop view */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Filter actions reset + pdf group */
+.filter-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Class strength grid/chips */
+.class-strength-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  padding: 8px 0;
+}
+.class-strength-chip {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+.class-strength-chip:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+.class-strength-chip .chip-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.class-strength-chip .chip-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Tactile scale-down click feedback */
+.nav-item:active, .drawer-nav-item:active, .class-strength-chip:active, .btn-primary:active, .btn-secondary:active {
+  transform: scale(0.96);
+}
+
+/* Custom highlight marks in search matches */
+mark.highlight {
+  background-color: rgba(99, 102, 241, 0.2);
+  color: var(--primary);
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 4px;
 }
 
 .view-header {
@@ -1247,12 +1316,7 @@ select option {
   width: 100%;
 }
 
-@media (max-width: 480px) {
-  .student-detail-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
+
 
 .detail-group {
   display: flex;
@@ -1303,19 +1367,29 @@ select option {
 }
 
 /* Mobile Drawer Overlay */
+/* Mobile Drawer Overlay */
 .mobile-drawer-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
   z-index: 150;
   display: flex;
   justify-content: flex-start;
-  animation: fadeIn var(--transition-fast) ease-out;
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease, visibility 0.3s ease;
+  visibility: hidden;
+  pointer-events: none;
+}
+.mobile-drawer-overlay.active {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .mobile-drawer-content {
@@ -1327,9 +1401,13 @@ select option {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-xl);
-  animation: slideInLeft var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-drawer-overlay.active .mobile-drawer-content {
+  transform: translateX(0);
 }
 
 .mobile-drawer-header {
@@ -1457,7 +1535,12 @@ select option {
     flex-direction: column-reverse; /* Navigation goes to bottom */
   }
 
+  .header-nav {
+    display: none !important;
+  }
+
   .app-navigation {
+    display: flex !important;
     width: 100%;
     height: calc(64px + env(safe-area-inset-bottom, 0px));
     border-right: none;
@@ -1549,13 +1632,17 @@ select option {
   }
 
   .charts-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+
+  .large-chart {
+    grid-column: span 2 !important;
   }
 
   .chart-card {
-    min-height: 280px;
-    padding: 16px;
+    min-height: 240px;
+    padding: 12px;
   }
 
   .filter-bar {
@@ -1574,9 +1661,22 @@ select option {
     gap: 12px;
   }
 
+  .table-responsive {
+    overflow-x: hidden !important;
+    width: 100%;
+  }
+
+  .data-table {
+    table-layout: fixed;
+    width: 100% !important;
+  }
+
   .data-table th, .data-table td {
-    padding: 10px 14px;
-    font-size: 0.85rem;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .toast-container {

@@ -85,6 +85,30 @@
         </div>
       </div>
       
+      <!-- DESKTOP NAV (Header nav on desktop, hides sidebar) -->
+      <nav class="header-nav desktop-only-flex">
+        <button class="nav-item active" data-target="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-target="school-data">
+          <i data-lucide="database"></i>
+          <span>School Data</span>
+        </button>
+        <button class="nav-item" data-target="udise">
+          <i data-lucide="file-spreadsheet"></i>
+          <span>UDISE</span>
+        </button>
+        <button class="nav-item" data-target="three-point-zero">
+          <i data-lucide="file-check-2"></i>
+          <span>3.0</span>
+        </button>
+        <button class="nav-item" data-target="universal-search">
+          <i data-lucide="search"></i>
+          <span>Search</span>
+        </button>
+      </nav>
+      
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
         <!-- Refresh Button -->
@@ -109,11 +133,15 @@
     <!-- MAIN APP CONTENT & SIDEBAR / BOTTOM BAR LAYOUT -->
     <div class="app-body">
       
-      <!-- NAVIGATION (Sidebar on desktop, bottom navigation on mobile) -->
-      <nav class="app-navigation">
+      <!-- NAVIGATION (Bottom navigation on mobile only, hidden on desktop) -->
+      <nav class="app-navigation mobile-only-flex">
         <button class="nav-item active" data-target="dashboard">
           <i data-lucide="layout-dashboard"></i>
           <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-target="school-data">
+          <i data-lucide="database"></i>
+          <span>School Data</span>
         </button>
         <button class="nav-item" data-target="udise">
           <i data-lucide="file-spreadsheet"></i>
@@ -123,14 +151,9 @@
           <i data-lucide="file-check-2"></i>
           <span>3.0</span>
         </button>
-        <button class="nav-item" data-target="school-data">
-          <i data-lucide="database"></i>
-          <span>School Data</span>
-        </button>
         <button class="nav-item" data-target="universal-search">
           <i data-lucide="search"></i>
-          <span class="desktop-only-text">Universal Search</span>
-          <span class="mobile-only-text" style="display: none;">Search</span>
+          <span>Search</span>
         </button>
       </nav>
 
@@ -176,6 +199,17 @@
           
           <!-- Key Metrics Grid -->
           <div class="metrics-grid">
+            <!-- School Data Card -->
+            <div class="metric-card clickable-metric-card" data-target="school-data">
+              <div class="metric-icon-box success">
+                <i data-lucide="database"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">School Data Students</p>
+                <h3 id="stat-school-data-students" class="metric-value">-</h3>
+              </div>
+            </div>
+
             <!-- UDISE Card -->
             <div class="metric-card clickable-metric-card" data-target="udise">
               <div class="metric-icon-box primary">
@@ -195,17 +229,6 @@
               <div class="metric-details">
                 <p class="metric-label">3.0 Students</p>
                 <h3 id="stat-three-point-zero-students" class="metric-value">-</h3>
-              </div>
-            </div>
-            
-            <!-- School Data Card -->
-            <div class="metric-card clickable-metric-card" data-target="school-data">
-              <div class="metric-icon-box success">
-                <i data-lucide="database"></i>
-              </div>
-              <div class="metric-details">
-                <p class="metric-label">School Data Students</p>
-                <h3 id="stat-school-data-students" class="metric-value">-</h3>
               </div>
             </div>
           </div>
@@ -230,11 +253,11 @@
               <p id="category-chart-fallback" class="chart-fallback-text hidden">No category/caste column found in the current worksheet.</p>
             </div>
 
-            <!-- Chart 3: Grade/Class Distribution -->
-            <div class="chart-card large-chart">
-              <h4 class="chart-title">Class Distribution</h4>
-              <div class="chart-wrapper">
-                <canvas id="classChart"></canvas>
+            <!-- Chart 3: Grade/Class Strength Overview -->
+            <div class="chart-card large-chart" id="class-strength-card">
+              <h4 class="chart-title">Class Strength Overview</h4>
+              <div id="class-strength-grid" class="class-strength-grid">
+                <!-- Dynamically filled with chips -->
               </div>
             </div>
           </div>
@@ -251,12 +274,6 @@
           
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="udise-filter-bar">
-            <!-- Search by Name -->
-            <div class="search-box">
-              <i data-lucide="search" class="search-icon"></i>
-              <input type="text" placeholder="Search by name..." class="search-input" id="udise-search-input">
-            </div>
-            
             <!-- Class Dropdown -->
             <div class="filter-dropdown-wrapper" id="udise-class-filter-wrapper">
               <select id="udise-class-select" class="form-select">
@@ -264,18 +281,30 @@
               </select>
             </div>
 
-            <!-- Section Dropdown -->
-            <div class="filter-dropdown-wrapper" id="udise-section-filter-wrapper">
-              <select id="udise-section-select" class="form-select">
-                <option value="">All Sections</option>
+            <!-- Column Dropdown -->
+            <div class="filter-dropdown-wrapper" id="udise-column-filter-wrapper">
+              <select id="udise-column-select" class="form-select">
+                <!-- Dynamically Populated -->
               </select>
             </div>
+            
+            <!-- Search by Value -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search in column..." class="search-input" id="udise-search-input">
+            </div>
 
-            <!-- Actions: Export PDF -->
-            <button class="btn-primary pdf-btn" id="udise-pdf-btn">
-              <i data-lucide="file-text"></i>
-              <span>Export PDF</span>
-            </button>
+            <!-- Actions: Reset and Export PDF -->
+            <div class="filter-actions-group">
+              <button class="btn-secondary reset-btn" id="udise-reset-btn">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Reset</span>
+              </button>
+              <button class="btn-primary pdf-btn" id="udise-pdf-btn">
+                <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
+              </button>
+            </div>
           </div>
 
           <!-- Table Container -->
@@ -319,12 +348,6 @@
           
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="three-point-zero-filter-bar">
-            <!-- Search by Name -->
-            <div class="search-box">
-              <i data-lucide="search" class="search-icon"></i>
-              <input type="text" placeholder="Search by name..." class="search-input" id="three-point-zero-search-input">
-            </div>
-            
             <!-- Class Dropdown -->
             <div class="filter-dropdown-wrapper" id="three-point-zero-class-filter-wrapper">
               <select id="three-point-zero-class-select" class="form-select">
@@ -332,18 +355,30 @@
               </select>
             </div>
 
-            <!-- Section Dropdown -->
-            <div class="filter-dropdown-wrapper" id="three-point-zero-section-filter-wrapper">
-              <select id="three-point-zero-section-select" class="form-select">
-                <option value="">All Sections</option>
+            <!-- Column Dropdown -->
+            <div class="filter-dropdown-wrapper" id="three-point-zero-column-filter-wrapper">
+              <select id="three-point-zero-column-select" class="form-select">
+                <!-- Dynamically Populated -->
               </select>
             </div>
+            
+            <!-- Search by Value -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search in column..." class="search-input" id="three-point-zero-search-input">
+            </div>
 
-            <!-- Actions: Export PDF -->
-            <button class="btn-primary pdf-btn" id="three-point-zero-pdf-btn">
-              <i data-lucide="file-text"></i>
-              <span>Export PDF</span>
-            </button>
+            <!-- Actions: Reset and Export PDF -->
+            <div class="filter-actions-group">
+              <button class="btn-secondary reset-btn" id="three-point-zero-reset-btn">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Reset</span>
+              </button>
+              <button class="btn-primary pdf-btn" id="three-point-zero-pdf-btn">
+                <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
+              </button>
+            </div>
           </div>
 
           <!-- Table Container -->
@@ -387,12 +422,6 @@
           
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="school-data-filter-bar">
-            <!-- Search by Name -->
-            <div class="search-box">
-              <i data-lucide="search" class="search-icon"></i>
-              <input type="text" placeholder="Search by name..." class="search-input" id="school-data-search-input">
-            </div>
-            
             <!-- Class Dropdown -->
             <div class="filter-dropdown-wrapper" id="school-data-class-filter-wrapper">
               <select id="school-data-class-select" class="form-select">
@@ -400,18 +429,30 @@
               </select>
             </div>
 
-            <!-- Section Dropdown -->
-            <div class="filter-dropdown-wrapper" id="school-data-section-filter-wrapper">
-              <select id="school-data-section-select" class="form-select">
-                <option value="">All Sections</option>
+            <!-- Column Dropdown -->
+            <div class="filter-dropdown-wrapper" id="school-data-column-filter-wrapper">
+              <select id="school-data-column-select" class="form-select">
+                <!-- Dynamically Populated -->
               </select>
             </div>
+            
+            <!-- Search by Value -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search in column..." class="search-input" id="school-data-search-input">
+            </div>
 
-            <!-- Actions: Export PDF -->
-            <button class="btn-primary pdf-btn" id="school-data-pdf-btn">
-              <i data-lucide="file-text"></i>
-              <span>Export PDF</span>
-            </button>
+            <!-- Actions: Reset and Export PDF -->
+            <div class="filter-actions-group">
+              <button class="btn-secondary reset-btn" id="school-data-reset-btn">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Reset</span>
+              </button>
+              <button class="btn-primary pdf-btn" id="school-data-pdf-btn">
+                <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
+              </button>
+            </div>
           </div>
 
           <!-- Table Container -->
@@ -480,6 +521,20 @@
               <div class="search-box">
                 <i data-lucide="search" class="search-icon"></i>
                 <input type="text" placeholder="Enter keyword to filter..." class="search-input" id="universal-search-input">
+              </div>
+            </div>
+
+            <!-- Actions: Reset and Export PDF -->
+            <div class="form-group-filter universal-actions-wrapper" style="justify-content: flex-end; align-self: flex-end;">
+              <div class="filter-actions-group" style="width: 100%;">
+                <button class="btn-secondary reset-btn" id="universal-reset-btn" style="height: 42px;">
+                  <i data-lucide="rotate-ccw"></i>
+                  <span>Reset</span>
+                </button>
+                <button class="btn-primary pdf-btn" id="universal-pdf-btn" style="height: 42px;">
+                  <i data-lucide="file-text"></i>
+                  <span>Export PDF</span>
+                </button>
               </div>
             </div>
           </div>
@@ -595,6 +650,10 @@
             <i data-lucide="layout-dashboard"></i>
             <span>Dashboard</span>
           </button>
+          <button class="drawer-nav-item" data-target="school-data">
+            <i data-lucide="database"></i>
+            <span>School Data</span>
+          </button>
           <button class="drawer-nav-item" data-target="udise">
             <i data-lucide="file-spreadsheet"></i>
             <span>UDISE</span>
@@ -602,10 +661,6 @@
           <button class="drawer-nav-item" data-target="three-point-zero">
             <i data-lucide="file-check-2"></i>
             <span>3.0</span>
-          </button>
-          <button class="drawer-nav-item" data-target="school-data">
-            <i data-lucide="database"></i>
-            <span>School Data</span>
           </button>
           <button class="drawer-nav-item" data-target="universal-search">
             <i data-lucide="search"></i>
