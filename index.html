@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>School Portal</title>
   
   <!-- Web App Manifest -->
@@ -237,24 +237,22 @@
             </div>
           </div>
 
-          <!-- Charts Section -->
-          <div class="charts-grid">
-            <!-- Chart 1: Gender Distribution -->
-            <div class="chart-card">
-              <h4 class="chart-title">Gender Distribution</h4>
-              <div class="chart-wrapper">
-                <canvas id="genderChart"></canvas>
+          <!-- Stats Summary Grid (Replacing Charts) -->
+          <div class="stats-summary-grid">
+            <!-- Gender Stats Card -->
+            <div class="stat-group-card">
+              <h4 class="stat-group-title">Gender Distribution</h4>
+              <div id="gender-stats-container" class="stats-tiles-grid">
+                <!-- Dynamically filled with Gender tiles -->
               </div>
-              <p id="gender-chart-fallback" class="chart-fallback-text hidden">No gender/sex column found in the current worksheet.</p>
             </div>
 
-            <!-- Chart 2: Category Distribution -->
-            <div class="chart-card">
-              <h4 class="chart-title">Category Distribution</h4>
-              <div class="chart-wrapper">
-                <canvas id="categoryChart"></canvas>
+            <!-- Category Stats Card -->
+            <div class="stat-group-card">
+              <h4 class="stat-group-title">Category Distribution</h4>
+              <div id="category-stats-container" class="stats-tiles-grid">
+                <!-- Dynamically filled with Category tiles -->
               </div>
-              <p id="category-chart-fallback" class="chart-fallback-text hidden">No category/caste column found in the current worksheet.</p>
             </div>
           </div>
         </section>
@@ -323,13 +321,6 @@
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
             </div>
-            <!-- Pagination footer -->
-            <div class="table-pagination-footer hidden" id="udise-pagination-container">
-              <button class="btn-secondary" id="udise-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <i data-lucide="chevron-down"></i>
-                <span>View More</span>
-              </button>
-            </div>
           </div>
         </section>
 
@@ -397,13 +388,6 @@
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
             </div>
-            <!-- Pagination footer -->
-            <div class="table-pagination-footer hidden" id="three-point-zero-pagination-container">
-              <button class="btn-secondary" id="three-point-zero-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <i data-lucide="chevron-down"></i>
-                <span>View More</span>
-              </button>
-            </div>
           </div>
         </section>
 
@@ -470,13 +454,6 @@
             <div id="school-data-empty-state" class="empty-state hidden">
               <i data-lucide="search-code"></i>
               <p>No records match your search criteria.</p>
-            </div>
-            <!-- Pagination footer -->
-            <div class="table-pagination-footer hidden" id="school-data-pagination-container">
-              <button class="btn-secondary" id="school-data-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <i data-lucide="chevron-down"></i>
-                <span>View More</span>
-              </button>
             </div>
           </div>
         </section>
@@ -554,13 +531,6 @@
             <div id="universal-empty-state" class="empty-state">
               <i data-lucide="search" class="large-icon"></i>
               <p>Type a keyword above to find students.</p>
-            </div>
-            <!-- Pagination footer -->
-            <div class="table-pagination-footer hidden" id="universal-pagination-container">
-              <button class="btn-secondary" id="universal-view-more-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <i data-lucide="chevron-down"></i>
-                <span>View More</span>
-              </button>
             </div>
           </div>
         </section>

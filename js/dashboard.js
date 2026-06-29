@@ -1,15 +1,8 @@
 /**
  * Dashboard Analytics Module
- * Computes metrics and renders Chart.js visualizations.
+ * Computes metrics and renders clean, number-based stat cards and tiles.
  */
 
-if (typeof ChartDataLabels !== 'undefined') {
-  Chart.register(ChartDataLabels);
-}
-
-let genderChartInstance = null;
-let categoryChartInstance = null;
-let classChartInstance = null;
 let currentSchoolData = null;
 
 /**
@@ -64,7 +57,7 @@ function initDashboard(data) {
 }
 
 /**
- * Perform stats calculations and draw the charts
+ * Perform stats calculations and draw the dashboard cards/tiles
  * @param {string} sourceName - The active worksheet name
  */
 function calculateAndRenderDashboard(sourceName) {
@@ -75,33 +68,23 @@ function calculateAndRenderDashboard(sourceName) {
 
   const rows = currentSchoolData[sourceName];
   
-  // Render Charts
+  // Render Stats
   renderGenderChart(rows);
   renderCategoryChart(rows);
   renderClassChart(rows);
 }
 
 /**
- * Dynamically look for gender column and draw doughnut chart
+ * Dynamically look for gender column and draw stat tiles
  */
 function renderGenderChart(rows) {
-  const canvas = document.getElementById("genderChart");
-  const fallback = document.getElementById("gender-chart-fallback");
-  
-  if (!canvas) return;
+  const container = document.getElementById("gender-stats-container");
+  if (!container) return;
 
-  // Destroy previous instance
-  if (genderChartInstance) {
-    genderChartInstance.destroy();
-    genderChartInstance = null;
-  }
+  container.innerHTML = "";
 
   if (rows.length === 0) {
-    canvas.classList.add("hidden");
-    if (fallback) {
-      fallback.classList.remove("hidden");
-      fallback.textContent = "No data available in this sheet.";
-    }
+    container.innerHTML = `<p class="chart-fallback-text">No data available.</p>`;
     return;
   }
 
@@ -110,16 +93,9 @@ function renderGenderChart(rows) {
   const genderKey = headers.find(h => /gender|sex/i.test(h));
 
   if (!genderKey) {
-    canvas.classList.add("hidden");
-    if (fallback) {
-      fallback.classList.remove("hidden");
-      fallback.textContent = "No gender/sex column detected in this worksheet.";
-    }
+    container.innerHTML = `<p class="chart-fallback-text">No gender/sex column detected.</p>`;
     return;
   }
-
-  canvas.classList.remove("hidden");
-  if (fallback) fallback.classList.add("hidden");
 
   // Calculate counts
   let boys = 0;
@@ -137,114 +113,48 @@ function renderGenderChart(rows) {
     }
   });
 
-  if (boys === 0 && girls === 0 && others === 0) {
-    canvas.classList.add("hidden");
-    if (fallback) {
-      fallback.classList.remove("hidden");
-      fallback.textContent = "Gender values are blank or unrecognized.";
-    }
-    return;
-  }
-
-  const dataValues = [];
-  const dataLabels = [];
-  const backgroundColors = [];
-
-  if (boys > 0) {
-    dataValues.push(boys);
-    dataLabels.push("Boys");
-    backgroundColors.push("#4f46e5"); // Indigo
-  }
-  if (girls > 0) {
-    dataValues.push(girls);
-    dataLabels.push("Girls");
-    backgroundColors.push("#ec4899"); // Pink
-  }
+  const stats = [
+    { label: "Boys", value: boys, className: "boys" },
+    { label: "Girls", value: girls, className: "girls" }
+  ];
   if (others > 0) {
-    dataValues.push(others);
-    dataLabels.push("Others");
-    backgroundColors.push("#94a3b8"); // Slate
+    stats.push({ label: "Others", value: others, className: "others" });
   }
 
-  const ctx = canvas.getContext("2d");
-  genderChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: dataLabels,
-      datasets: [{
-        data: dataValues,
-        backgroundColor: backgroundColors,
-        borderWidth: 0,
-        hoverOffset: 4
-      }]
-    },
-    options: {
-      onClick: (event, elements, chart) => {
-        if (elements && elements.length > 0 && typeof handleChartSegmentClick === 'function') {
-          const firstElement = elements[0];
-          const dataIndex = firstElement.index;
-          const label = chart.data.labels[dataIndex];
-          handleChartSegmentClick("Gender", label);
-        }
-      },
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 20,
-            color: document.documentElement.getAttribute("data-theme") === "dark" ? "#cbd5e1" : "#475569",
-            font: { family: 'Inter', size: 12 }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const value = context.raw;
-              const percentage = ((value / total) * 100).toFixed(1);
-              return `${context.label}: ${value} (${percentage}%)`;
-            }
-          }
-        },
-        datalabels: {
-          color: '#ffffff',
-          font: { family: 'Inter', weight: 'bold', size: 11 },
-          formatter: (value, ctx) => {
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(0);
-            return `${value}\n(${percentage}%)`;
-          },
-          textAlign: 'center'
-        }
-      },
-      cutout: '70%'
-    }
+  stats.forEach(stat => {
+    const tile = document.createElement("div");
+    tile.className = `stat-tile ${stat.className}`;
+    tile.addEventListener("click", () => {
+      if (typeof handleChartSegmentClick === 'function') {
+        handleChartSegmentClick("Gender", stat.label);
+      }
+    });
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "stat-tile-label";
+    labelEl.textContent = stat.label;
+
+    const valEl = document.createElement("span");
+    valEl.className = "stat-tile-value";
+    valEl.textContent = stat.value;
+
+    tile.appendChild(labelEl);
+    tile.appendChild(valEl);
+    container.appendChild(tile);
   });
 }
 
 /**
- * Dynamically look for category/caste column and draw pie chart
+ * Dynamically look for category/caste column and draw stat tiles
  */
 function renderCategoryChart(rows) {
-  const canvas = document.getElementById("categoryChart");
-  const fallback = document.getElementById("category-chart-fallback");
-  
-  if (!canvas) return;
+  const container = document.getElementById("category-stats-container");
+  if (!container) return;
 
-  if (categoryChartInstance) {
-    categoryChartInstance.destroy();
-    categoryChartInstance = null;
-  }
+  container.innerHTML = "";
 
   if (rows.length === 0) {
-    canvas.classList.add("hidden");
-    if (fallback) {
-      fallback.classList.remove("hidden");
-      fallback.textContent = "No data available in this sheet.";
-    }
+    container.innerHTML = `<p class="chart-fallback-text">No data available.</p>`;
     return;
   }
 
@@ -253,16 +163,9 @@ function renderCategoryChart(rows) {
   const categoryKey = headers.find(h => /category|caste|social|group|religion/i.test(h));
 
   if (!categoryKey) {
-    canvas.classList.add("hidden");
-    if (fallback) {
-      fallback.classList.remove("hidden");
-      fallback.textContent = "No category/caste column found in this worksheet.";
-    }
+    container.innerHTML = `<p class="chart-fallback-text">No category/caste column found.</p>`;
     return;
   }
-
-  canvas.classList.remove("hidden");
-  if (fallback) fallback.classList.add("hidden");
 
   // Aggregate category counts
   const categoryCounts = {};
@@ -272,74 +175,30 @@ function renderCategoryChart(rows) {
     categoryCounts[val] = (categoryCounts[val] || 0) + 1;
   });
 
-  const labels = Object.keys(categoryCounts);
-  const values = Object.values(categoryCounts);
+  const sortedCategories = Object.keys(categoryCounts).sort();
 
-  const backgroundColors = [
-    "#3b82f6", // Blue
-    "#10b981", // Emerald
-    "#f59e0b", // Amber
-    "#8b5cf6", // Purple
-    "#ec4899", // Pink
-    "#f43f5e", // Rose
-    "#06b6d4", // Cyan
-    "#94a3b8"  // Slate
-  ];
-
-  const ctx = canvas.getContext("2d");
-  categoryChartInstance = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: values,
-        backgroundColor: backgroundColors.slice(0, labels.length),
-        borderWidth: 0
-      }]
-    },
-    options: {
-      onClick: (event, elements, chart) => {
-        if (elements && elements.length > 0 && typeof handleChartSegmentClick === 'function') {
-          const firstElement = elements[0];
-          const dataIndex = firstElement.index;
-          const label = chart.data.labels[dataIndex];
-          handleChartSegmentClick("Category", label);
-        }
-      },
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            color: document.documentElement.getAttribute("data-theme") === "dark" ? "#cbd5e1" : "#475569",
-            font: { family: 'Inter', size: 11 }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const value = context.raw;
-              const percentage = ((value / total) * 100).toFixed(1);
-              return `${context.label}: ${value} (${percentage}%)`;
-            }
-          }
-        },
-        datalabels: {
-          color: '#ffffff',
-          font: { family: 'Inter', weight: 'bold', size: 10 },
-          formatter: (value, ctx) => {
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(0);
-            return `${value}\n(${percentage}%)`;
-          },
-          textAlign: 'center'
-        }
+  sortedCategories.forEach(cat => {
+    const tile = document.createElement("div");
+    // Class name based on clean string to avoid spaces
+    const cleanCatClass = cat.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    tile.className = `stat-tile category-${cleanCatClass}`;
+    tile.addEventListener("click", () => {
+      if (typeof handleChartSegmentClick === 'function') {
+        handleChartSegmentClick("Category", cat);
       }
-    }
+    });
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "stat-tile-label";
+    labelEl.textContent = cat;
+
+    const valEl = document.createElement("span");
+    valEl.className = "stat-tile-value";
+    valEl.textContent = categoryCounts[cat];
+
+    tile.appendChild(labelEl);
+    tile.appendChild(valEl);
+    container.appendChild(tile);
   });
 }
 

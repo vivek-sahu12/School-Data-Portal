@@ -15,7 +15,6 @@ function initUniversalSearch(data) {
   const sourceSelect = document.getElementById("universal-source-select");
   const columnSelect = document.getElementById("universal-column-select");
   const searchInput = document.getElementById("universal-search-input");
-  const viewMoreBtn = document.getElementById("universal-view-more-btn");
   const resetBtn = document.getElementById("universal-reset-btn");
   const pdfBtn = document.getElementById("universal-pdf-btn");
 
@@ -27,7 +26,6 @@ function initUniversalSearch(data) {
   // Bind change event on source selection
   if (!sourceSelect.dataset.listenerBound) {
     sourceSelect.addEventListener("change", () => {
-      window.tablePaginationLimit["universal"] = 25;
       populateUniversalSearchColumns();
       executeUniversalSearch();
     });
@@ -37,7 +35,6 @@ function initUniversalSearch(data) {
   // Bind change event on column selection
   if (!columnSelect.dataset.listenerBound) {
     columnSelect.addEventListener("change", () => {
-      window.tablePaginationLimit["universal"] = 25;
       executeUniversalSearch();
     });
     columnSelect.dataset.listenerBound = "true";
@@ -46,7 +43,6 @@ function initUniversalSearch(data) {
   // Bind input event on search query
   if (!searchInput.dataset.listenerBound) {
     searchInput.addEventListener("input", () => {
-      window.tablePaginationLimit["universal"] = 25;
       executeUniversalSearch();
     });
     searchInput.dataset.listenerBound = "true";
@@ -57,7 +53,6 @@ function initUniversalSearch(data) {
     resetBtn.addEventListener("click", () => {
       sourceSelect.value = "School Data";
       searchInput.value = "";
-      window.tablePaginationLimit["universal"] = 25;
       populateUniversalSearchColumns();
       executeUniversalSearch();
     });
@@ -73,15 +68,6 @@ function initUniversalSearch(data) {
       }
     });
     pdfBtn.dataset.listenerBound = "true";
-  }
-
-  // Bind view more button
-  if (viewMoreBtn && !viewMoreBtn.dataset.listenerBound) {
-    viewMoreBtn.addEventListener("click", () => {
-      window.tablePaginationLimit["universal"] = (window.tablePaginationLimit["universal"] || 25) + 25;
-      executeUniversalSearch();
-    });
-    viewMoreBtn.dataset.listenerBound = "true";
   }
 
   // Initial column populate
@@ -280,6 +266,14 @@ function executeUniversalSearch() {
   headersToRender.forEach(h => {
     const th = document.createElement("th");
     th.textContent = h;
+    
+    const hLower = h.toLowerCase();
+    if (hLower === "class" || hLower === "section" || hLower === "s.no" || hLower === "sno" || hLower === "sr.no") {
+      th.className = "col-shrink";
+    } else if (hLower === "name" || hLower === "student name") {
+      th.className = "col-expand";
+    }
+    
     tr.appendChild(th);
   });
   
@@ -290,27 +284,20 @@ function executeUniversalSearch() {
   tr.appendChild(actionTh);
   thead.appendChild(tr);
 
-  // Pagination bounds slice
-  const limit = window.tablePaginationLimit["universal"] || 25;
-  const slicedRows = results.slice(0, limit);
-
-  // Update pagination footer container display
-  const paginationContainer = document.getElementById("universal-pagination-container");
-  if (paginationContainer) {
-    if (limit < results.length) {
-      paginationContainer.classList.remove("hidden");
-    } else {
-      paginationContainer.classList.add("hidden");
-    }
-  }
-
   // Render Body
-  slicedRows.forEach(row => {
+  results.forEach(row => {
     const bodyTr = document.createElement("tr");
     
     headersToRender.forEach(h => {
       const td = document.createElement("td");
       
+      const hLower = h.toLowerCase();
+      if (hLower === "class" || hLower === "section" || hLower === "s.no" || hLower === "sno" || hLower === "sr.no") {
+        td.className = "col-shrink";
+      } else if (hLower === "name" || hLower === "student name") {
+        td.className = "col-expand";
+      }
+
       if (h === "Source") {
         const badge = document.createElement("span");
         const src = row._sourceSheet;

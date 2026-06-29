@@ -21,17 +21,7 @@ window.currentTableContextColumn = {
   "universal": null
 };
 
-// Global table pagination limits
-window.tablePaginationLimit = {
-  "udise": 25,
-  "three-point-zero": 25,
-  "school-data": 25,
-  "universal": 25
-};
-
-/**
- * Helper to get compact column headers to display in the table
- */
+// Helper to get compact column headers to display in the table
 window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColumn) {
   const classKey = originalHeaders.find(h => h.toLowerCase() === "class") || "Class";
   const nameKey = originalHeaders.find(h => h.toLowerCase() === "name") || "Name";
@@ -227,7 +217,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   const columnSelect = document.getElementById(`${domPrefix}-column-select`);
   const pdfBtn = document.getElementById(`${domPrefix}-pdf-btn`);
   const resetBtn = document.getElementById(`${domPrefix}-reset-btn`);
-  const viewMoreBtn = document.getElementById(`${domPrefix}-view-more-btn`);
 
   // 1. Populate Filter Dropdowns dynamically
   populateDropdownFilters(rows, classSelect, columnSelect, domPrefix);
@@ -238,7 +227,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 3. Bind Search input (real-time filtering)
   if (searchInput && !searchInput.dataset.listenerBound) {
     searchInput.addEventListener("input", () => {
-      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     searchInput.dataset.listenerBound = "true";
@@ -247,7 +235,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 4. Bind Dropdowns changes
   if (classSelect && !classSelect.dataset.listenerBound) {
     classSelect.addEventListener("change", () => {
-      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     classSelect.dataset.listenerBound = "true";
@@ -255,7 +242,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
 
   if (columnSelect && !columnSelect.dataset.listenerBound) {
     columnSelect.addEventListener("change", () => {
-      window.tablePaginationLimit[domPrefix] = 25; // Reset limit
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     columnSelect.dataset.listenerBound = "true";
@@ -272,7 +258,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
       }
       if (searchInput) searchInput.value = "";
       window.currentTableContextColumn[domPrefix] = null;
-      window.tablePaginationLimit[domPrefix] = 25;
       applyFiltersAndRender(sheetKey, domPrefix, rows);
     });
     resetBtn.dataset.listenerBound = "true";
@@ -284,15 +269,6 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
       openPdfModalForSheet(sheetKey);
     });
     pdfBtn.dataset.listenerBound = "true";
-  }
-
-  // 7. Bind View More button
-  if (viewMoreBtn && !viewMoreBtn.dataset.listenerBound) {
-    viewMoreBtn.addEventListener("click", () => {
-      window.tablePaginationLimit[domPrefix] = (window.tablePaginationLimit[domPrefix] || 25) + 25;
-      applyFiltersAndRender(sheetKey, domPrefix, rows);
-    });
-    viewMoreBtn.dataset.listenerBound = "true";
   }
 }
 
@@ -432,6 +408,14 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
   columnsToRender.forEach(header => {
     const th = document.createElement("th");
     th.textContent = header;
+    
+    const headerLower = header.toLowerCase();
+    if (headerLower === "class" || headerLower === "section" || headerLower === "s.no" || headerLower === "sno" || headerLower === "sr.no") {
+      th.className = "col-shrink";
+    } else if (headerLower === "name" || headerLower === "student name") {
+      th.className = "col-expand";
+    }
+    
     headerTr.appendChild(th);
   });
   
@@ -443,27 +427,21 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
   
   thead.appendChild(headerTr);
 
-  // Pagination bounds slice
-  const limit = window.tablePaginationLimit[domPrefix] || 25;
-  const slicedRows = filteredRows.slice(0, limit);
-
-  // Update pagination footer container display
-  const paginationContainer = document.getElementById(`${domPrefix}-pagination-container`);
-  if (paginationContainer) {
-    if (limit < filteredRows.length) {
-      paginationContainer.classList.remove("hidden");
-    } else {
-      paginationContainer.classList.add("hidden");
-    }
-  }
-
-  // Create Body Rows
-  slicedRows.forEach(row => {
+  // Create Body Rows (render all rows)
+  filteredRows.forEach(row => {
     const tr = document.createElement("tr");
     columnsToRender.forEach(header => {
       const td = document.createElement("td");
       const cellVal = row[header];
       td.textContent = (cellVal !== undefined && cellVal !== null) ? cellVal.toString() : "";
+      
+      const headerLower = header.toLowerCase();
+      if (headerLower === "class" || headerLower === "section" || headerLower === "s.no" || headerLower === "sno" || headerLower === "sr.no") {
+        td.className = "col-shrink";
+      } else if (headerLower === "name" || headerLower === "student name") {
+        td.className = "col-expand";
+      }
+      
       tr.appendChild(td);
     });
 
@@ -514,9 +492,6 @@ window.handleChartSegmentClick = function(type, value) {
   const searchInput = document.getElementById(`${domPrefix}-search-input`);
 
   if (!classSelect || !columnSelect || !searchInput) return;
-
-  // Reset pagination
-  window.tablePaginationLimit[domPrefix] = 25;
 
   if (type === "Class") {
     classSelect.value = value;
@@ -569,6 +544,22 @@ window.handleChartSegmentClick = function(type, value) {
   window.navigateToTab(domPrefix);
 };
 
+// State and handler for the mobile drawer
+let isDrawerOpen = false;
+function setDrawerState(open) {
+  isDrawerOpen = open;
+  const drawer = document.getElementById("mobile-drawer");
+  if (!drawer) return;
+
+  if (isDrawerOpen) {
+    drawer.classList.add("active");
+    document.body.style.overflow = "hidden"; // Lock background scroll
+  } else {
+    drawer.classList.remove("active");
+    document.body.style.overflow = ""; // Restore background scroll
+  }
+}
+
 // Bind Navigation and Drawer clicks
 document.addEventListener("DOMContentLoaded", () => {
   const navItems = document.querySelectorAll(".nav-item");
@@ -614,37 +605,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Bind Hamburger menu toggles (active class for smooth animation)
-  const drawer = document.getElementById("mobile-drawer");
+  // Bind Hamburger menu toggles
   const menuToggle = document.getElementById("mobile-menu-toggle");
   const closeDrawer = document.getElementById("close-mobile-drawer");
+  const drawer = document.getElementById("mobile-drawer");
 
-  if (menuToggle && drawer) {
-    menuToggle.addEventListener("click", () => {
-      drawer.classList.add("active");
-    });
+  if (menuToggle && !menuToggle.dataset.listenerBound) {
+    menuToggle.addEventListener("click", () => setDrawerState(true));
+    menuToggle.dataset.listenerBound = "true";
   }
 
-  if (closeDrawer && drawer) {
-    closeDrawer.addEventListener("click", () => {
-      drawer.classList.remove("active");
-    });
+  if (closeDrawer && !closeDrawer.dataset.listenerBound) {
+    closeDrawer.addEventListener("click", () => setDrawerState(false));
+    closeDrawer.dataset.listenerBound = "true";
   }
 
-  if (drawer) {
+  if (drawer && !drawer.dataset.listenerBound) {
     drawer.addEventListener("click", (e) => {
       if (e.target === drawer) {
-        drawer.classList.remove("active");
+        setDrawerState(false);
       }
     });
+    drawer.dataset.listenerBound = "true";
   }
 
   // Drawer nav clicks
   drawerItems.forEach(dItem => {
-    if (dItem.id === "drawer-logout-btn") return;
+    if (dItem.dataset.listenerBound) return;
+    dItem.dataset.listenerBound = "true";
+
+    if (dItem.id === "drawer-logout-btn") {
+      dItem.addEventListener("click", () => {
+        setDrawerState(false);
+        if (typeof logout === "function") {
+          logout();
+        }
+      });
+      return;
+    }
+
     dItem.addEventListener("click", () => {
       const target = dItem.dataset.target;
-      if (drawer) drawer.classList.remove("active");
+      setDrawerState(false);
 
       // Find nav-item and click it
       const navItem = Array.from(document.querySelectorAll(".nav-item")).find(ni => ni.dataset.target === target);
@@ -653,17 +655,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
-  // Drawer Sign Out button click
-  const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
-  if (drawerLogoutBtn) {
-    drawerLogoutBtn.addEventListener("click", () => {
-      if (drawer) drawer.classList.remove("active");
-      if (typeof logout === "function") {
-        logout();
-      }
-    });
-  }
 
   // Student details modal close actions
   const closeStudentModalX = document.getElementById("close-student-modal");

@@ -33,6 +33,22 @@ function cacheSchoolData(data) {
 }
 
 /**
+ * Helper to fetch logo and immediately update the UI logo source
+ */
+async function refreshCachedLogo() {
+  const school = getCurrentSchool();
+  if (school && school.logoUrl && typeof fetchAndCacheLogo === "function") {
+    const base64 = await fetchAndCacheLogo(school.logoUrl);
+    if (base64) {
+      const logoEl = document.querySelector(".header-logo");
+      if (logoEl) {
+        logoEl.src = base64;
+      }
+    }
+  }
+}
+
+/**
  * Initialize data loading workflow on page transition or load
  */
 function initializeDataFetchWorkflow() {
@@ -79,6 +95,7 @@ async function triggerInitialFetch() {
   try {
     const data = await fetchFromGoogleSheets(school.sheetUrl);
     cacheSchoolData(data);
+    await refreshCachedLogo();
     updateSyncTimeText();
     renderAppComponents(data);
     showToast("Data loaded successfully.", "success");
@@ -106,6 +123,7 @@ async function triggerBackgroundFetch() {
   try {
     const data = await fetchFromGoogleSheets(school.sheetUrl);
     cacheSchoolData(data);
+    await refreshCachedLogo();
     updateSyncTimeText();
     renderAppComponents(data);
     showToast("Database auto-updated in background.", "success");
@@ -145,6 +163,7 @@ async function forceRefreshData() {
   try {
     const data = await fetchFromGoogleSheets(school.sheetUrl);
     cacheSchoolData(data);
+    await refreshCachedLogo();
     updateSyncTimeText();
     renderAppComponents(data);
     showToast("Sync complete. Fresh data loaded.", "success");
