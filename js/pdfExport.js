@@ -14,7 +14,8 @@ function initPdfExport(data) {
   const closeModalBtn = document.getElementById("close-pdf-modal");
   const cancelModalBtn = document.getElementById("cancel-pdf-btn");
   const generatePdfBtn = document.getElementById("generate-pdf-btn");
-  const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
+  const selectAllBtn = document.getElementById("pdf-select-all-btn");
+  const deselectAllBtn = document.getElementById("pdf-deselect-all-btn");
 
   if (closeModalBtn && !closeModalBtn.dataset.listenerBound) {
     closeModalBtn.addEventListener("click", closePdfModal);
@@ -26,11 +27,14 @@ function initPdfExport(data) {
     cancelModalBtn.dataset.listenerBound = "true";
   }
 
-  if (selectAllCheckbox && !selectAllCheckbox.dataset.listenerBound) {
-    selectAllCheckbox.addEventListener("change", (e) => {
-      toggleAllPdfColumns(e.target.checked);
-    });
-    selectAllCheckbox.dataset.listenerBound = "true";
+  if (selectAllBtn && !selectAllBtn.dataset.listenerBound) {
+    selectAllBtn.addEventListener("click", () => toggleAllPdfColumns(true));
+    selectAllBtn.dataset.listenerBound = "true";
+  }
+
+  if (deselectAllBtn && !deselectAllBtn.dataset.listenerBound) {
+    deselectAllBtn.addEventListener("click", () => toggleAllPdfColumns(false));
+    deselectAllBtn.dataset.listenerBound = "true";
   }
 
   if (generatePdfBtn && !generatePdfBtn.dataset.listenerBound) {
@@ -77,12 +81,6 @@ function openPdfModalForSheet(sheetKey) {
     selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
   }
 
-  // Sync Select All checkbox
-  const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
-  if (selectAllCheckbox) {
-    selectAllCheckbox.checked = (pdfOriginalHeaders.length <= 7);
-  }
-
   // Render the checklist grid
   renderPdfColumnsList();
 
@@ -119,27 +117,6 @@ function toggleAllPdfColumns(isChecked) {
   renderPdfColumnsList();
 }
 
-/**
- * Check if all columns are selected and sync the header checkbox
- */
-function syncSelectAllHeader() {
-  const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
-  if (!selectAllCheckbox) return;
-
-  const total = pdfOriginalHeaders.length;
-  const selected = selectedPdfColumnsOrdered.length;
-
-  if (selected === total) {
-    selectAllCheckbox.checked = true;
-    selectAllCheckbox.indeterminate = false;
-  } else if (selected === 0) {
-    selectAllCheckbox.checked = false;
-    selectAllCheckbox.indeterminate = false;
-  } else {
-    selectAllCheckbox.checked = false;
-    selectAllCheckbox.indeterminate = true; // Shows partial check (minus line)
-  }
-}
 
 /**
  * Render columns inside the Modal checklist with click-order tile UI
@@ -225,8 +202,7 @@ function renderPdfColumnsList() {
     lucide.createIcons();
   }
 
-  // Sync Select All checkbox state
-  syncSelectAllHeader();
+
 }
 
 /**
@@ -301,20 +277,22 @@ function generatePdfReport() {
       }
     });
 
-    const totalChars = maxChars.reduce((sum, val) => sum + val, 0);
     const printWidth = (orientation === "landscape" ? 277 : 190);
-    const minWidth = 10;
 
-    let estWidths = maxChars.map(chars => {
-      return (chars / totalChars) * printWidth;
+    // Calculate required width based on content character lengths (2.0mm per character + padding)
+    const reqWidths = maxChars.map(chars => {
+      return chars * 2.0 + 4;
     });
 
-    let adjustedWidths = estWidths.map(w => Math.max(minWidth, w));
-    let adjustedSum = adjustedWidths.reduce((s, w) => s + w, 0);
+    const sumReq = reqWidths.reduce((s, w) => s + w, 0);
+    let finalWidths = [...reqWidths];
 
-    const finalWidths = adjustedWidths.map(w => {
-      return (w / adjustedSum) * printWidth;
-    });
+    if (sumReq < printWidth) {
+      // Scale up to fill the printable A4 page width
+      const scale = printWidth / sumReq;
+      finalWidths = reqWidths.map(w => w * scale);
+    }
+    // If sumReq >= printWidth, do NOT scale down (prevent shrinking to avoid truncation/clipping)
 
     const columnStyles = {};
     finalWidths.forEach((w, idx) => {
