@@ -1,32 +1,35 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>School Portal</title>
-  
+
   <!-- Web App Manifest -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4f46e5">
-  
+
   <!-- PWA iOS Support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="School Portal">
   <link rel="apple-touch-icon" href="assets/icon.svg">
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
 
   <!-- ================= LOGOUT / LOGIN WRAPPER ================= -->
-  
+
   <!-- 1. LOGIN SCREEN -->
   <div id="login-screen" class="login-container hidden">
     <div class="login-card">
@@ -35,7 +38,7 @@
       </div>
       <h1 class="login-title">School Portal</h1>
       <p class="login-subtitle">Sign in to access your student information dashboards.</p>
-      
+
       <form id="login-form">
         <div class="form-group">
           <label for="username">User ID</label>
@@ -44,7 +47,7 @@
             <input type="text" id="username" placeholder="Enter school ID" required autocomplete="username">
           </div>
         </div>
-        
+
         <div class="form-group">
           <label for="password">Password</label>
           <div class="input-icon-wrapper">
@@ -57,7 +60,7 @@
           <i data-lucide="alert-circle" class="error-icon"></i>
           <span id="login-error-text">Incorrect User ID or Password.</span>
         </div>
-        
+
         <button type="submit" class="btn-primary w-full btn-login">
           <span>Sign In</span>
           <i data-lucide="arrow-right"></i>
@@ -68,7 +71,7 @@
 
   <!-- 2. MAIN APP SCREEN -->
   <div id="app-screen" class="app-container hidden">
-    
+
     <!-- HEADER -->
     <header class="app-header">
       <div class="header-brand">
@@ -84,7 +87,7 @@
           <p id="school-name-display" class="header-subtitle">Loading school...</p>
         </div>
       </div>
-      
+
       <!-- DESKTOP NAV (Header nav on desktop, hides sidebar) -->
       <nav class="header-nav desktop-only-flex">
         <button class="nav-item active" data-target="dashboard">
@@ -108,27 +111,27 @@
           <span>Search</span>
         </button>
       </nav>
-      
+
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
         <!-- Refresh Button -->
         <button id="manual-refresh-btn" class="icon-btn" title="Sync Live Data">
           <i data-lucide="refresh-cw" id="refresh-icon-spin"></i>
         </button>
-        
+
         <!-- Theme Toggle -->
         <button id="theme-toggle-btn" class="icon-btn" title="Toggle Theme">
           <i data-lucide="sun" id="theme-sun" class="hidden"></i>
           <i data-lucide="moon" id="theme-moon"></i>
         </button>
-        
+
 
       </div>
     </header>
 
     <!-- MAIN APP CONTENT & SIDEBAR / BOTTOM BAR LAYOUT -->
     <div class="app-body">
-      
+
       <!-- NAVIGATION (Bottom navigation on mobile only, hidden on desktop) -->
       <nav class="app-navigation mobile-only-flex">
         <button class="nav-item active" data-target="dashboard">
@@ -155,7 +158,7 @@
 
       <!-- SCREEN VIEWS -->
       <main class="app-content-viewport">
-        
+
         <!-- FIRST-TIME RETRY CONTAINER (If fetching fails and no cached data exists) -->
         <div id="retry-container" class="card-retry hidden">
           <i data-lucide="cloud-off" class="retry-icon"></i>
@@ -173,6 +176,23 @@
           <span>Fetching database...</span>
         </div>
 
+        <!-- SKELETON LOADER -->
+        <div id="skeleton-loader" class="skeleton-wrapper hidden">
+          <div class="skeleton-header">
+            <div class="skeleton-shape skeleton-title"></div>
+            <div class="skeleton-shape skeleton-subtitle"></div>
+          </div>
+          <div class="skeleton-metrics">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+          <div class="skeleton-dashboard">
+            <div class="skeleton-card large"></div>
+            <div class="skeleton-card large"></div>
+          </div>
+        </div>
+
         <!-- 1. DASHBOARD SCREEN -->
         <section id="dashboard-view" class="view-section">
           <!-- Screen Header -->
@@ -181,7 +201,7 @@
               <h2 class="view-title">Dashboard Overview</h2>
               <p class="view-subtitle">Consolidated analytical reports from school worksheets.</p>
             </div>
-            
+
             <!-- Worksheet Selection for Stats -->
             <div class="select-source-wrapper">
               <label for="dashboard-source-select" class="text-sm font-medium">Analyze Worksheet:</label>
@@ -192,7 +212,7 @@
               </select>
             </div>
           </div>
-          
+
           <!-- Key Metrics Grid -->
           <div class="metrics-grid">
             <!-- School Data Card -->
@@ -216,7 +236,7 @@
                 <h3 id="stat-udise-students" class="metric-value">-</h3>
               </div>
             </div>
-            
+
             <!-- 3.0 Card -->
             <div class="metric-card clickable-metric-card" data-target="three-point-zero">
               <div class="metric-icon-box warning">
@@ -230,8 +250,8 @@
           </div>
 
           <!-- Grade/Class Strength Overview -->
-          <div class="chart-card" id="class-strength-card" style="margin-bottom: 24px;">
-            <h4 class="chart-title">Class Strength Overview</h4>
+          <div class="stat-group-card" id="class-strength-card" style="margin-bottom: 24px;">
+            <h4 class="stat-group-title">Class Strength Overview</h4>
             <div id="class-strength-grid" class="class-strength-grid">
               <!-- Dynamically filled with chips -->
             </div>
@@ -265,7 +285,7 @@
               <p class="view-subtitle">Manage, filter, and export UDISE worksheet details.</p>
             </div>
           </div>
-          
+
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="udise-filter-bar">
             <!-- Class Dropdown -->
@@ -281,7 +301,7 @@
                 <!-- Dynamically Populated -->
               </select>
             </div>
-            
+
             <!-- Search by Value -->
             <div class="search-box">
               <i data-lucide="search" class="search-icon"></i>
@@ -332,7 +352,7 @@
               <p class="view-subtitle">Manage, filter, and export 3.0 worksheet details.</p>
             </div>
           </div>
-          
+
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="three-point-zero-filter-bar">
             <!-- Class Dropdown -->
@@ -348,11 +368,12 @@
                 <!-- Dynamically Populated -->
               </select>
             </div>
-            
+
             <!-- Search by Value -->
             <div class="search-box">
               <i data-lucide="search" class="search-icon"></i>
-              <input type="text" placeholder="Search in column..." class="search-input" id="three-point-zero-search-input">
+              <input type="text" placeholder="Search in column..." class="search-input"
+                id="three-point-zero-search-input">
             </div>
 
             <!-- Actions: Reset and Export PDF -->
@@ -399,7 +420,7 @@
               <p class="view-subtitle">Manage, filter, and export School Data worksheet details.</p>
             </div>
           </div>
-          
+
           <!-- Shared search/filter layout -->
           <div class="filter-bar" id="school-data-filter-bar">
             <!-- Class Dropdown -->
@@ -415,7 +436,7 @@
                 <!-- Dynamically Populated -->
               </select>
             </div>
-            
+
             <!-- Search by Value -->
             <div class="search-box">
               <i data-lucide="search" class="search-icon"></i>
@@ -493,12 +514,14 @@
               <label for="universal-search-input" class="filter-label">Search Keyword</label>
               <div class="search-box">
                 <i data-lucide="search" class="search-icon"></i>
-                <input type="text" placeholder="Enter keyword to filter..." class="search-input" id="universal-search-input">
+                <input type="text" placeholder="Enter keyword to filter..." class="search-input"
+                  id="universal-search-input">
               </div>
             </div>
 
             <!-- Actions: Reset and Export PDF -->
-            <div class="form-group-filter universal-actions-wrapper" style="justify-content: flex-end; align-self: flex-end;">
+            <div class="form-group-filter universal-actions-wrapper"
+              style="justify-content: flex-end; align-self: flex-end;">
               <div class="filter-actions-group" style="width: 100%;">
                 <button class="btn-secondary reset-btn" id="universal-reset-btn" style="height: 42px;">
                   <i data-lucide="rotate-ccw"></i>
@@ -540,7 +563,7 @@
   </div>
 
   <!-- ================= MODALS & OVERLAYS ================= -->
-  
+
   <!-- PDF EXPORT MODAL -->
   <div id="pdf-export-modal" class="modal-overlay hidden">
     <div class="modal-card">
@@ -550,19 +573,23 @@
           <i data-lucide="x"></i>
         </button>
       </div>
-      
+
       <div class="modal-body">
         <p class="modal-description text-muted">
           Select columns to include in the PDF export. Clicking determines the column order in the PDF.
         </p>
 
         <!-- Convenience Options -->
-        <div class="modal-actions-inline">
+        <div class="modal-actions-inline" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
           <label class="checkbox-container">
             <input type="checkbox" id="pdf-select-all-checkbox" checked>
             <span class="checkmark"></span>
             <span>Select All Columns</span>
           </label>
+          <button id="add-blank-column-btn" class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 0.8rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px;">
+            <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+            <span>+ Add Blank Column</span>
+          </button>
         </div>
 
         <!-- Columns Checklist -->
@@ -570,7 +597,7 @@
           <!-- Filled dynamically with checkboxes and drag handles -->
         </div>
       </div>
-      
+
       <div class="modal-footer">
         <button id="cancel-pdf-btn" class="btn-secondary">Cancel</button>
         <button id="generate-pdf-btn" class="btn-primary">
@@ -590,11 +617,11 @@
           <i data-lucide="x"></i>
         </button>
       </div>
-      
+
       <div class="modal-body" id="student-modal-body" style="padding-top: 10px;">
         <!-- Filled dynamically -->
       </div>
-      
+
       <div class="modal-footer">
         <button id="close-student-modal-btn" class="btn-primary">Close</button>
       </div>
@@ -688,4 +715,5 @@
   </script>
 
 </body>
+
 </html>

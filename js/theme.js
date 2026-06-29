@@ -22,6 +22,12 @@
     htmlEl.setAttribute("data-theme", theme);
     localStorage.setItem(THEME_KEY, theme);
 
+    // Update meta theme-color tag
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", theme === "dark" ? "#0f172a" : "#ffffff");
+    }
+
     // Update icons
     const themeSun = document.getElementById("theme-sun");
     const themeMoon = document.getElementById("theme-moon");
@@ -40,6 +46,10 @@
   // Initialize theme immediately to prevent layout flash during loading
   const initialTheme = getPreferredTheme();
   htmlEl.setAttribute("data-theme", initialTheme);
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute("content", initialTheme === "dark" ? "#0f172a" : "#ffffff");
+  }
 
   // Bind event listener on DOM Content Loaded
   document.addEventListener("DOMContentLoaded", () => {

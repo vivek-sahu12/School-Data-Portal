@@ -40,11 +40,11 @@ function initUniversalSearch(data) {
     columnSelect.dataset.listenerBound = "true";
   }
 
-  // Bind input event on search query
+  // Bind input event on search query with a 250ms debounce
   if (!searchInput.dataset.listenerBound) {
-    searchInput.addEventListener("input", () => {
+    searchInput.addEventListener("input", debounce(() => {
       executeUniversalSearch();
-    });
+    }, 250));
     searchInput.dataset.listenerBound = "true";
   }
 

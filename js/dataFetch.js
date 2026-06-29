@@ -86,8 +86,13 @@ async function triggerInitialFetch() {
 
   const appLoading = document.getElementById("app-loading-bar");
   const retryContainer = document.getElementById("retry-container");
+  const skeletonLoader = document.getElementById("skeleton-loader");
   
-  appLoading.classList.remove("hidden");
+  // Hide all view sections
+  document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+  if (skeletonLoader) skeletonLoader.classList.remove("hidden");
+  
+  appLoading.classList.add("hidden");
   retryContainer.classList.add("hidden");
   setRefreshSpinner(true);
   isFetching = true;
@@ -104,6 +109,18 @@ async function triggerInitialFetch() {
     retryContainer.classList.remove("hidden");
     showToast("Connection failed. Unable to fetch initial data.", "error");
   } finally {
+    if (skeletonLoader) skeletonLoader.classList.add("hidden");
+    
+    // Restore active view
+    const activeTab = window.currentActiveTab || "dashboard";
+    let activeViewId = "dashboard-view";
+    if (activeTab === "udise") activeViewId = "udise-view";
+    else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
+    else if (activeTab === "school-data") activeViewId = "school-data-view";
+    else if (activeTab === "universal-search") activeViewId = "universal-search-view";
+    const activeSec = document.getElementById(activeViewId);
+    if (activeSec) activeSec.classList.remove("hidden");
+
     appLoading.classList.add("hidden");
     setRefreshSpinner(false);
     isFetching = false;
@@ -121,6 +138,16 @@ async function triggerBackgroundFetch() {
   setRefreshSpinner(true);
 
   try {
+    // Verify session validity before refresh
+    if (typeof verifySessionOnServer === "function") {
+      const sessionValid = await verifySessionOnServer();
+      if (!sessionValid) {
+        setRefreshSpinner(false);
+        isFetching = false;
+        return;
+      }
+    }
+
     const data = await fetchFromGoogleSheets(school.sheetUrl);
     cacheSchoolData(data);
     await refreshCachedLogo();
@@ -153,14 +180,26 @@ async function forceRefreshData() {
   
   const hasCached = isDataLoaded();
   const appLoading = document.getElementById("app-loading-bar");
+  const skeletonLoader = document.getElementById("skeleton-loader");
   
-  if (!hasCached) {
-    appLoading.classList.remove("hidden");
-  }
+  // Hide all view sections during fetch
+  document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+  if (skeletonLoader) skeletonLoader.classList.remove("hidden");
 
   showToast("Synchronizing with cloud server...", "info");
 
   try {
+    // Verify session validity before refresh
+    if (typeof verifySessionOnServer === "function") {
+      const sessionValid = await verifySessionOnServer();
+      if (!sessionValid) {
+        if (skeletonLoader) skeletonLoader.classList.add("hidden");
+        setRefreshSpinner(false);
+        isFetching = false;
+        return;
+      }
+    }
+
     const data = await fetchFromGoogleSheets(school.sheetUrl);
     cacheSchoolData(data);
     await refreshCachedLogo();
@@ -176,6 +215,18 @@ async function forceRefreshData() {
       showToast("Sync failed. Check connection.", "error");
     }
   } finally {
+    if (skeletonLoader) skeletonLoader.classList.add("hidden");
+    
+    // Restore active view
+    const activeTab = window.currentActiveTab || "dashboard";
+    let activeViewId = "dashboard-view";
+    if (activeTab === "udise") activeViewId = "udise-view";
+    else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
+    else if (activeTab === "school-data") activeViewId = "school-data-view";
+    else if (activeTab === "universal-search") activeViewId = "universal-search-view";
+    const activeSec = document.getElementById(activeViewId);
+    if (activeSec) activeSec.classList.remove("hidden");
+
     appLoading.classList.add("hidden");
     setRefreshSpinner(false);
     isFetching = false;

@@ -224,11 +224,11 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 2. Perform initial filter (empty search) & render table
   applyFiltersAndRender(sheetKey, domPrefix, rows);
 
-  // 3. Bind Search input (real-time filtering)
+  // 3. Bind Search input (real-time filtering with 250ms debounce)
   if (searchInput && !searchInput.dataset.listenerBound) {
-    searchInput.addEventListener("input", () => {
+    searchInput.addEventListener("input", debounce(() => {
       applyFiltersAndRender(sheetKey, domPrefix, rows);
-    });
+    }, 250));
     searchInput.dataset.listenerBound = "true";
   }
 
@@ -303,13 +303,11 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
   // Populate Class dropdown (natural alphanumeric sorting)
   if (classSelect && hasClassColumn) {
     classSelect.innerHTML = '<option value="">All Classes</option>';
-    const sortedClasses = Array.from(classes).sort((a, b) => {
-      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
+    const sortedClasses = typeof sortClasses === 'function' ? sortClasses(classes) : Array.from(classes).sort();
     sortedClasses.forEach(c => {
       const opt = document.createElement("option");
       opt.value = c;
-      opt.textContent = `Class ${c}`;
+      opt.textContent = /^\d+$/.test(c) ? `Class ${c}` : c;
       classSelect.appendChild(opt);
     });
   }

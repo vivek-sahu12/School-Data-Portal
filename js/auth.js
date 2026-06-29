@@ -50,8 +50,9 @@ async function fetchAndCacheLogo(logoUrl) {
     localStorage.removeItem("school-portal-logo-base64");
     return null;
   }
+  const targetUrl = typeof convertDriveUrl === "function" ? convertDriveUrl(logoUrl) : logoUrl;
   try {
-    const response = await fetch(logoUrl);
+    const response = await fetch(targetUrl);
     if (!response.ok) throw new Error("Failed to fetch logo image");
     const blob = await response.blob();
     return new Promise((resolve) => {
@@ -175,6 +176,58 @@ async function logout() {
 }
 
 /**
+ * Check if the current session is valid on the server.
+ * Returns true if valid, false otherwise (forces logout).
+ */
+async function verifySessionOnServer() {
+  const school = getCurrentSchool();
+  if (!school) return false;
+
+  const deviceId = getOrCreateDeviceId();
+  const payload = {
+    action: "checkSession",
+    userId: school.userId,
+    deviceId: deviceId
+  };
+
+  try {
+    const response = await fetch(ADMIN_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      // If network/HTTP fails, do not force logout. Allow offline capability.
+      console.warn("Session check request failed, but proceeding to allow offline compatibility.");
+      return true;
+    }
+
+    const result = await response.json();
+    if (result && result.valid === false) {
+      console.warn("Session is invalid! Logging out user. Message:", result.message);
+      
+      // Perform local logout cleanup
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem("school-portal-data");
+      localStorage.removeItem("school-portal-last-fetch");
+      localStorage.removeItem("school-portal-logo-base64");
+      
+      // Redirect to login screen
+      showLoginScreen();
+      
+      // Show the message returned by the server
+      showToast(result.message || "Your session has expired. Please log in again.", "error");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error verifying session on server:", error);
+    // Proceed if there's a network error
+    return true;
+  }
+}
+
+/**
  * Transition UI to Login view
  */
 function showLoginScreen() {
@@ -209,7 +262,8 @@ function showAppScreen(school) {
     if (cachedLogo) {
       logoEl.src = cachedLogo;
     } else if (school.logoUrl) {
-      logoEl.src = school.logoUrl;
+      const convertedUrl = typeof convertDriveUrl === "function" ? convertDriveUrl(school.logoUrl) : school.logoUrl;
+      logoEl.src = convertedUrl;
       logoEl.onerror = () => {
         logoEl.src = "assets/icon.svg";
       };
@@ -312,6 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           errorText.textContent = result.message;
           errorDiv.classList.remove("hidden");
+          showToast(result.message, "error");
         }
       } catch (err) {
         console.error("Login submit error:", err);

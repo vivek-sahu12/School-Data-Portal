@@ -37,6 +37,20 @@ function initPdfExport(data) {
     generatePdfBtn.addEventListener("click", generatePdfReport);
     generatePdfBtn.dataset.listenerBound = "true";
   }
+
+  const addBlankBtn = document.getElementById("add-blank-column-btn");
+  if (addBlankBtn && !addBlankBtn.dataset.listenerBound) {
+    addBlankBtn.addEventListener("click", () => {
+      if (selectedPdfColumnsOrdered.length >= 7) {
+        showToast("You can select a maximum of 7 columns.", "warning");
+        return;
+      }
+      const uniqueId = `__blank_${Math.random().toString(36).substr(2, 5)}`;
+      selectedPdfColumnsOrdered.push(uniqueId);
+      renderPdfColumnsList();
+    });
+    addBlankBtn.dataset.listenerBound = "true";
+  }
 }
 
 /**
@@ -56,12 +70,18 @@ function openPdfModalForSheet(sheetKey) {
   // Retrieve original column list from the first record
   pdfOriginalHeaders = Object.keys(records[0]).filter(col => !col.startsWith("_"));
   
-  // Initialize state (keep all checked by default in their original order)
-  selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
+  // Initialize state (keep at most first 7 checked by default)
+  if (pdfOriginalHeaders.length > 7) {
+    selectedPdfColumnsOrdered = pdfOriginalHeaders.slice(0, 7);
+  } else {
+    selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
+  }
 
   // Sync Select All checkbox
   const selectAllCheckbox = document.getElementById("pdf-select-all-checkbox");
-  if (selectAllCheckbox) selectAllCheckbox.checked = true;
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = (pdfOriginalHeaders.length <= 7);
+  }
 
   // Render the checklist grid
   renderPdfColumnsList();
@@ -87,7 +107,12 @@ function closePdfModal() {
  */
 function toggleAllPdfColumns(isChecked) {
   if (isChecked) {
-    selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
+    if (pdfOriginalHeaders.length > 7) {
+      selectedPdfColumnsOrdered = pdfOriginalHeaders.slice(0, 7);
+      showToast("Selected the first 7 columns. Maximum limit is 7.", "info");
+    } else {
+      selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
+    }
   } else {
     selectedPdfColumnsOrdered = [];
   }
@@ -152,6 +177,11 @@ function renderPdfColumnsList() {
         // Deselect and remove from ordered list
         selectedPdfColumnsOrdered.splice(index, 1);
       } else {
+        // Enforce 7 columns limit
+        if (selectedPdfColumnsOrdered.length >= 7) {
+          showToast("You can select a maximum of 7 columns.", "warning");
+          return;
+        }
         // Select and push to the end of ordered list
         selectedPdfColumnsOrdered.push(col);
       }
@@ -160,6 +190,40 @@ function renderPdfColumnsList() {
 
     listContainer.appendChild(tile);
   });
+
+  // Render blank columns
+  selectedPdfColumnsOrdered.forEach((col) => {
+    if (col.startsWith("__blank_")) {
+      const tile = document.createElement("div");
+      tile.className = "column-config-tile selected blank-column-tile";
+      tile.dataset.columnName = col;
+
+      const badge = document.createElement("div");
+      badge.className = "tile-badge";
+      badge.textContent = selectedPdfColumnsOrdered.indexOf(col) + 1;
+      tile.appendChild(badge);
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "tile-name";
+      nameSpan.innerHTML = `<i data-lucide="layout" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i> Blank Column`;
+      tile.appendChild(nameSpan);
+
+      // Clicking removes this blank column
+      tile.addEventListener("click", () => {
+        const index = selectedPdfColumnsOrdered.indexOf(col);
+        if (index > -1) {
+          selectedPdfColumnsOrdered.splice(index, 1);
+        }
+        renderPdfColumnsList();
+      });
+
+      listContainer.appendChild(tile);
+    }
+  });
+
+  if (typeof lucide !== "undefined") {
+    lucide.createIcons();
+  }
 
   // Sync Select All checkbox state
   syncSelectAllHeader();
@@ -197,30 +261,78 @@ function generatePdfReport() {
     // Write school name at the top of the first page of the PDF only
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(12);
-    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.setTextColor(0, 0, 0); // Black
     doc.text(schoolName, 10, 15);
 
     // 2. Prepend S.No. header
-    const pdfHeaders = ["S.No.", ...selectedPdfColumnsOrdered];
+    const pdfHeaders = ["S.No.", ...selectedPdfColumnsOrdered.map(colName => {
+      if (colName.startsWith("__blank_")) return "";
+      return colName;
+    })];
 
     // 3. Map rows data for AutoTable input using order, prepending serial number
     const tableBody = records.map((row, idx) => {
       const rowData = selectedPdfColumnsOrdered.map(colName => {
+        if (colName.startsWith("__blank_")) return "";
         const val = row[colName];
         return (val !== undefined && val !== null) ? val.toString() : "";
       });
       return [(idx + 1).toString(), ...rowData];
     });
 
-    // 4. Generate AutoTable starting below the school name on page 1
+    // 4. Calculate column widths dynamically based on content length
+    const maxChars = [];
+    maxChars.push(Math.max(5, records.length.toString().length + 2)); // Serial Number
+
+    selectedPdfColumnsOrdered.forEach(colName => {
+      if (colName.startsWith("__blank_")) {
+        maxChars.push(8); // Reduced width weight allocated for handwritten notes
+      } else {
+        let maxL = colName.length;
+        records.forEach(row => {
+          const val = row[colName];
+          if (val !== undefined && val !== null) {
+            const len = val.toString().length;
+            if (len > maxL) maxL = len;
+          }
+        });
+        if (maxL > 40) maxL = 40;
+        maxChars.push(maxL);
+      }
+    });
+
+    const totalChars = maxChars.reduce((sum, val) => sum + val, 0);
+    const printWidth = (orientation === "landscape" ? 277 : 190);
+    const minWidth = 10;
+
+    let estWidths = maxChars.map(chars => {
+      return (chars / totalChars) * printWidth;
+    });
+
+    let adjustedWidths = estWidths.map(w => Math.max(minWidth, w));
+    let adjustedSum = adjustedWidths.reduce((s, w) => s + w, 0);
+
+    const finalWidths = adjustedWidths.map(w => {
+      return (w / adjustedSum) * printWidth;
+    });
+
+    const columnStyles = {};
+    finalWidths.forEach((w, idx) => {
+      columnStyles[idx] = { cellWidth: w };
+    });
+
+    // 5. Generate AutoTable starting below the school name on page 1
     doc.autoTable({
       head: [pdfHeaders],
       body: tableBody,
       startY: 22,
-      theme: 'striped',
+      theme: 'grid',
+      columnStyles: columnStyles,
       headStyles: {
-        fillColor: [79, 70, 229], // Indigo-600 primary color
-        textColor: [255, 255, 255],
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
         fontStyle: 'bold',
         fontSize: 9,
         halign: 'left'
@@ -230,15 +342,18 @@ function generatePdfReport() {
         fontSize: 8.5,
         cellPadding: 3,
         valign: 'middle',
-        overflow: 'linebreak'
+        overflow: 'ellipsize',
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252] // Very light slate zebra-striping
+        fillColor: [255, 255, 255]
       },
       margin: { left: 10, right: 10, top: 10, bottom: 10 }
     });
 
-    // 5. Download file
+    // 6. Download file
     const cleanSchoolName = schoolName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const cleanSheetName = activePdfSheetKey.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     doc.save(`${cleanSchoolName}_${cleanSheetName}_report.pdf`);

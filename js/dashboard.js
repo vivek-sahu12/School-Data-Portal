@@ -11,7 +11,7 @@ let currentSchoolData = null;
  */
 function initDashboard(data) {
   currentSchoolData = data;
-  
+
   // Render static total counts for all three sources permanently
   const udiseCount = data["UDISE"] ? data["UDISE"].length : 0;
   const threeCount = data["3.0"] ? data["3.0"].length : 0;
@@ -46,7 +46,7 @@ function initDashboard(data) {
     });
     selectSource.dataset.listenerBound = "true";
   }
-  
+
   // Default to "School Data" if it exists, otherwise use the first sheet available
   const defaultSource = data["School Data"] ? "School Data" : Object.keys(data)[0];
   if (selectSource) {
@@ -67,8 +67,10 @@ function calculateAndRenderDashboard(sourceName) {
   }
 
   const rows = currentSchoolData[sourceName];
-  
+
   // Render Stats
+  renderSchoolProfile();
+  renderInsights(rows);
   renderGenderChart(rows);
   renderCategoryChart(rows);
   renderClassChart(rows);
@@ -223,10 +225,8 @@ function renderClassChart(rows) {
     classCounts[cls] = (classCounts[cls] || 0) + 1;
   });
 
-  // Sort classes naturally
-  const sortedClasses = Object.keys(classCounts).sort((a, b) => {
-    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-  });
+  // Sort classes according to school sorting rules (Nursery, KG1, KG2, 1-12)
+  const sortedClasses = typeof sortClasses === 'function' ? sortClasses(Object.keys(classCounts)) : Object.keys(classCounts).sort();
 
   sortedClasses.forEach(cls => {
     const chip = document.createElement("div");
@@ -239,7 +239,8 @@ function renderClassChart(rows) {
 
     const labelEl = document.createElement("span");
     labelEl.className = "chip-label";
-    labelEl.textContent = `Class ${cls}`;
+    // Prepend 'Class ' for numeric grades, keep text names as is
+    labelEl.textContent = /^\d+$/.test(cls) ? `Class ${cls}` : cls;
 
     const valEl = document.createElement("span");
     valEl.className = "chip-value";
@@ -248,5 +249,144 @@ function renderClassChart(rows) {
     chip.appendChild(labelEl);
     chip.appendChild(valEl);
     container.appendChild(chip);
+  });
+}
+
+/**
+ * Render School Profile Details Card
+ */
+function renderSchoolProfile() {
+  const profileContainer = document.getElementById("profile-info-container");
+  if (!profileContainer) return;
+
+  const school = typeof getCurrentSchool === 'function' ? getCurrentSchool() : null;
+  if (!school) {
+    profileContainer.innerHTML = `<p class="chart-fallback-text">No active session.</p>`;
+    return;
+  }
+
+  profileContainer.innerHTML = `
+    <div class="profile-info-row">
+      <span class="profile-info-label">School Name</span>
+      <span class="profile-info-value" title="${school.schoolName || 'Unknown'}">${school.schoolName || 'Unknown'}</span>
+    </div>
+    <div class="profile-info-row">
+      <span class="profile-info-label">UDISE Code / ID</span>
+      <span class="profile-info-value">${school.userId || 'Unknown'}</span>
+    </div>
+    <div class="profile-info-row">
+      <span class="profile-info-label">Database Status</span>
+      <span class="profile-info-value" style="color: var(--success); display: inline-flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); display: inline-block;"></span> Connected
+      </span>
+    </div>
+    <div class="profile-info-row">
+      <span class="profile-info-label">Google Sheet</span>
+      <span class="profile-info-value">
+        ${school.sheetUrl
+      ? `<a href="${school.sheetUrl}" target="_blank" class="profile-info-link"><i data-lucide="external-link" style="width:12px; height:12px; vertical-align: middle;"></i> View Sheet</a>`
+      : 'No URL Cached'}
+      </span>
+    </div>
+  `;
+
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+
+/**
+ * Render Administrative Insights Card
+ */
+function renderInsights(rows) {
+  const container = document.getElementById("insights-stats-container");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!rows || rows.length === 0) {
+    container.innerHTML = `<p class="chart-fallback-text">No insights data available.</p>`;
+    return;
+  }
+
+  // 1. Class counts & unique classes
+  const classes = new Set();
+  let primaryCount = 0;
+  let upperCount = 0;
+
+  rows.forEach(row => {
+    const cls = row["Class"] ? row["Class"].toString().trim() : "";
+    if (cls) {
+      classes.add(cls);
+      const normCls = typeof normalizeClassName === 'function' ? normalizeClassName(cls) : cls.toLowerCase();
+      if (["nursery", "kg1", "kg2", "1", "2", "3", "4", "5"].includes(normCls)) {
+        primaryCount++;
+      } else {
+        upperCount++;
+      }
+    }
+  });
+
+  const uniqueClassesCount = classes.size || 1;
+  const avgClassSize = Math.round(rows.length / uniqueClassesCount);
+
+  // 2. Gender Ratio calculation
+  const headers = Object.keys(rows[0] || {});
+  const genderKey = headers.find(h => /gender|sex/i.test(h));
+  let genderRatioText = "N/A";
+  if (genderKey) {
+    let boys = 0;
+    let girls = 0;
+    rows.forEach(row => {
+      const val = row[genderKey] ? row[genderKey].toString().trim().toLowerCase() : "";
+      if (val === "male" || val === "boy" || val === "m") {
+        boys++;
+      } else if (val === "female" || val === "girl" || val === "f") {
+        girls++;
+      }
+    });
+    if (boys > 0) {
+      genderRatioText = Math.round((girls / boys) * 1000).toString();
+    }
+  }
+
+  const insights = [
+    { label: "Avg Class Size", value: `${avgClassSize} Studs`, className: "avg-size" },
+    { label: "Gender Ratio", value: genderRatioText !== "N/A" ? `${genderRatioText} ♀/1k ♂` : "N/A", className: "ratio" },
+    { label: "Primary (N-5)", value: primaryCount, className: "primary-strength" },
+    { label: "Secondary (6-12)", value: upperCount, className: "secondary-strength" }
+  ];
+
+  insights.forEach(insight => {
+    const tile = document.createElement("div");
+    tile.className = `stat-tile ${insight.className}`;
+
+    // Assign custom border/background color accents matching the design system
+    if (insight.className === "avg-size") {
+      tile.style.borderLeftColor = "var(--info)";
+      tile.style.backgroundColor = "var(--info-light)";
+    } else if (insight.className === "ratio") {
+      tile.style.borderLeftColor = "var(--warning)";
+      tile.style.backgroundColor = "var(--warning-light)";
+    } else if (insight.className === "primary-strength") {
+      tile.style.borderLeftColor = "var(--success)";
+      tile.style.backgroundColor = "var(--success-light)";
+    } else {
+      tile.style.borderLeftColor = "var(--primary)";
+      tile.style.backgroundColor = "var(--primary-light)";
+    }
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "stat-tile-label";
+    labelEl.textContent = insight.label;
+
+    const valEl = document.createElement("span");
+    valEl.className = "stat-tile-value";
+    valEl.textContent = insight.value;
+    valEl.style.fontSize = "1.2rem";
+
+    tile.appendChild(labelEl);
+    tile.appendChild(valEl);
+    container.appendChild(tile);
   });
 }
