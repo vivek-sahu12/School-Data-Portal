@@ -23,7 +23,11 @@ window.currentTableContextColumn = {
 
 // Helper to get compact column headers to display in the table
 window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColumn) {
-  const filteredOriginalHeaders = originalHeaders.filter(h => h !== "row_uid");
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  const filteredOriginalHeaders = originalHeaders.filter(h => !isUidKey(h));
   const classKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "class") || "Class";
   const nameKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "name") || "Name";
   
@@ -31,26 +35,26 @@ window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColu
   
   if (isMobile) {
     // Show contextual column on mobile if active, otherwise try to show Section
-    if (contextColumn && originalHeaders.includes(contextColumn) && contextColumn !== classKey && contextColumn !== nameKey) {
+    if (contextColumn && filteredOriginalHeaders.includes(contextColumn) && contextColumn !== classKey && contextColumn !== nameKey) {
       cols.push(contextColumn);
     } else {
-      const sectionKey = originalHeaders.find(h => h.toLowerCase() === "section");
+      const sectionKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "section");
       if (sectionKey) {
         cols.push(sectionKey);
       }
     }
   } else {
     // Desktop layout - show more columns!
-    const sectionKey = originalHeaders.find(h => h.toLowerCase() === "section");
+    const sectionKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "section");
     if (sectionKey && !cols.includes(sectionKey)) {
       cols.push(sectionKey);
     }
-    if (contextColumn && !cols.includes(contextColumn) && originalHeaders.includes(contextColumn)) {
+    if (contextColumn && !cols.includes(contextColumn) && filteredOriginalHeaders.includes(contextColumn)) {
       cols.push(contextColumn);
     }
     
-    // Add 2-3 more columns from originalHeaders
-    originalHeaders.forEach(h => {
+    // Add 2-3 more columns from filteredOriginalHeaders
+    filteredOriginalHeaders.forEach(h => {
       if (!cols.includes(h) && h !== classKey && h !== nameKey && cols.length < 6) {
         cols.push(h);
       }
@@ -95,7 +99,11 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     }
   }
 
-  const keys = Object.keys(studentData).filter(k => !k.startsWith("_") && k !== "row_uid");
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  const keys = Object.keys(studentData).filter(k => !isUidKey(k));
   let orderedKeys = [];
 
   if (sheetType === "udise" || sheetType === "school-data") {
@@ -176,7 +184,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
 
   // Render Edit button if editable and from School Data tab
   if (typeof injectEditButton === "function") {
-    injectEditButton(modal, studentData);
+    injectEditButton(modal, studentData, sourcePrefix);
   }
 
   modal.classList.remove("hidden");
@@ -332,9 +340,13 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
   // Populate Column dropdown with available sheet headers
   if (columnSelect && rows.length > 0) {
     columnSelect.innerHTML = "";
+    const isUidKey = (k) => {
+      const norm = k.toLowerCase().trim();
+      return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+    };
     const headers = Object.keys(rows[0]);
     headers.forEach(h => {
-      if (h.startsWith("_") || h === "row_uid") return; // skip internal columns
+      if (isUidKey(h)) return; // skip internal columns
       const opt = document.createElement("option");
       opt.value = h;
       opt.textContent = h;

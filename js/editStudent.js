@@ -82,7 +82,7 @@ function queuePendingEdit(row_uid, newChangedFields, originalRowValues) {
 }
 
 // Inject Edit Button into Student details modal footer
-window.injectEditButton = function (modal, studentData) {
+window.injectEditButton = function (modal, studentData, sourcePrefix) {
   const footer = modal.querySelector(".modal-footer");
   if (!footer || !studentData || !studentData.row_uid) return;
 
@@ -91,9 +91,26 @@ window.injectEditButton = function (modal, studentData) {
   if (existingBtn) existingBtn.remove();
 
   const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
-  const isSchoolDataRow = (window.currentActiveTab === "school-data") || 
-                          (window.currentActiveTab === "universal-search" && studentData._sourceSheet === "School Data");
-  if (!school || !window.isEditAllowed(school.editable) || !isSchoolDataRow) return;
+
+  // Determine if this is a School Data row
+  let isSchoolData = false;
+  if (sourcePrefix) {
+    const pref = sourcePrefix.toLowerCase();
+    if (pref === "school-data" || pref === "school data") {
+      isSchoolData = true;
+    }
+  } else if (studentData._sourceSheet) {
+    if (studentData._sourceSheet === "School Data") {
+      isSchoolData = true;
+    }
+  } else {
+    // Fallback: check if we are on the school-data tab
+    if (window.currentActiveTab === "school-data") {
+      isSchoolData = true;
+    }
+  }
+
+  if (!school || !window.isEditAllowed(school.editable) || !isSchoolData) return;
 
   const editBtn = document.createElement("button");
   editBtn.id = "edit-student-btn";
@@ -129,7 +146,11 @@ function openEditForm(studentData) {
   originalStudentState = JSON.parse(JSON.stringify(studentData));
   form.innerHTML = "";
 
-  const keys = Object.keys(studentData).filter(k => !k.startsWith("_") && k !== "row_uid");
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  const keys = Object.keys(studentData).filter(k => !isUidKey(k));
 
   keys.forEach(key => {
     const formGroup = document.createElement("div");
@@ -172,7 +193,11 @@ function closeEditForm(discardConfirmed = false) {
   if (!discardConfirmed) {
     // Check if form changed
     let hasChanges = false;
-    const keys = Object.keys(originalStudentState).filter(k => !k.startsWith("_") && k !== "row_uid");
+    const isUidKey = (k) => {
+      const norm = k.toLowerCase().trim();
+      return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+    };
+    const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
     for (const key of keys) {
       const input = form.querySelector(`[name="${key}"]`);
@@ -209,7 +234,11 @@ function saveStudentEdit() {
   const changedFields = {};
   let hasChanges = false;
 
-  const keys = Object.keys(originalStudentState).filter(k => !k.startsWith("_") && k !== "row_uid");
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
   for (const key of keys) {
     const input = form.querySelector(`[name="${key}"]`);
