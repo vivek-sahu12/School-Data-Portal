@@ -229,6 +229,7 @@ async function verifySessionStillValid() {
         deviceId: deviceId
       };
       const body = JSON.stringify(payload);
+      console.log('checkSession URL:', ADMIN_SCRIPT_URL);
       console.log('checkSession request body:', body);
 
       fetch(ADMIN_SCRIPT_URL, {
