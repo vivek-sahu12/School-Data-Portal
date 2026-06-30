@@ -703,6 +703,63 @@
 
   <!-- Main bootstrapper -->
   <script>
+    // Global Safety Net for Uncaught Errors & Promise Rejections
+    const clearBlockedUIState = () => {
+      try {
+        document.body.style.overflow = '';
+        
+        // Hide loading bar & skeleton loaders
+        const appLoading = document.getElementById("app-loading-bar");
+        if (appLoading) appLoading.classList.add("hidden");
+        
+        const skeletonLoader = document.getElementById("skeleton-loader");
+        if (skeletonLoader) skeletonLoader.classList.add("hidden");
+        
+        // Hide modals and drawer
+        const pdfModal = document.getElementById("pdf-export-modal");
+        if (pdfModal) pdfModal.classList.add("hidden");
+        
+        const studentModal = document.getElementById("student-detail-modal");
+        if (studentModal) studentModal.classList.add("hidden");
+        
+        const drawer = document.getElementById("mobile-drawer");
+        if (drawer) drawer.classList.remove("active");
+
+        // Reset fetching state flag and spinner if defined
+        if (typeof isFetching !== 'undefined') {
+          isFetching = false;
+        }
+        if (typeof setRefreshSpinner === 'function') {
+          setRefreshSpinner(false);
+        }
+        
+        // Restore active section view if it was hidden
+        const hasCached = typeof isDataLoaded === 'function' ? isDataLoaded() : false;
+        if (!hasCached) {
+          const activeTab = window.currentActiveTab || "dashboard";
+          let activeViewId = "dashboard-view";
+          if (activeTab === "udise") activeViewId = "udise-view";
+          else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
+          else if (activeTab === "school-data") activeViewId = "school-data-view";
+          else if (activeTab === "universal-search") activeViewId = "universal-search-view";
+          const activeSec = document.getElementById(activeViewId);
+          if (activeSec) activeSec.classList.remove("hidden");
+        }
+      } catch (e) {
+        console.error("Error in safety net cleanup:", e);
+      }
+    };
+
+    window.addEventListener('error', (event) => {
+      console.warn('Uncaught error intercepted by safety net:', event.error || event.message);
+      clearBlockedUIState();
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      console.warn('Unhandled promise rejection intercepted by safety net:', event.reason);
+      clearBlockedUIState();
+    });
+
     // Initialize Lucide Icons globally
     document.addEventListener("DOMContentLoaded", () => {
       if (typeof lucide !== 'undefined') {
