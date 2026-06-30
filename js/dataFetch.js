@@ -140,7 +140,7 @@ async function triggerBackgroundFetch() {
   try {
     // Verify session validity before refresh
     if (typeof verifySessionOnServer === "function") {
-      const sessionValid = await verifySessionOnServer();
+      const sessionValid = await verifySessionOnServer("Auto-Refresh");
       if (!sessionValid) {
         setRefreshSpinner(false);
         isFetching = false;
@@ -182,16 +182,18 @@ async function forceRefreshData() {
   const appLoading = document.getElementById("app-loading-bar");
   const skeletonLoader = document.getElementById("skeleton-loader");
   
-  // Hide all view sections during fetch
-  document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
-  if (skeletonLoader) skeletonLoader.classList.remove("hidden");
+  if (!hasCached) {
+    // Hide view sections only if no cached data is available to display
+    document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+    if (skeletonLoader) skeletonLoader.classList.remove("hidden");
+  }
 
   showToast("Synchronizing with cloud server...", "info");
 
   try {
     // Verify session validity before refresh
     if (typeof verifySessionOnServer === "function") {
-      const sessionValid = await verifySessionOnServer();
+      const sessionValid = await verifySessionOnServer("Manual-Refresh");
       if (!sessionValid) {
         if (skeletonLoader) skeletonLoader.classList.add("hidden");
         setRefreshSpinner(false);
@@ -217,17 +219,19 @@ async function forceRefreshData() {
   } finally {
     if (skeletonLoader) skeletonLoader.classList.add("hidden");
     
-    // Restore active view
-    const activeTab = window.currentActiveTab || "dashboard";
-    let activeViewId = "dashboard-view";
-    if (activeTab === "udise") activeViewId = "udise-view";
-    else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
-    else if (activeTab === "school-data") activeViewId = "school-data-view";
-    else if (activeTab === "universal-search") activeViewId = "universal-search-view";
-    const activeSec = document.getElementById(activeViewId);
-    if (activeSec) activeSec.classList.remove("hidden");
+    if (!hasCached) {
+      // Restore active view only if we originally hid it
+      const activeTab = window.currentActiveTab || "dashboard";
+      let activeViewId = "dashboard-view";
+      if (activeTab === "udise") activeViewId = "udise-view";
+      else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
+      else if (activeTab === "school-data") activeViewId = "school-data-view";
+      else if (activeTab === "universal-search") activeViewId = "universal-search-view";
+      const activeSec = document.getElementById(activeViewId);
+      if (activeSec) activeSec.classList.remove("hidden");
+    }
 
-    appLoading.classList.add("hidden");
+    if (appLoading) appLoading.classList.add("hidden");
     setRefreshSpinner(false);
     isFetching = false;
   }

@@ -179,7 +179,7 @@ async function logout() {
  * Check if the current session is valid on the server.
  * Returns true if valid, false otherwise (forces logout).
  */
-async function verifySessionOnServer() {
+async function verifySessionOnServer(source = "Unknown") {
   const school = getCurrentSchool();
   if (!school) return false;
 
@@ -190,6 +190,8 @@ async function verifySessionOnServer() {
     deviceId: deviceId
   };
 
+  console.log(`[${source}] checkSession Request Payload:`, JSON.stringify(payload));
+
   try {
     const response = await fetch(ADMIN_SCRIPT_URL, {
       method: "POST",
@@ -198,19 +200,22 @@ async function verifySessionOnServer() {
 
     if (!response.ok) {
       // If network/HTTP fails, do not force logout. Allow offline capability.
-      console.warn("Session check request failed, but proceeding to allow offline compatibility.");
+      console.warn(`[${source}] Session check request failed, but proceeding to allow offline compatibility.`);
       return true;
     }
 
     const result = await response.json();
-    if (result && result.valid === false) {
-      console.warn("Session is invalid! Logging out user. Message:", result.message);
+    console.log(`[${source}] checkSession Response JSON:`, JSON.stringify(result));
+
+    if (result && (result.valid === false || result.valid === "false")) {
+      console.warn(`[${source}] Session is invalid! Logging out user. Message:`, result.message);
       
-      // Perform local logout cleanup
+      // Perform local logout cleanup including device flags/IDs
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem("school-portal-data");
       localStorage.removeItem("school-portal-last-fetch");
       localStorage.removeItem("school-portal-logo-base64");
+      localStorage.removeItem("device_id");
       
       // Redirect to login screen
       showLoginScreen();
@@ -221,7 +226,7 @@ async function verifySessionOnServer() {
     }
     return true;
   } catch (error) {
-    console.error("Error verifying session on server:", error);
+    console.error(`[${source}] Error verifying session on server:`, error);
     // Proceed if there's a network error
     return true;
   }
