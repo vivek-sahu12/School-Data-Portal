@@ -206,7 +206,7 @@
             <div class="select-source-wrapper">
               <label for="dashboard-source-select" class="text-sm font-medium">Analyze Worksheet:</label>
               <select id="dashboard-source-select" class="form-select">
-                <option value="School Data">School Data (Default)</option>
+                <option value="School Data">School Data</option>
                 <option value="UDISE">UDISE</option>
                 <option value="3.0">3.0</option>
               </select>
@@ -580,13 +580,19 @@
         </p>
 
         <!-- Convenience Options -->
-        <div class="modal-actions-inline" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div class="modal-actions-inline"
+          style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
           <div style="display: flex; gap: 12px; align-items: center;">
-            <button id="pdf-select-all-btn" class="text-btn" style="font-size: 0.8rem; font-weight: 600; color: var(--primary); background: none; border: none; padding: 0; cursor: pointer;">Select All</button>
+            <button id="pdf-select-all-btn" class="text-btn"
+              style="font-size: 0.8rem; font-weight: 600; color: var(--primary); background: none; border: none; padding: 0; cursor: pointer;">Select
+              All</button>
             <span style="color: var(--border-color); font-size: 0.8rem;">|</span>
-            <button id="pdf-deselect-all-btn" class="text-btn" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); background: none; border: none; padding: 0; cursor: pointer;">Deselect All</button>
+            <button id="pdf-deselect-all-btn" class="text-btn"
+              style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); background: none; border: none; padding: 0; cursor: pointer;">Deselect
+              All</button>
           </div>
-          <button id="add-blank-column-btn" class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 0.8rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px;">
+          <button id="add-blank-column-btn" class="btn-secondary"
+            style="height: 32px; padding: 0 12px; font-size: 0.8rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px;">
             <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
             <span>+ Add Blank Column</span>
           </button>
