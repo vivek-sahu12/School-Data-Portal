@@ -255,44 +255,55 @@ async function forceRefreshData() {
 /**
  * Low-level fetch command with timeout
  */
-async function fetchFromGoogleSheets(url) {
+async function fetchFromGoogleSheets(url, retries = 3, delay = 1500) {
   // Add a cache-busting timestamp to bypass Google's network caches
   const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
   
-  // Set up fetch abort controller for 15s timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 18000);
+  for (let i = 0; i < retries; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout per try
 
-  try {
-    const response = await fetch(cacheBustUrl, {
-      method: 'GET',
-      signal: controller.signal
-    });
+    try {
+      console.log(`Fetching school data (attempt ${i + 1}/${retries})...`);
+      const response = await fetch(cacheBustUrl, {
+        method: 'GET',
+        signal: controller.signal
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP status ${response.status}`);
+      }
+
+      const json = await response.json();
+      
+      // Validate schema - must contain the worksheets
+      if (!json || Object.keys(json).length === 0) {
+        throw new Error("Empty spreadsheet JSON returned.");
+      }
+      
+      // Normalize worksheet keys by trimming whitespace
+      const normalizedData = {};
+      for (const key in json) {
+        normalizedData[key.trim()] = json[key];
+      }
+
+      return normalizedData;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn(`Attempt ${i + 1} failed:`, err.message || err);
+      
+      if (i === retries - 1) {
+        // Last attempt failed, throw the error
+        throw err;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const backoffDelay = delay * Math.pow(2, i);
+      console.log(`Waiting ${backoffDelay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, backoffDelay));
     }
-
-    const json = await response.json();
-    
-    // Validate schema - must contain the worksheets
-    const sheets = Object.keys(json);
-    if (!json || sheets.length === 0) {
-      throw new Error("Empty spreadsheet JSON returned.");
-    }
-    
-    // Normalize worksheet keys by trimming whitespace
-    const normalizedData = {};
-    for (const key in json) {
-      normalizedData[key.trim()] = json[key];
-    }
-
-    return normalizedData;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
   }
 }
 
