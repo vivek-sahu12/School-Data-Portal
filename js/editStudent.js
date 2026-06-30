@@ -96,20 +96,18 @@ window.injectEditButton = function (modal, studentData, sourcePrefix) {
 
   // Determine if this is a School Data row
   let isSchoolData = false;
+  let source = "";
+
   if (sourcePrefix) {
-    const pref = sourcePrefix.toLowerCase();
-    if (pref === "school-data" || pref === "school data") {
-      isSchoolData = true;
-    }
+    source = sourcePrefix.toLowerCase().trim();
   } else if (studentData._sourceSheet) {
-    if (studentData._sourceSheet === "School Data") {
-      isSchoolData = true;
-    }
-  } else {
-    // Fallback: check if we are on the school-data tab
-    if (window.currentActiveTab === "school-data") {
-      isSchoolData = true;
-    }
+    source = studentData._sourceSheet.toLowerCase().trim();
+  } else if (window.currentActiveTab) {
+    source = window.currentActiveTab.toLowerCase().trim();
+  }
+
+  if (source === "school-data" || source === "school data") {
+    isSchoolData = true;
   }
 
   if (!school || !window.isEditAllowed(school.editable) || !isSchoolData) return;
