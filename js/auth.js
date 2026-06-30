@@ -115,6 +115,16 @@ async function attemptLogin(userId, password) {
       };
       
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionObj));
+      localStorage.setItem('sdip_session', JSON.stringify({
+        username: userId.trim(),
+        loginTime: Date.now(),
+        sessionToken: data.sessionToken
+      }));
+      console.log('Saved session:', {
+        username: userId.trim(),
+        loginTime: Date.now(),
+        sessionToken: data.sessionToken
+      });
       
       // Fetch and cache school logo for offline use
       if (data.logoUrl) {
@@ -141,32 +151,33 @@ async function attemptLogin(userId, password) {
  * Log out user and purge cache
  */
 async function logout() {
-  const school = getCurrentSchool();
-  if (school && school.userId && school.sessionToken) {
-    const payload = {
-      action: "logout",
-      userId: school.userId,
-      sessionToken: school.sessionToken
-    };
-    
-    // Attempt to notify the admin server of the logout (non-blocking)
+  const sessionRaw = localStorage.getItem('sdip_session');
+  if (sessionRaw) {
     try {
-      fetch(ADMIN_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }).catch(err => console.warn("Logout notification failed:", err));
+      const session = JSON.parse(sessionRaw);
+      const userId = session.username;
+      const sessionToken = session.sessionToken;
+      
+      if (userId && sessionToken) {
+        const payload = {
+          action: "logout",
+          userId: userId,
+          sessionToken: sessionToken
+        };
+        
+        // Attempt to notify the admin server of the logout (non-blocking)
+        fetch(ADMIN_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        }).catch(err => console.warn("Logout notification failed:", err));
+      }
     } catch (e) {
       console.warn("Logout notification error:", e);
     }
   }
 
-  // Clear auth session
-  localStorage.removeItem(SESSION_KEY);
-  
-  // Clear cached school data & timestamps
-  localStorage.removeItem("school-portal-data");
-  localStorage.removeItem("school-portal-last-fetch");
-  localStorage.removeItem("school-portal-logo-base64");
+  // Clear all localStorage
+  localStorage.clear();
   
   // Reset UI back to login screen
   showLoginScreen();
@@ -175,59 +186,37 @@ async function logout() {
   showToast("Logged out successfully.", "info");
 }
 
-/**
- * Check if the current session is valid on the server.
- * Returns true if valid, false otherwise (forces logout).
- */
-async function verifySessionOnServer(source = "Unknown") {
-  const school = getCurrentSchool();
-  if (!school) return false;
+async function verifySessionStillValid() {
+  const sessionRaw = localStorage.getItem('sdip_session');
+  const deviceId = localStorage.getItem('device_id');
 
-  const deviceId = getOrCreateDeviceId();
-  const payload = {
-    action: "checkSession",
-    userId: school.userId,
-    deviceId: deviceId
-  };
+  if (!sessionRaw || !deviceId) {
+    console.warn('Missing session data, skipping check');
+    return true;
+  }
 
-  console.log(`[${source}] checkSession Request Payload:`, JSON.stringify(payload));
+  const session = JSON.parse(sessionRaw);
+  const userId = session.username;
+
+  console.log('verifySessionStillValid - checking:', { userId, deviceId });
 
   try {
-    const response = await fetch(ADMIN_SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
+    const res = await fetch(ADMIN_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'checkSession', userId, deviceId })
     });
+    const data = await res.json();
+    console.log('verifySessionStillValid - server response:', data);
 
-    if (!response.ok) {
-      // If network/HTTP fails, do not force logout. Allow offline capability.
-      console.warn(`[${source}] Session check request failed, but proceeding to allow offline compatibility.`);
-      return true;
-    }
-
-    const result = await response.json();
-    console.log(`[${source}] checkSession Response JSON:`, JSON.stringify(result));
-
-    if (result && (result.valid === false || result.valid === "false")) {
-      console.warn(`[${source}] Session is invalid! Logging out user. Message:`, result.message);
-      
-      // Perform local logout cleanup including device flags/IDs
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem("school-portal-data");
-      localStorage.removeItem("school-portal-last-fetch");
-      localStorage.removeItem("school-portal-logo-base64");
-      localStorage.removeItem("device_id");
-      
-      // Redirect to login screen
-      showLoginScreen();
-      
-      // Show the message returned by the server
-      showToast(result.message || "Your session has expired. Please log in again.", "error");
+    if (!data.valid) {
+      localStorage.clear();
+      alert(data.message || 'Your session has ended. Please log in again.');
+      window.location.reload();
       return false;
     }
     return true;
-  } catch (error) {
-    console.error(`[${source}] Error verifying session on server:`, error);
-    // Proceed if there's a network error
+  } catch (err) {
+    console.error('verifySessionStillValid - network error, skipping check:', err);
     return true;
   }
 }

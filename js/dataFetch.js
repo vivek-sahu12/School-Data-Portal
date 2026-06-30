@@ -139,13 +139,11 @@ async function triggerBackgroundFetch() {
 
   try {
     // Verify session validity before refresh
-    if (typeof verifySessionOnServer === "function") {
-      const sessionValid = await verifySessionOnServer("Auto-Refresh");
-      if (!sessionValid) {
-        setRefreshSpinner(false);
-        isFetching = false;
-        return;
-      }
+    const sessionOk = await verifySessionStillValid();
+    if (!sessionOk) {
+      setRefreshSpinner(false);
+      isFetching = false;
+      return;
     }
 
     const data = await fetchFromGoogleSheets(school.sheetUrl);
@@ -192,14 +190,12 @@ async function forceRefreshData() {
 
   try {
     // Verify session validity before refresh
-    if (typeof verifySessionOnServer === "function") {
-      const sessionValid = await verifySessionOnServer("Manual-Refresh");
-      if (!sessionValid) {
-        if (skeletonLoader) skeletonLoader.classList.add("hidden");
-        setRefreshSpinner(false);
-        isFetching = false;
-        return;
-      }
+    const sessionOk = await verifySessionStillValid();
+    if (!sessionOk) {
+      if (skeletonLoader) skeletonLoader.classList.add("hidden");
+      setRefreshSpinner(false);
+      isFetching = false;
+      return;
     }
 
     const data = await fetchFromGoogleSheets(school.sheetUrl);
