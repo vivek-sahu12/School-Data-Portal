@@ -138,7 +138,7 @@ async function triggerBackgroundFetch() {
   setRefreshSpinner(true);
 
   try {
-    // Verify session validity before refresh
+    // Verify session validity sequentially first
     const sessionOk = await verifySessionStillValid();
     if (!sessionOk) {
       setRefreshSpinner(false);
@@ -184,12 +184,15 @@ async function forceRefreshData() {
     // Hide view sections only if no cached data is available to display
     document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
     if (skeletonLoader) skeletonLoader.classList.remove("hidden");
+  } else {
+    // Show lightweight top loading bar if we have cached data to display
+    if (appLoading) appLoading.classList.remove("hidden");
   }
 
   showToast("Synchronizing with cloud server...", "info");
 
   try {
-    // Verify session validity before refresh
+    // Verify session validity sequentially first
     const sessionOk = await verifySessionStillValid();
     if (!sessionOk) {
       if (skeletonLoader) skeletonLoader.classList.add("hidden");

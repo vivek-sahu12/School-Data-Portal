@@ -1698,8 +1698,13 @@ select option {
 
   .app-navigation {
     display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
     height: calc(64px + env(safe-area-inset-bottom, 0px));
+    background-color: var(--bg-surface);
     border-right: none;
     border-top: 1px solid var(--border-color);
     padding: 0 12px;
@@ -1708,8 +1713,8 @@ select option {
     justify-content: space-around;
     align-items: center;
     gap: 0;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
-    z-index: 50;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+    z-index: 999;
     overflow-y: hidden;
   }
 
@@ -1741,7 +1746,7 @@ select option {
   .app-content-viewport {
     padding: 16px;
     gap: 20px;
-    padding-bottom: 24px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   .view-header {

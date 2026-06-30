@@ -120,7 +120,8 @@ async function attemptLogin(userId, password) {
         loginTime: Date.now(),
         sessionToken: data.sessionToken
       }));
-      console.log('Saved session:', {
+      localStorage.setItem('skip_session_check', 'true');
+      console.log('Saved session & set skip_session_check flag:', {
         username: userId.trim(),
         loginTime: Date.now(),
         sessionToken: data.sessionToken
@@ -195,30 +196,101 @@ async function verifySessionStillValid() {
     return true;
   }
 
-  const session = JSON.parse(sessionRaw);
-  const userId = session.username;
-
-  console.log('verifySessionStillValid - checking:', { userId, deviceId });
-
-  try {
-    const res = await fetch(ADMIN_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'checkSession', userId, deviceId })
-    });
-    const data = await res.json();
-    console.log('verifySessionStillValid - server response:', data);
-
-    if (!data.valid) {
-      localStorage.clear();
-      alert(data.message || 'Your session has ended. Please log in again.');
-      window.location.reload();
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error('verifySessionStillValid - network error, skipping check:', err);
+  // Check and consume skip flag for the initial post-login refresh
+  if (localStorage.getItem('skip_session_check') === 'true') {
+    console.log('verifySessionStillValid - skipping check as this is the first validation request after login.');
+    localStorage.removeItem('skip_session_check');
     return true;
   }
+
+  let session;
+  try {
+    session = JSON.parse(sessionRaw);
+  } catch (parseErr) {
+    console.error('verifySessionStillValid - JSON parse error of sdip_session:', parseErr);
+    return true;
+  }
+
+  const userId = session.username;
+  console.log('checkSession attempt:', { userId, deviceId, timestamp: new Date().toISOString() });
+
+  // Custom fetch function with abort timeout and retry-once logic
+  const fetchWithTimeout = (timeoutMs = 9000) => {
+    return new Promise((resolve, reject) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error("Timeout"));
+      }, timeoutMs);
+
+      const payload = {
+        action: "checkSession",
+        userId: userId,
+        deviceId: deviceId
+      };
+      const body = JSON.stringify(payload);
+      console.log('checkSession request body:', body);
+
+      fetch(ADMIN_SCRIPT_URL, {
+        method: "POST",
+        body: body,
+        signal: controller.signal
+      })
+      .then(res => {
+        clearTimeout(timeoutId);
+        resolve(res);
+      })
+      .catch(err => {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
+    });
+  };
+
+  let res;
+  try {
+    // Attempt 1
+    res = await fetchWithTimeout(9000);
+  } catch (firstErr) {
+    console.warn('First checkSession attempt failed (network/timeout), retrying once...', firstErr);
+    try {
+      // Attempt 2 (Retry-once)
+      res = await fetchWithTimeout(9000);
+    } catch (secondErr) {
+      console.error('Second checkSession attempt also failed. Skipping forced logout to prevent false logouts:', secondErr);
+      return true; // Treat as valid to prevent false logouts under flaky network/timeout
+    }
+  }
+
+  if (!res.ok) {
+    console.error('checkSession failed - HTTP non-200 status:', res.status);
+    return true; // HTTP error - allow offline access
+  }
+
+  let rawText;
+  try {
+    rawText = await res.text();
+    console.log('checkSession raw response:', rawText);
+  } catch (readErr) {
+    console.error('checkSession failed - Response body read error:', readErr);
+    return true;
+  }
+
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch (jsonErr) {
+    console.error('checkSession failed - JSON parse error on raw response:', jsonErr);
+    return true;
+  }
+
+  if (!data.valid) {
+    localStorage.clear();
+    alert(data.message || 'Your session has ended. Please log in again.');
+    window.location.reload();
+    return false;
+  }
+  return true;
 }
 
 /**
