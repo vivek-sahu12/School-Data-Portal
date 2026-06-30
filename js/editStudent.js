@@ -84,11 +84,13 @@ function queuePendingEdit(row_uid, newChangedFields, originalRowValues) {
 // Inject Edit Button into Student details modal footer
 window.injectEditButton = function (modal, studentData, sourcePrefix) {
   const footer = modal.querySelector(".modal-footer");
-  if (!footer || !studentData || !studentData.row_uid) return;
+  if (!footer) return;
 
-  // Remove any previously injected edit button
+  // Remove any previously injected edit button immediately
   const existingBtn = document.getElementById("edit-student-btn");
   if (existingBtn) existingBtn.remove();
+
+  if (!studentData || !studentData.row_uid) return;
 
   const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
 

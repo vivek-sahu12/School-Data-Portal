@@ -71,8 +71,12 @@ function openPdfModalForSheet(sheetKey) {
     return;
   }
 
-  // Retrieve original column list from the first record
-  pdfOriginalHeaders = Object.keys(records[0]).filter(col => !col.startsWith("_"));
+  // Retrieve original column list from the first record, excluding UID keys
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  pdfOriginalHeaders = Object.keys(records[0]).filter(col => !isUidKey(col));
   
   // Initialize state (keep at most first 7 checked by default)
   if (pdfOriginalHeaders.length > 7) {

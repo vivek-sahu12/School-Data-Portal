@@ -139,7 +139,11 @@ function populateUniversalSearchColumns() {
 function getSheetHeaders(sheetName) {
   if (!universalOriginalData || !universalOriginalData[sheetName]) return [];
   const rows = universalOriginalData[sheetName];
-  return rows.length > 0 ? Object.keys(rows[0]).filter(k => k !== "row_uid") : [];
+  const isUidKey = (k) => {
+    const norm = k.toLowerCase().trim();
+    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
+  };
+  return rows.length > 0 ? Object.keys(rows[0]).filter(k => !isUidKey(k)) : [];
 }
 
 /**
