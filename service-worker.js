@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portal-cache-v5';
+const CACHE_NAME = 'school-portal-cache-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
   './js/config.js',
   './js/auth.js',
   './js/dataFetch.js',
+  './js/editStudent.js',
   './js/dashboard.js',
   './js/tabs.js',
   './js/universalSearch.js',

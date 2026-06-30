@@ -23,8 +23,9 @@ window.currentTableContextColumn = {
 
 // Helper to get compact column headers to display in the table
 window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColumn) {
-  const classKey = originalHeaders.find(h => h.toLowerCase() === "class") || "Class";
-  const nameKey = originalHeaders.find(h => h.toLowerCase() === "name") || "Name";
+  const filteredOriginalHeaders = originalHeaders.filter(h => h !== "row_uid");
+  const classKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "class") || "Class";
+  const nameKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "name") || "Name";
   
   const cols = [classKey, nameKey];
   
@@ -94,7 +95,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     }
   }
 
-  const keys = Object.keys(studentData).filter(k => !k.startsWith("_"));
+  const keys = Object.keys(studentData).filter(k => !k.startsWith("_") && k !== "row_uid");
   let orderedKeys = [];
 
   if (sheetType === "udise" || sheetType === "school-data") {
@@ -172,6 +173,12 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
   });
 
   body.appendChild(grid);
+
+  // Render Edit button if editable and from School Data tab
+  if (typeof injectEditButton === "function") {
+    injectEditButton(modal, studentData);
+  }
+
   modal.classList.remove("hidden");
 };
 
@@ -218,16 +225,19 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   const pdfBtn = document.getElementById(`${domPrefix}-pdf-btn`);
   const resetBtn = document.getElementById(`${domPrefix}-reset-btn`);
 
+  // Helper to dynamically get the most up-to-date data for this sheet
+  const getLatestRows = () => (window.activeOriginalData && window.activeOriginalData[sheetKey]) || rows;
+
   // 1. Populate Filter Dropdowns dynamically
-  populateDropdownFilters(rows, classSelect, columnSelect, domPrefix);
+  populateDropdownFilters(getLatestRows(), classSelect, columnSelect, domPrefix);
 
   // 2. Perform initial filter (empty search) & render table
-  applyFiltersAndRender(sheetKey, domPrefix, rows);
+  applyFiltersAndRender(sheetKey, domPrefix, getLatestRows());
 
   // 3. Bind Search input (real-time filtering with 250ms debounce)
   if (searchInput && !searchInput.dataset.listenerBound) {
     searchInput.addEventListener("input", debounce(() => {
-      applyFiltersAndRender(sheetKey, domPrefix, rows);
+      applyFiltersAndRender(sheetKey, domPrefix, getLatestRows());
     }, 250));
     searchInput.dataset.listenerBound = "true";
   }
@@ -235,14 +245,14 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   // 4. Bind Dropdowns changes
   if (classSelect && !classSelect.dataset.listenerBound) {
     classSelect.addEventListener("change", () => {
-      applyFiltersAndRender(sheetKey, domPrefix, rows);
+      applyFiltersAndRender(sheetKey, domPrefix, getLatestRows());
     });
     classSelect.dataset.listenerBound = "true";
   }
 
   if (columnSelect && !columnSelect.dataset.listenerBound) {
     columnSelect.addEventListener("change", () => {
-      applyFiltersAndRender(sheetKey, domPrefix, rows);
+      applyFiltersAndRender(sheetKey, domPrefix, getLatestRows());
     });
     columnSelect.dataset.listenerBound = "true";
   }
@@ -258,7 +268,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
       }
       if (searchInput) searchInput.value = "";
       window.currentTableContextColumn[domPrefix] = null;
-      applyFiltersAndRender(sheetKey, domPrefix, rows);
+      applyFiltersAndRender(sheetKey, domPrefix, getLatestRows());
     });
     resetBtn.dataset.listenerBound = "true";
   }
@@ -276,6 +286,9 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
  * Extract unique classes and populate dropdown elements
  */
 function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
+  const prevClassVal = classSelect ? classSelect.value : "";
+  const prevColVal = columnSelect ? columnSelect.value : "";
+
   const classes = new Set();
   let hasClassColumn = false;
 
@@ -310,6 +323,10 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
       opt.textContent = /^\d+$/.test(c) ? `Class ${c}` : c;
       classSelect.appendChild(opt);
     });
+
+    if (prevClassVal && Array.from(classSelect.options).some(opt => opt.value === prevClassVal)) {
+      classSelect.value = prevClassVal;
+    }
   }
 
   // Populate Column dropdown with available sheet headers
@@ -317,7 +334,7 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
     columnSelect.innerHTML = "";
     const headers = Object.keys(rows[0]);
     headers.forEach(h => {
-      if (h.startsWith("_")) return; // skip internal columns
+      if (h.startsWith("_") || h === "row_uid") return; // skip internal columns
       const opt = document.createElement("option");
       opt.value = h;
       opt.textContent = h;
@@ -326,6 +343,10 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
       }
       columnSelect.appendChild(opt);
     });
+
+    if (prevColVal && Array.from(columnSelect.options).some(opt => opt.value === prevColVal)) {
+      columnSelect.value = prevColVal;
+    }
   }
 }
 
@@ -438,6 +459,21 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
         td.className = "col-shrink";
       } else if (headerLower === "name" || headerLower === "student name") {
         td.className = "col-expand";
+        if (typeof hasPendingEdit === "function" && hasPendingEdit(row.row_uid)) {
+          const badge = document.createElement("span");
+          badge.className = "pending-sync-badge";
+          badge.style.display = "inline-flex";
+          badge.style.alignItems = "center";
+          badge.style.marginLeft = "8px";
+          badge.style.padding = "2px 6px";
+          badge.style.fontSize = "10px";
+          badge.style.fontWeight = "bold";
+          badge.style.backgroundColor = "var(--warning)";
+          badge.style.color = "var(--bg-surface)";
+          badge.style.borderRadius = "4px";
+          badge.innerHTML = `<i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px; animation: spin 2s linear infinite;"></i>Pending`;
+          td.appendChild(badge);
+        }
       }
       
       tr.appendChild(td);

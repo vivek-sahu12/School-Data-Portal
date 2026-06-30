@@ -634,6 +634,29 @@
     </div>
   </div>
 
+  <!-- STUDENT EDIT MODAL -->
+  <div id="student-edit-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 650px; display: flex; flex-direction: column; max-height: 90vh;">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Student Details</h3>
+        <button id="close-student-edit" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding-top: 10px; overflow-y: auto; flex: 1;">
+        <form id="student-edit-form" class="edit-form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+          <!-- Filled dynamically -->
+        </form>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border-color);">
+        <button id="cancel-student-edit-btn" class="btn-secondary">Cancel</button>
+        <button id="save-student-edit-btn" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MOBILE MENU DRAWER -->
   <div id="mobile-drawer" class="mobile-drawer-overlay">
     <div class="mobile-drawer-content">
@@ -700,6 +723,7 @@
   <script src="js/tabs.js"></script>
   <script src="js/universalSearch.js"></script>
   <script src="js/pdfExport.js"></script>
+  <script src="js/editStudent.js"></script>
 
   <!-- Main bootstrapper -->
   <script>
@@ -721,6 +745,9 @@
         
         const studentModal = document.getElementById("student-detail-modal");
         if (studentModal) studentModal.classList.add("hidden");
+        
+        const studentEditModal = document.getElementById("student-edit-modal");
+        if (studentEditModal) studentEditModal.classList.add("hidden");
         
         const drawer = document.getElementById("mobile-drawer");
         if (drawer) drawer.classList.remove("active");

@@ -20,8 +20,13 @@ function initUniversalSearch(data) {
 
   if (!sourceSelect || !columnSelect || !searchInput) return;
 
-  // Set default selection
-  sourceSelect.value = "School Data";
+  // Set default selection, preserving previous value if present
+  const prevSource = sourceSelect.value;
+  if (prevSource && Array.from(sourceSelect.options).some(opt => opt.value === prevSource)) {
+    sourceSelect.value = prevSource;
+  } else {
+    sourceSelect.value = "School Data";
+  }
 
   // Bind change event on source selection
   if (!sourceSelect.dataset.listenerBound) {
@@ -85,6 +90,7 @@ function populateUniversalSearchColumns() {
   if (!sourceSelect || !columnSelect || !universalOriginalData) return;
 
   const selectedSource = sourceSelect.value;
+  const prevColVal = columnSelect.value;
   columnSelect.innerHTML = "";
 
   let columnsToShow = [];
@@ -121,6 +127,10 @@ function populateUniversalSearchColumns() {
     }
     columnSelect.appendChild(opt);
   });
+
+  if (prevColVal && Array.from(columnSelect.options).some(opt => opt.value === prevColVal)) {
+    columnSelect.value = prevColVal;
+  }
 }
 
 /**
@@ -129,7 +139,7 @@ function populateUniversalSearchColumns() {
 function getSheetHeaders(sheetName) {
   if (!universalOriginalData || !universalOriginalData[sheetName]) return [];
   const rows = universalOriginalData[sheetName];
-  return rows.length > 0 ? Object.keys(rows[0]) : [];
+  return rows.length > 0 ? Object.keys(rows[0]).filter(k => k !== "row_uid") : [];
 }
 
 /**
@@ -207,7 +217,10 @@ function executeUniversalSearch() {
     rows.forEach(row => {
       const cellValue = row[selectedColumn] ? row[selectedColumn].toString().toLowerCase() : "";
       if (cellValue.includes(query)) {
-        results.push(row);
+        results.push({
+          ...row,
+          _sourceSheet: selectedSource
+        });
       }
     });
   }
@@ -296,6 +309,21 @@ function executeUniversalSearch() {
         td.className = "col-shrink";
       } else if (hLower === "name" || hLower === "student name") {
         td.className = "col-expand";
+        if (row._sourceSheet === "School Data" && typeof hasPendingEdit === "function" && hasPendingEdit(row.row_uid)) {
+          const badge = document.createElement("span");
+          badge.className = "pending-sync-badge";
+          badge.style.display = "inline-flex";
+          badge.style.alignItems = "center";
+          badge.style.marginLeft = "8px";
+          badge.style.padding = "2px 6px";
+          badge.style.fontSize = "10px";
+          badge.style.fontWeight = "bold";
+          badge.style.backgroundColor = "var(--warning)";
+          badge.style.color = "var(--bg-surface)";
+          badge.style.borderRadius = "4px";
+          badge.innerHTML = `<i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px; animation: spin 2s linear infinite;"></i>Pending`;
+          td.appendChild(badge);
+        }
       }
 
       if (h === "Source") {
@@ -338,7 +366,7 @@ function executeUniversalSearch() {
     viewBtn.innerHTML = `<i data-lucide="eye" style="width: 12px; height: 12px;"></i>View`;
     
     viewBtn.addEventListener("click", () => {
-      window.openStudentDetailModal(row);
+      window.openStudentDetailModal(row, row._sourceSheet);
     });
     
     actionTd.appendChild(viewBtn);

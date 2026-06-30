@@ -20,6 +20,10 @@ function getCurrentSchool() {
   return sessionData ? JSON.parse(sessionData) : null;
 }
 
+window.isEditAllowed = function(editableValue) {
+  return (editableValue || "").toString().trim().toLowerCase() === "yes";
+};
+
 /**
  * Validate credentials and establish session
  * @param {string} userId 
@@ -152,6 +156,25 @@ async function attemptLogin(userId, password) {
  * Log out user and purge cache
  */
 async function logout() {
+  // Check for pending edits in queue
+  const queueRaw = localStorage.getItem("sdip_pending_edits");
+  let hasPending = false;
+  if (queueRaw) {
+    try {
+      const queue = JSON.parse(queueRaw);
+      hasPending = queue.some(e => e.status === "pending" || e.status === "failed" || e.status === "syncing");
+    } catch (e) {}
+  }
+
+  if (hasPending && navigator.onLine && typeof window.syncPendingEditsImmediately === "function") {
+    showToast("Syncing pending changes...", "info");
+    try {
+      await window.syncPendingEditsImmediately();
+    } catch (syncErr) {
+      console.warn("Logout sync failed:", syncErr);
+    }
+  }
+
   const sessionRaw = localStorage.getItem('sdip_session');
   if (sessionRaw) {
     try {
@@ -430,6 +453,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {
           showAppScreen(result.school);
           showToast(`Welcome back, ${result.school.schoolName}!`, "success");
+          if (window.isEditAllowed(result.school.editable) && typeof window.initBackgroundSyncTimer === "function") {
+            window.initBackgroundSyncTimer();
+          }
         } else {
           errorText.textContent = result.message;
           errorDiv.classList.remove("hidden");

@@ -138,6 +138,14 @@ async function triggerBackgroundFetch() {
   setRefreshSpinner(true);
 
   try {
+    if (window.isEditAllowed(school.editable) && typeof syncPendingEditsImmediately === "function") {
+      try {
+        await syncPendingEditsImmediately();
+      } catch (syncErr) {
+        console.error("Immediate background sync of edits failed, proceeding with data refresh:", syncErr);
+      }
+    }
+
     // Verify session validity sequentially first
     const sessionOk = await verifySessionStillValid();
     if (!sessionOk) {
@@ -192,6 +200,14 @@ async function forceRefreshData() {
   showToast("Synchronizing with cloud server...", "info");
 
   try {
+    if (window.isEditAllowed(school.editable) && typeof syncPendingEditsImmediately === "function") {
+      try {
+        await syncPendingEditsImmediately();
+      } catch (syncErr) {
+        console.error("Immediate manual sync of edits failed, proceeding with data refresh:", syncErr);
+      }
+    }
+
     // Verify session validity sequentially first
     const sessionOk = await verifySessionStillValid();
     if (!sessionOk) {
@@ -336,6 +352,8 @@ function renderAppComponents(data) {
   // Setup PDF configuration module
   initPdfExport(data);
 }
+
+window.renderAppComponents = renderAppComponents;
 
 // Bind UI actions
 document.addEventListener("DOMContentLoaded", () => {

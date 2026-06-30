@@ -49,11 +49,18 @@ function initDashboard(data) {
 
   // Default to "School Data" if it exists, otherwise use the first sheet available
   const defaultSource = data["School Data"] ? "School Data" : Object.keys(data)[0];
+  let activeSource = defaultSource;
   if (selectSource) {
-    selectSource.value = defaultSource;
+    const prevSource = selectSource.value;
+    if (prevSource && Array.from(selectSource.options).some(opt => opt.value === prevSource)) {
+      selectSource.value = prevSource;
+      activeSource = prevSource;
+    } else {
+      selectSource.value = defaultSource;
+    }
   }
 
-  calculateAndRenderDashboard(defaultSource);
+  calculateAndRenderDashboard(activeSource);
 }
 
 /**
