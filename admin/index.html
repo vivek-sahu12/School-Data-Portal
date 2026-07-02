@@ -26,12 +26,6 @@
   <!-- ================= ADMIN TOASTS ================= -->
   <div id="admin-toast-container" class="admin-toast-container"></div>
 
-  <!-- ================= GLOBAL LOADER ================= -->
-  <div id="admin-global-loader" class="admin-global-loader hidden">
-    <div class="admin-spinner"></div>
-    <span>Loading system data...</span>
-  </div>
-
   <!-- ================= 1. ADMIN LOGIN SCREEN ================= -->
   <div id="admin-login-screen" class="admin-login-container hidden">
     <div class="admin-login-card">
@@ -100,10 +94,6 @@
           <i data-lucide="users"></i>
           <span>Active Sessions</span>
         </button>
-        <button class="admin-nav-item" data-target="logs">
-          <i data-lucide="scroll-text"></i>
-          <span>Edit Activity Logs</span>
-        </button>
       </nav>
 
       <div class="admin-sidebar-footer">
@@ -116,6 +106,7 @@
             <span class="admin-role-sub text-muted">System Admin</span>
           </div>
         </div>
+        <div class="admin-sidebar-divider"></div>
         <button class="admin-logout-btn admin-sidebar-logout-btn" title="Sign Out">
           <i data-lucide="log-out"></i>
           <span>Log Out</span>
@@ -197,7 +188,7 @@
 
           <!-- Metrics Grid -->
           <div class="admin-stats-grid">
-            <div class="admin-stat-card">
+            <div class="admin-stat-card stat-blue">
               <div class="stat-icon-box primary">
                 <i data-lucide="school"></i>
               </div>
@@ -207,7 +198,7 @@
               </div>
             </div>
 
-            <div class="admin-stat-card">
+            <div class="admin-stat-card stat-green">
               <div class="stat-icon-box success">
                 <i data-lucide="check-circle-2"></i>
               </div>
@@ -217,7 +208,7 @@
               </div>
             </div>
 
-            <div class="admin-stat-card">
+            <div class="admin-stat-card stat-red">
               <div class="stat-icon-box danger">
                 <i data-lucide="x-circle"></i>
               </div>
@@ -227,7 +218,7 @@
               </div>
             </div>
 
-            <div class="admin-stat-card">
+            <div class="admin-stat-card stat-amber">
               <div class="stat-icon-box warning">
                 <i data-lucide="users-2"></i>
               </div>
@@ -244,7 +235,7 @@
           <div class="admin-view-header">
             <div>
               <h2 class="admin-section-title">Schools Catalog</h2>
-              <p class="admin-section-subtitle">Grant sheet editing, suspend credentials and manage credentials.</p>
+              <p class="admin-section-subtitle">Grant sheet editing, suspend credentials and manage access.</p>
             </div>
           </div>
 
@@ -273,10 +264,10 @@
                     <th>School Name</th>
                     <th>User ID</th>
                     <th>Status</th>
-                    <th>Editing Allowed</th>
-                    <th>Cached Students</th>
-                    <th>Last Active Time</th>
-                    <th>Quick Actions</th>
+                    <th>Editing</th>
+                    <th>Students</th>
+                    <th>Last Active</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="schools-table-body">
@@ -291,101 +282,39 @@
         <section id="admin-sessions-view" class="admin-view-section hidden">
           <div class="admin-view-header">
             <div>
-              <h2 class="admin-section-title">Active Devices</h2>
-              <p class="admin-section-subtitle">Realtime active sessions currently connected, with remote terminate capabilities.</p>
+              <h2 class="admin-section-title">Device Sessions</h2>
+              <p class="admin-section-subtitle">Monitor connected devices with remote terminate capabilities.</p>
             </div>
           </div>
 
           <div class="admin-filter-bar">
-            <div class="admin-search-wrapper max-w-md">
+            <div class="admin-search-wrapper">
               <i data-lucide="search" class="search-icon"></i>
-              <input type="text" id="sessions-search-input" placeholder="Search school ID or device hash...">
+              <input type="text" id="sessions-search-input" placeholder="Search school name, ID or device...">
             </div>
-          </div>
-
-          <!-- Sessions Table -->
-          <div class="admin-table-card">
-            <div class="table-responsive">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th>
-                    <th>School Name</th>
-                    <th>Device ID</th>
-                    <th>Authorized Time</th>
-                    <th>Session Controls</th>
-                  </tr>
-                </thead>
-                <tbody id="sessions-table-body">
-                  <!-- Dynamically Rendered -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. EDIT ACTIVITY LOGS VIEW -->
-        <section id="admin-logs-view" class="admin-view-section hidden">
-          <div class="admin-view-header">
-            <div>
-              <h2 class="admin-section-title">Combined Edit Logs</h2>
-              <p class="admin-section-subtitle">Audit trail of student database edits aggregated from all active school sheets.</p>
-            </div>
-          </div>
-
-          <!-- Comprehensive Filter Bar -->
-          <div class="admin-multi-filter-bar">
-            <div class="admin-filter-field">
-              <label for="logs-school-select">School Database</label>
-              <select id="logs-school-select" class="admin-select">
-                <option value="all">All Schools</option>
+            <div class="admin-dropdown-wrapper">
+              <select id="sessions-status-filter" class="admin-select">
+                <option value="active">Active Sessions</option>
+                <option value="all">All Sessions</option>
+                <option value="inactive">Logged Out</option>
               </select>
             </div>
-
-            <div class="admin-filter-field">
-              <label for="logs-action-select">Action Type</label>
-              <select id="logs-action-select" class="admin-select">
-                <option value="all">All Actions</option>
-                <option value="Update">Update</option>
-                <option value="Create">Create</option>
-                <option value="Delete">Delete</option>
-              </select>
-            </div>
-
-
           </div>
 
-          <!-- Logs Output -->
-          <div class="admin-table-card">
-            <div class="table-responsive">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>School Name</th>
-                    <th>User ID</th>
-                    <th>Student Subject</th>
-                    <th>Class</th>
-                    <th>Action</th>
-                    <th>Changed Database Fields</th>
-                  </tr>
-                </thead>
-                <tbody id="logs-table-body">
-                  <!-- Dynamically Rendered -->
-                </tbody>
-              </table>
-            </div>
+          <!-- Sessions Container — rendered as cards on mobile, table on desktop -->
+          <div id="sessions-container" class="sessions-card-grid">
+            <!-- Dynamically Rendered -->
           </div>
         </section>
 
       </main>
     </div>
 
-    <!-- MOBILE NAVIGATION BOTTOM BAR -->
+    <!-- MOBILE NAVIGATION BOTTOM BAR (3 items only — no logout, no logs) -->
     <nav class="admin-mobile-nav mobile-only-flex">
       <button class="admin-mobile-nav-item active" data-target="dashboard">
         <i data-lucide="layout-dashboard"></i>
-        <span>Dashboard</span>
+        <span>Home</span>
       </button>
       <button class="admin-mobile-nav-item" data-target="schools">
         <i data-lucide="school"></i>
@@ -394,14 +323,6 @@
       <button class="admin-mobile-nav-item" data-target="sessions">
         <i data-lucide="users"></i>
         <span>Sessions</span>
-      </button>
-      <button class="admin-mobile-nav-item" data-target="logs">
-        <i data-lucide="scroll-text"></i>
-        <span>Logs</span>
-      </button>
-      <button class="admin-mobile-nav-item admin-logout-btn" style="color: var(--danger);">
-        <i data-lucide="log-out"></i>
-        <span>Sign Out</span>
       </button>
     </nav>
   </div>

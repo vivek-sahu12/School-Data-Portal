@@ -11,8 +11,7 @@ const STATE = {
   activeTab: "dashboard",
   filters: {
     schools: { search: "", status: "all" },
-    sessions: { search: "" },
-    logs: { school: "all", actionType: "all" }
+    sessions: { search: "", status: "active" }
   },
   theme: localStorage.getItem("admin_theme") || "light",
   isFetchingDetails: false
@@ -165,8 +164,6 @@ function renderActiveTab() {
     renderSchoolsList();
   } else if (STATE.activeTab === "sessions") {
     renderSessions();
-  } else if (STATE.activeTab === "logs") {
-    renderLogs();
   }
 }
 
@@ -605,212 +602,161 @@ async function submitPasswordReset() {
  * Feature 5 — Device Sessions View
  */
 function renderSessions() {
-  const container = document.getElementById("sessions-table-body");
+  const container = document.getElementById("sessions-container");
   if (!container) return;
 
   const searchQuery = STATE.filters.sessions.search.toLowerCase().trim();
+  const statusFilter = STATE.filters.sessions.status || "active";
 
-  // Active sessions are rows from Login_Sessions where Logout Timestamp is empty
-  const activeSessions = STATE.sessions.filter(sess => {
-    const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
-    return !hasLoggedOut;
-  });
-
-  const filteredSessions = activeSessions.filter(sess => {
+  // Filter sessions by search query and active status
+  const filteredSessions = STATE.sessions.filter(sess => {
     const schoolObj = STATE.schools.find(s => s.userId === sess.userId);
     const schoolName = schoolObj ? schoolObj.schoolName.toLowerCase() : "";
-    return sess.userId.toLowerCase().includes(searchQuery) || schoolName.includes(searchQuery) || sess.deviceId.toLowerCase().includes(searchQuery);
+    const matchesSearch = sess.userId.toLowerCase().includes(searchQuery) ||
+                          schoolName.includes(searchQuery) ||
+                          sess.deviceId.toLowerCase().includes(searchQuery);
+
+    const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
+    let matchesStatus = true;
+    if (statusFilter === "active") {
+      matchesStatus = !hasLoggedOut;
+    } else if (statusFilter === "inactive") {
+      matchesStatus = hasLoggedOut;
+    }
+
+    return matchesSearch && matchesStatus;
   });
 
   container.innerHTML = "";
 
   if (filteredSessions.length === 0) {
     container.innerHTML = `
-      <tr>
-        <td colspan="5" class="admin-empty-row">
-          <i data-lucide="search" class="empty-icon"></i>
-          <p>No active sessions found.</p>
-        </td>
-      </tr>
+      <div class="session-empty-state">
+        <i data-lucide="shield-alert"></i>
+        <h3>No sessions found</h3>
+        <p>No device sessions match the selected filters or search terms.</p>
+      </div>
     `;
     if (typeof lucide !== 'undefined') lucide.createIcons();
     return;
   }
 
+  // Group filteredSessions by school (userId)
+  const grouped = {};
   filteredSessions.forEach(sess => {
-    const tr = document.createElement("tr");
-    
-    const schoolObj = STATE.schools.find(s => s.userId === sess.userId);
-    const schoolName = schoolObj ? schoolObj.schoolName : "Unknown School";
-    
-    let loginStr = "—";
-    if (sess.loginTimestamp) {
-      const d = new Date(sess.loginTimestamp);
-      if (!isNaN(d.getTime())) {
-        loginStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
+    if (!grouped[sess.userId]) {
+      grouped[sess.userId] = [];
     }
+    grouped[sess.userId].push(sess);
+  });
 
-    tr.innerHTML = `
-      <td><code>${sess.userId}</code></td>
-      <td><strong>${schoolName}</strong></td>
-      <td><span class="device-code-txt">${sess.deviceId}</span></td>
-      <td>${loginStr}</td>
-      <td>
-        <button class="btn-danger force-logout-btn" data-userid="${sess.userId}" data-deviceid="${sess.deviceId}">
-          <i data-lucide="log-out" style="width:14px; height:14px;"></i>
-          <span>Force Logout</span>
-        </button>
-      </td>
-    `;
+  // Render group by group
+  Object.keys(grouped).forEach(userId => {
+    const sessionsInGroup = grouped[userId];
+    const schoolObj = STATE.schools.find(s => s.userId === userId);
+    const schoolName = schoolObj ? schoolObj.schoolName : "Unknown School";
 
-    // Bind Force Logout Action
-    tr.querySelector(".force-logout-btn").addEventListener("click", async () => {
-      if (confirm(`Are you sure you want to terminate session on device ${sess.deviceId} for school ${sess.userId}?`)) {
-        showToast("Requesting session termination...", "info");
-        try {
-          const res = await ApiService.forceLogoutSession(sess.userId, sess.deviceId);
-          if (res && res.success) {
-            showToast("Session terminated", "success");
-            
-            // Mark session as logged out in state and cache
-            sess.logoutTimestamp = new Date().toISOString();
-            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
-            
-            renderSessions();
-            renderStats();
-          } else {
-            throw new Error(res.message || "Termination rejected.");
-          }
-        } catch(err) {
-          showToast(`Force logout failed: ${err.message}`, "error");
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "session-group";
+
+    const titleH3 = document.createElement("h3");
+    titleH3.className = "session-group-title";
+    titleH3.textContent = schoolName;
+    groupDiv.appendChild(titleH3);
+
+    const cardsList = document.createElement("div");
+    cardsList.className = "session-cards-list";
+
+    sessionsInGroup.forEach(sess => {
+      const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
+      const isActive = !hasLoggedOut;
+
+      let loginStr = "—";
+      if (sess.loginTimestamp) {
+        const d = parseRobustDate(sess.loginTimestamp);
+        if (d) {
+          loginStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
       }
-    });
 
-    container.appendChild(tr);
-  });
+      // Truncate Device ID
+      const devId = sess.deviceId || "—";
+      const displayDevId = devId.length > 12 ? devId.slice(0, 8) + "..." : devId;
 
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
+      const card = document.createElement("div");
+      card.className = "session-card";
 
-/**
- * Feature 6 — Edit Activity Log
- */
-function renderLogs() {
-  const container = document.getElementById("logs-table-body");
-  const schoolSelect = document.getElementById("logs-school-select");
-  if (!container) return;
+      // Card Content matching: School Name, User ID, Device ID (truncated), Login Time, Status, force logout
+      card.innerHTML = `
+        <div class="session-card-row">
+          <span class="session-card-label">User ID</span>
+          <span class="session-card-value"><code>${userId}</code></span>
+        </div>
+        <div class="session-card-row">
+          <span class="session-card-label">Device ID</span>
+          <span class="session-card-value" title="${devId}">${displayDevId}</span>
+        </div>
+        <div class="session-card-row">
+          <span class="session-card-label">Login Time</span>
+          <span class="session-card-value">${loginStr}</span>
+        </div>
+        <div class="session-card-row">
+          <span class="session-card-label">Status</span>
+          <span class="session-card-value">
+            <span class="badge-status ${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Logged Out'}</span>
+          </span>
+        </div>
+        <div class="session-card-row">
+          <span class="session-card-label">Action</span>
+          <span class="session-card-value">
+            ${isActive ? `
+              <button class="btn-danger force-logout-btn" data-userid="${userId}" data-deviceid="${devId}">
+                <i data-lucide="log-out" style="width:14px; height:14px;"></i>
+                <span>Force Logout</span>
+              </button>
+            ` : '—'}
+          </span>
+        </div>
+      `;
 
-  // Build combined logs array from detailsCache
-  let combinedLogs = [];
-  
-  STATE.schools.forEach(school => {
-    const details = STATE.detailsCache[school.userId];
-    if (details && Array.isArray(details.editLogs)) {
-      details.editLogs.forEach(log => {
-        combinedLogs.push({
-          ...log,
-          schoolName: school.schoolName,
-          userId: school.userId
+      // Bind force logout
+      if (isActive) {
+        const forceBtn = card.querySelector(".force-logout-btn");
+        forceBtn.addEventListener("click", async () => {
+          if (confirm(`Are you sure you want to terminate session on device ${devId} for school ${schoolName}?`)) {
+            showToast("Requesting session termination...", "info");
+            try {
+              const res = await ApiService.forceLogoutSession(userId, devId);
+              if (res && res.success) {
+                showToast("Session terminated", "success");
+                sess.logoutTimestamp = new Date().toISOString();
+                // Update local storage cache
+                const cacheData = localStorage.getItem("admin_schools_data_cache");
+                if (cacheData) {
+                  const parsed = JSON.parse(cacheData);
+                  const sessInCache = parsed.sessions.find(s => s.userId === userId && s.deviceId === devId);
+                  if (sessInCache) {
+                    sessInCache.logoutTimestamp = sess.logoutTimestamp;
+                    localStorage.setItem("admin_schools_data_cache", JSON.stringify(parsed));
+                  }
+                }
+                renderSessions();
+                renderStats();
+              } else {
+                throw new Error(res.message || "Termination rejected.");
+              }
+            } catch(err) {
+              showToast(`Force logout failed: ${err.message}`, "error");
+            }
+          }
         });
-      });
-    }
-  });
+      }
 
-  // Populate school filter dropdown once if empty
-  if (schoolSelect && schoolSelect.options.length <= 1) {
-    STATE.schools.forEach(school => {
-      const opt = document.createElement("option");
-      opt.value = school.userId;
-      opt.textContent = school.schoolName;
-      schoolSelect.appendChild(opt);
+      cardsList.appendChild(card);
     });
-  }
 
-  // Sort logs by timestamp descending (newest first)
-  combinedLogs.sort((a, b) => {
-    const dateA = parseRobustDate(a.Timestamp || a.timestamp);
-    const dateB = parseRobustDate(b.Timestamp || b.timestamp);
-    const timeA = dateA ? dateA.getTime() : 0;
-    const timeB = dateB ? dateB.getTime() : 0;
-    return timeB - timeA;
-  });
-
-  // Apply filters (only school and action type)
-  const fSchool = STATE.filters.logs.school;
-  const fAction = STATE.filters.logs.actionType;
-
-  const filteredLogs = combinedLogs.filter(log => {
-    // School Filter
-    const logUser = log.userId || log["User_ID"] || log["User ID"] || "";
-    if (fSchool !== "all" && logUser !== fSchool) return false;
-    
-    // Action Type Filter
-    const actionType = log["Action Type"] || log["Action_Type"] || log["action"] || "Update";
-    if (fAction !== "all" && actionType.toLowerCase().trim() !== fAction.toLowerCase().trim()) return false;
-
-    return true;
-  });
-
-  container.innerHTML = "";
-
-  // Show clear empty state message
-  if (combinedLogs.length === 0) {
-    container.innerHTML = `
-      <tr>
-        <td colspan="7" class="admin-empty-row">
-          <i data-lucide="file-text" class="empty-icon"></i>
-          <p>No edit activity logs have been recorded yet across any schools.</p>
-        </td>
-      </tr>
-    `;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    return;
-  }
-
-  if (filteredLogs.length === 0) {
-    container.innerHTML = `
-      <tr>
-        <td colspan="7" class="admin-empty-row">
-          <i data-lucide="filter" class="empty-icon"></i>
-          <p>No activity logs match the selected filters.</p>
-        </td>
-      </tr>
-    `;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    return;
-  }
-
-  filteredLogs.forEach(log => {
-    const tr = document.createElement("tr");
-    
-    let tsStr = "—";
-    const logDate = parseRobustDate(log.Timestamp || log.timestamp);
-    if (logDate) {
-      tsStr = logDate.toLocaleDateString() + " " + logDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    const schoolName = log.schoolName || "Unknown";
-    const userId = log.userId || log["User_ID"] || log["User ID"] || "—";
-    const studentName = log["Student Name"] || log["Student_Name"] || log["studentName"] || "—";
-    const className = log["Class"] || log["class"] || "—";
-    const actionType = log["Action Type"] || log["Action_Type"] || log["action"] || "Update";
-    
-    // Format changed fields nicely
-    const changedFields = log["Changed Fields"] || log["Changed_Fields"] || log["changedFields"] || "—";
-
-    tr.innerHTML = `
-      <td><span class="log-ts">${tsStr}</span></td>
-      <td><strong>${schoolName}</strong></td>
-      <td><code>${userId}</code></td>
-      <td>${studentName}</td>
-      <td>Class ${className}</td>
-      <td><span class="badge-action ${actionType.toLowerCase()}">${actionType}</span></td>
-      <td><div class="fields-list" title="${changedFields}">${changedFields}</div></td>
-    `;
-
-    container.appendChild(tr);
+    groupDiv.appendChild(cardsList);
+    container.appendChild(groupDiv);
   });
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -858,20 +804,11 @@ function initAdminDashboard() {
     });
   }
 
-  // Filter Bindings for Logs
-  const logSchool = document.getElementById("logs-school-select");
-  if (logSchool) {
-    logSchool.addEventListener("change", (e) => {
-      STATE.filters.logs.school = e.target.value;
-      renderLogs();
-    });
-  }
-
-  const logAction = document.getElementById("logs-action-select");
-  if (logAction) {
-    logAction.addEventListener("change", (e) => {
-      STATE.filters.logs.actionType = e.target.value;
-      renderLogs();
+  const sessionStatusFilter = document.getElementById("sessions-status-filter");
+  if (sessionStatusFilter) {
+    sessionStatusFilter.addEventListener("change", (e) => {
+      STATE.filters.sessions.status = e.target.value;
+      renderSessions();
     });
   }
 

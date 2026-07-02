@@ -421,6 +421,13 @@ button {
   background-color: var(--danger-light);
 }
 
+.admin-sidebar-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 8px 0;
+  width: 100%;
+}
+
 /* Main Body Area */
 .admin-main-body {
   margin-left: 280px;
@@ -492,10 +499,12 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: calc(56px + env(safe-area-inset-bottom));
+  min-height: 56px;
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface);
   border-top: 1px solid var(--border-color);
-  z-index: 100;
+  z-index: 1000;
   box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
 }
 
@@ -614,6 +623,19 @@ button {
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
+}
+
+.admin-stat-card.stat-blue {
+  border-top: 4px solid var(--primary);
+}
+.admin-stat-card.stat-green {
+  border-top: 4px solid var(--success);
+}
+.admin-stat-card.stat-red {
+  border-top: 4px solid var(--danger);
+}
+.admin-stat-card.stat-amber {
+  border-top: 4px solid var(--warning);
 }
 
 /* ==========================================================================
@@ -1322,7 +1344,8 @@ body.drawer-open-lock {
   padding-bottom: env(safe-area-inset-bottom) !important;
   padding-left: env(safe-area-inset-left) !important;
   padding-right: env(safe-area-inset-right) !important;
-  height: calc(64px + env(safe-area-inset-bottom)) !important;
+  height: calc(56px + env(safe-area-inset-bottom)) !important;
+  min-height: 56px !important;
 }
 
 .admin-main-body, .admin-content-viewport, .admin-stats-grid, .admin-table-card, .table-responsive {
@@ -1385,6 +1408,9 @@ body.drawer-open-lock {
     box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05) !important;
     justify-content: space-around;
     align-items: center;
+    height: calc(56px + env(safe-area-inset-bottom)) !important;
+    min-height: 56px !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
   }
 
   .admin-mobile-nav-item {
@@ -1392,15 +1418,16 @@ body.drawer-open-lock {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
     color: var(--text-secondary);
     font-size: var(--text-xs);
     font-weight: 500;
+    min-height: 44px;
     height: 100%;
     flex: 1;
     text-decoration: none;
     position: relative;
-    padding-bottom: 4px;
+    padding: 4px 0;
   }
 
   .admin-mobile-nav-item.active {
@@ -1411,7 +1438,7 @@ body.drawer-open-lock {
   .admin-mobile-nav-item.active::after {
     content: "";
     position: absolute;
-    bottom: 6px;
+    bottom: 4px;
     width: 4px;
     height: 4px;
     background-color: var(--primary);
@@ -1585,5 +1612,179 @@ body.drawer-open-lock {
   }
   .admin-select, .admin-search-wrapper input, .admin-input-wrapper input, .admin-btn-primary, .admin-btn-secondary {
     min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Sessions Redesign Grid & Cards
+   ========================================================================== */
+.sessions-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.session-group {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.session-group-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.session-cards-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.session-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.session-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.session-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-card-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.session-card-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.session-card-value.school-name {
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.badge-status.active {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.badge-status.inactive {
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.session-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 100%;
+}
+
+.session-empty-state i {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+@media (min-width: 992px) {
+  .session-group {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+  }
+  
+  .session-group-title {
+    margin-bottom: 12px;
+  }
+  
+  .session-cards-list {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .session-card {
+    display: table-row;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+  }
+  
+  .session-card:hover {
+    transform: none;
+    box-shadow: none;
+    background-color: var(--surface-hover);
+  }
+  
+  .session-card-row {
+    display: table-cell;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+  
+  .session-card-row .session-card-label {
+    display: none;
+  }
+  
+  .session-card-row .session-card-value {
+    font-size: var(--text-base);
+  }
+  
+  .session-card:last-child .session-card-row {
+    border-bottom: none;
   }
 }
