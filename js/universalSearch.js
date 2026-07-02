@@ -343,7 +343,7 @@ function executeUniversalSearch() {
         td.appendChild(badge);
       } else {
         const val = row[h];
-        const textVal = (val !== undefined && val !== null) ? val.toString() : "";
+        const textVal = (val !== undefined && val !== null) ? formatCellValue(val) : "";
         
         // Highlighting match keyword in selected search column
         if (query && h === selectedColumn) {

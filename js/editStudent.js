@@ -168,7 +168,7 @@ function openEditForm(studentData) {
     input.type = "text";
     input.name = key;
     input.className = "form-input";
-    input.value = (studentData[key] !== undefined && studentData[key] !== null) ? studentData[key].toString() : "";
+    input.value = (studentData[key] !== undefined && studentData[key] !== null) ? formatCellValue(studentData[key]) : "";
     input.style.padding = "10px 14px";
     input.style.border = "1px solid var(--border-color)";
     input.style.borderRadius = "var(--radius-md)";
@@ -203,8 +203,8 @@ function closeEditForm(discardConfirmed = false) {
       const input = form.querySelector(`[name="${key}"]`);
       if (input) {
         const newVal = input.value.trim();
-        const oldVal = (originalStudentState[key] !== undefined && originalStudentState[key] !== null) ? originalStudentState[key].toString().trim() : "";
-        if (newVal !== oldVal) {
+        const formattedOld = (originalStudentState[key] !== undefined && originalStudentState[key] !== null) ? formatCellValue(originalStudentState[key]).trim() : "";
+        if (newVal !== formattedOld) {
           hasChanges = true;
           break;
         }
@@ -244,15 +244,19 @@ function saveStudentEdit() {
     const input = form.querySelector(`[name="${key}"]`);
     if (input) {
       const newVal = input.value.trim();
-      const oldVal = (originalStudentState[key] !== undefined && originalStudentState[key] !== null) ? originalStudentState[key].toString().trim() : "";
+      const rawVal = originalStudentState[key];
+      const oldVal = (rawVal !== undefined && rawVal !== null) ? rawVal.toString().trim() : "";
+      const formattedOld = (rawVal !== undefined && rawVal !== null) ? formatCellValue(rawVal).trim() : "";
 
-      newValues[key] = newVal;
-      if (newVal !== oldVal) {
+      if (newVal !== formattedOld) {
+        newValues[key] = newVal;
         changedFields[key] = {
           old: oldVal,
           new: newVal
         };
         hasChanges = true;
+      } else {
+        newValues[key] = rawVal;
       }
     }
   }

@@ -172,7 +172,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     const value = document.createElement("span");
     value.className = "detail-value";
     value.textContent = (studentData[key] !== undefined && studentData[key] !== null && studentData[key] !== "") 
-      ? studentData[key].toString() 
+      ? formatCellValue(studentData[key]) 
       : "-";
 
     group.appendChild(label);
@@ -464,7 +464,7 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
     columnsToRender.forEach(header => {
       const td = document.createElement("td");
       const cellVal = row[header];
-      td.textContent = (cellVal !== undefined && cellVal !== null) ? cellVal.toString() : "";
+      td.textContent = (cellVal !== undefined && cellVal !== null) ? formatCellValue(cellVal) : "";
       
       const headerLower = header.toLowerCase();
       if (headerLower === "class" || headerLower === "section" || headerLower === "s.no" || headerLower === "sno" || headerLower === "sr.no") {

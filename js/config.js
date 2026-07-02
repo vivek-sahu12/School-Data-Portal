@@ -94,3 +94,19 @@ function convertDriveUrl(url) {
   
   return str;
 }
+
+/**
+ * Format ISO dates for India locale display
+ */
+function formatCellValue(value) {
+  if (!value) return '';
+  const str = value.toString();
+  // Detect ISO date string
+  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d)) {
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  }
+  return str;
+}
