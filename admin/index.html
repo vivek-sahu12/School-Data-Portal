@@ -6,35 +6,24 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#ffffff" id="theme-color-meta">
+  <meta name="theme-color" content="#ffffff" id="admin-theme-color">
   <title>Admin Portal — School Data Portal</title>
-
-  <!-- Favicon -->
   <link rel="apple-touch-icon" href="../assets/icon.svg">
   <link rel="shortcut icon" href="../assets/icon.svg" type="image/x-icon">
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Stylesheets -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-  <!-- ================= ADMIN TOASTS ================= -->
   <div id="admin-toast-container" class="admin-toast-container"></div>
 
-  <!-- ================= 1. ADMIN LOGIN SCREEN ================= -->
+  <!-- 1. LOGIN SCREEN -->
   <div id="admin-login-screen" class="admin-login-container hidden">
     <div class="admin-login-card">
       <div class="admin-login-logo-box">
-        <img src="../assets/icon.svg" alt="Admin Logo" class="admin-login-logo">
+        <img src="../assets/icon.svg" alt="Logo" class="admin-login-logo">
       </div>
       <h1 class="admin-login-title">Control Panel</h1>
-      <p class="admin-login-subtitle">Sign in to manage system access, credentials, and track sessions.</p>
-
+      <p class="admin-login-subtitle">Sign in to manage system access and sessions.</p>
       <form id="admin-login-form">
         <div class="admin-form-group">
           <label for="admin-username">User ID</label>
@@ -43,126 +32,92 @@
             <input type="text" id="admin-username" placeholder="Enter administrator ID" required autocomplete="username">
           </div>
         </div>
-
         <div class="admin-form-group">
           <label for="admin-password">Password</label>
           <div class="admin-input-wrapper">
             <i data-lucide="lock" class="admin-input-icon"></i>
-            <input type="password" id="admin-password" placeholder="Enter administrator password" required autocomplete="current-password">
+            <input type="password" id="admin-password" placeholder="Enter password" required autocomplete="current-password">
           </div>
         </div>
-
         <div id="login-error" class="admin-login-error hidden">
-          <i data-lucide="alert-circle" class="admin-error-icon"></i>
+          <i data-lucide="alert-circle"></i>
           <span id="login-error-text">Unauthorized access attempt.</span>
         </div>
-
         <button type="submit" class="admin-btn-primary admin-btn-block">
-          <span>Authorize Admin Access</span>
+          <span>Authorize Access</span>
           <i data-lucide="arrow-right"></i>
         </button>
       </form>
     </div>
   </div>
 
-  <!-- ================= 2. ADMIN APP CONTAINER ================= -->
+  <!-- 2. APP CONTAINER -->
   <div id="admin-app-screen" class="admin-app-layout hidden">
 
-    <!-- MOBILE SIDEBAR BACKDROP -->
-    <div id="admin-sidebar-backdrop" class="admin-sidebar-backdrop"></div>
+    <div id="admin-sidebar-backdrop" class="sidebar-backdrop"></div>
 
-    <!-- SIDEBAR (Collapsible drawer on mobile, permanent left sidebar on desktop) -->
-    <aside id="admin-sidebar" class="admin-sidebar">
-      <div class="admin-sidebar-header">
-        <img src="../assets/icon.svg" alt="Logo" class="admin-sidebar-logo">
-        <div>
-          <h2 class="admin-sidebar-title">Portal Manager</h2>
-          <span class="admin-role-badge">SuperAdmin</span>
+    <!-- SIDEBAR -->
+    <aside id="admin-sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <i data-lucide="settings" class="sidebar-brand-icon"></i>
+        <span class="sidebar-brand-text">Admin Panel</span>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-user-chip">
+        <div class="sidebar-avatar"><i data-lucide="user"></i></div>
+        <div class="sidebar-user-info">
+          <span id="admin-username-display" class="sidebar-username">admin</span>
+          <span class="sidebar-user-role">System Admin</span>
         </div>
       </div>
-
-      <!-- User ID Badge shown in Drawer / Sidebar -->
-      <div class="admin-sidebar-profile-box">
-        <div class="admin-profile-chip">
-          <div class="admin-avatar">
-            <i data-lucide="user-cog"></i>
-          </div>
-          <div class="admin-user-meta">
-            <span id="admin-username-display" class="admin-username-text">Admin</span>
-            <span class="admin-role-sub text-muted">System Admin</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation: Displayed on Desktop only inside the Sidebar -->
-      <nav class="admin-sidebar-nav desktop-only-flex">
+      <div class="sidebar-divider"></div>
+      <nav class="sidebar-nav">
         <button class="admin-nav-item active" data-target="dashboard">
-          <i data-lucide="layout-dashboard"></i>
-          <span>Dashboard</span>
+          <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
         </button>
         <button class="admin-nav-item" data-target="schools">
-          <i data-lucide="school"></i>
-          <span>Schools List</span>
+          <i data-lucide="school"></i><span>Schools</span>
         </button>
         <button class="admin-nav-item" data-target="sessions">
-          <i data-lucide="users"></i>
-          <span>Active Sessions</span>
+          <i data-lucide="monitor-smartphone"></i><span>Sessions</span>
         </button>
       </nav>
-
-      <div class="admin-sidebar-footer">
-        <div class="admin-sidebar-divider"></div>
-        <button class="admin-logout-btn admin-sidebar-logout-btn" title="Sign Out">
-          <i data-lucide="log-out"></i>
-          <span>Log Out</span>
-        </button>
-      </div>
+      <div class="sidebar-divider"></div>
+      <button class="admin-logout-btn sidebar-logout-btn">
+        <i data-lucide="log-out"></i><span>Sign Out</span>
+      </button>
     </aside>
 
-    <!-- MAIN APP SCREEN BODY -->
+    <!-- MAIN BODY -->
     <div class="admin-main-body">
-
-      <!-- HEADER BAR -->
       <header class="admin-header">
-        <div class="admin-header-left">
-          <button id="admin-mobile-menu-toggle" class="admin-header-btn mobile-only-inline" title="Open Sidebar">
+        <div class="header-left">
+          <button id="admin-mobile-menu-toggle" class="header-hamburger mobile-only" title="Menu">
             <i data-lucide="menu"></i>
           </button>
-          <div class="admin-header-titles">
-            <h1 class="admin-header-title mobile-only-inline">School Portal Admin</h1>
-            <h1 class="admin-header-title desktop-only-inline">Administrator Controls</h1>
-            <p class="admin-header-subtitle desktop-only-block">Overviewing status and sync telemetry.</p>
+          <div class="header-logo desktop-only">
+            <img src="../assets/icon.svg" alt="Logo" class="header-logo-img" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+            <span class="header-logo-text" style="font-weight: 700; font-size: var(--text-lg); vertical-align: middle;">School Portal</span>
           </div>
         </div>
-
-        <div class="admin-header-actions">
-          <!-- Refresh Button -->
-          <button id="admin-refresh-btn" class="admin-header-btn" title="Force Refetch Cloud Data">
+        <h1 id="admin-header-title" class="header-section-title">Dashboard</h1>
+        <div class="header-actions">
+          <button id="admin-refresh-btn" class="header-icon-btn" title="Refresh">
             <i data-lucide="refresh-cw"></i>
           </button>
-
-          <!-- Theme Toggle -->
-          <button id="admin-theme-toggle" class="admin-header-btn" title="Toggle Theme Preference">
+          <button id="admin-theme-toggle" class="header-icon-btn" title="Theme">
             <i data-lucide="sun" id="admin-theme-sun" class="hidden"></i>
             <i data-lucide="moon" id="admin-theme-moon"></i>
           </button>
         </div>
       </header>
 
-      <!-- Sync Progress Telemetry -->
       <div id="admin-sync-progress" class="admin-sync-progress hidden">
-        <div class="progress-details">
-          <span id="admin-sync-progress-text">Syncing school databases...</span>
-        </div>
-        <div class="progress-track">
-          <div id="admin-sync-progress-bar" class="progress-fill" style="width: 0%;"></div>
-        </div>
+        <div class="progress-details"><span id="admin-sync-progress-text">Syncing...</span></div>
+        <div class="progress-track"><div id="admin-sync-progress-bar" class="progress-fill" style="width:0%"></div></div>
       </div>
 
-      <!-- MAIN SCROLLABLE CONTENT VIEWPORT -->
       <main class="admin-content-viewport">
-
-        <!-- SKELETON LOADER CONTAINER -->
         <div id="admin-skeleton-loader" class="admin-skeleton-loader hidden">
           <div class="skeleton-header">
             <div class="skeleton-title skeleton-pulse"></div>
@@ -181,250 +136,140 @@
           </div>
         </div>
 
-        <!-- 1. DASHBOARD OVERVIEW PANEL -->
+        <!-- DASHBOARD -->
         <section id="admin-dashboard-view" class="admin-view-section">
-          <div class="admin-view-header">
-            <div>
-              <h2 class="admin-section-title">Quick Stats</h2>
-              <p class="admin-section-subtitle">Realtime metrics of schools and records managed.</p>
-            </div>
+          <div class="section-header">
+            <h2 class="section-title">Overview</h2>
+            <p class="section-subtitle">Realtime metrics across all managed schools.</p>
           </div>
-
-          <!-- Metrics Grid (2 columns on mobile, 4 columns on desktop) -->
           <div class="admin-stats-grid">
-            <div class="admin-stat-card stat-blue">
-              <div class="stat-icon-box primary">
-                <i data-lucide="school"></i>
-              </div>
-              <div class="stat-details">
-                <p class="stat-label">Total Schools</p>
-                <h3 id="stat-total-schools" class="stat-value">—</h3>
-              </div>
+            <div class="stat-card stat-blue">
+              <h3 id="stat-total-schools" class="stat-number">—</h3>
+              <p class="stat-label">Total Schools</p>
             </div>
-
-            <div class="admin-stat-card stat-green">
-              <div class="stat-icon-box success">
-                <i data-lucide="check-circle-2"></i>
-              </div>
-              <div class="stat-details">
-                <p class="stat-label">Active</p>
-                <h3 id="stat-active-schools" class="stat-value">—</h3>
-              </div>
+            <div class="stat-card stat-green">
+              <h3 id="stat-active-schools" class="stat-number">—</h3>
+              <p class="stat-label">Active</p>
             </div>
-
-            <div class="admin-stat-card stat-red">
-              <div class="stat-icon-box danger">
-                <i data-lucide="x-circle"></i>
-              </div>
-              <div class="stat-details">
-                <p class="stat-label">Inactive</p>
-                <h3 id="stat-inactive-schools" class="stat-value">—</h3>
-              </div>
+            <div class="stat-card stat-red">
+              <h3 id="stat-inactive-schools" class="stat-number">—</h3>
+              <p class="stat-label">Inactive</p>
             </div>
-
-            <div class="admin-stat-card stat-purple">
-              <div class="stat-icon-box warning">
-                <i data-lucide="users-2"></i>
-              </div>
-              <div class="stat-details">
-                <p class="stat-label">Active Sessions</p>
-                <h3 id="stat-active-sessions" class="stat-value">—</h3>
-              </div>
+            <div class="stat-card stat-purple">
+              <h3 id="stat-active-sessions" class="stat-number">—</h3>
+              <p class="stat-label">Active Sessions</p>
             </div>
           </div>
-
-          <!-- Schools List Below Stats on Dashboard -->
-          <div class="dashboard-schools-list-wrapper">
-            <div class="dashboard-schools-list-header">
-              <h3 class="admin-section-title-small">Schools List</h3>
-              <div class="admin-search-wrapper">
+          <div class="dashboard-schools-section">
+            <div class="dashboard-schools-header">
+              <h3 class="subsection-title">Schools</h3>
+              <div class="admin-search-wrapper compact">
                 <i data-lucide="search" class="search-icon"></i>
-                <input type="text" id="dashboard-schools-search-input" placeholder="Search school name or ID...">
+                <input type="text" id="dashboard-schools-search-input" placeholder="Search schools...">
               </div>
             </div>
-
-            <!-- Desktop View: Clean Table -->
-            <div class="schools-desktop-table-container desktop-only-block admin-table-card">
+            <div class="desktop-only admin-table-card">
               <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>School Name</th>
-                    <th>User ID</th>
-                    <th>Status</th>
-                    <th>Editable</th>
-                    <th>Last Login</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="dashboard-schools-table-body">
-                  <!-- Dynamically Rendered -->
-                </tbody>
+                <thead><tr><th>School</th><th>User ID</th><th>Status</th><th>Editable</th><th>Last Login</th><th>Actions</th></tr></thead>
+                <tbody id="dashboard-schools-table-body"></tbody>
               </table>
             </div>
-
-            <!-- Mobile View: Grid of Cards -->
-            <div id="dashboard-schools-mobile-cards" class="schools-mobile-cards-container mobile-only-block">
-              <!-- Dynamically Rendered -->
-            </div>
+            <div id="dashboard-schools-mobile-cards" class="schools-cards-container mobile-only"></div>
           </div>
         </section>
 
-        <!-- 2. SCHOOLS MANAGEMENT TAB -->
+        <!-- SCHOOLS -->
         <section id="admin-schools-view" class="admin-view-section hidden">
-          <div class="admin-view-header">
-            <div>
-              <h2 class="admin-section-title">Schools Catalog</h2>
-              <p class="admin-section-subtitle">Grant sheet editing, suspend credentials and manage access.</p>
-            </div>
+          <div class="section-header">
+            <h2 class="section-title">Schools Catalog</h2>
+            <p class="section-subtitle">Manage access, permissions and credentials.</p>
           </div>
-
-          <!-- Controls Bar -->
           <div class="admin-filter-bar">
             <div class="admin-search-wrapper">
               <i data-lucide="search" class="search-icon"></i>
               <input type="text" id="schools-search-input" placeholder="Search school name or ID...">
             </div>
-            
-            <div class="admin-dropdown-wrapper">
-              <select id="schools-status-select" class="admin-select">
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            <select id="schools-status-select" class="admin-select">
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
-
-          <!-- Desktop View: Clean Table -->
-          <div class="schools-desktop-table-container desktop-only-block admin-table-card">
+          <div class="desktop-only admin-table-card">
             <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>School Name</th>
-                  <th>User ID</th>
-                  <th>Status</th>
-                  <th>Editable</th>
-                  <th>Last Login</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="schools-table-body">
-                <!-- Dynamically Rendered -->
-              </tbody>
+              <thead><tr><th>School</th><th>User ID</th><th>Status</th><th>Editable</th><th>Last Login</th><th>Actions</th></tr></thead>
+              <tbody id="schools-table-body"></tbody>
             </table>
           </div>
-
-          <!-- Mobile View: Grid of Cards -->
-          <div id="schools-mobile-cards" class="schools-mobile-cards-container mobile-only-block">
-            <!-- Dynamically Rendered -->
-          </div>
+          <div id="schools-mobile-cards" class="schools-cards-container mobile-only"></div>
         </section>
 
-        <!-- 3. ACTIVE SESSIONS VIEW -->
+        <!-- SESSIONS -->
         <section id="admin-sessions-view" class="admin-view-section hidden">
-          <div class="admin-view-header">
-            <div>
-              <h2 class="admin-section-title">Device Sessions</h2>
-              <p class="admin-section-subtitle">Monitor connected devices with remote terminate capabilities.</p>
-            </div>
+          <div class="section-header">
+            <h2 class="section-title">Device Sessions</h2>
+            <p class="section-subtitle">Monitor connected devices and terminate sessions remotely.</p>
           </div>
-
-          <div class="admin-filter-bar align-center justify-between">
-            <div class="admin-search-wrapper max-300">
+          <div class="admin-filter-bar">
+            <div class="admin-search-wrapper">
               <i data-lucide="search" class="search-icon"></i>
-              <input type="text" id="sessions-search-input" placeholder="Search school name, ID or device...">
+              <input type="text" id="sessions-search-input" placeholder="Search school, ID or device...">
             </div>
-            <div class="admin-session-toggle-wrapper">
-              <span class="admin-toggle-label">Show Inactive Sessions</span>
+            <div class="session-toggle-group">
+              <span class="toggle-label-text">Show inactive</span>
               <label class="switch-toggle">
                 <input type="checkbox" id="sessions-status-toggle">
                 <span class="switch-slider"></span>
               </label>
             </div>
           </div>
-
-          <!-- Sessions Container — rendered as cards on mobile, table on desktop -->
-          <div id="sessions-container" class="sessions-container-wrapper">
-            <!-- Dynamically Rendered -->
-          </div>
+          <div id="sessions-container" class="sessions-container"></div>
         </section>
 
       </main>
     </div>
-
-    <!-- MOBILE NAVIGATION BOTTOM BAR (3 items only — no logout) -->
-    <nav class="admin-mobile-nav mobile-only-flex">
-      <button class="admin-mobile-nav-item active" data-target="dashboard">
-        <i data-lucide="layout-dashboard"></i>
-        <span>Home</span>
-      </button>
-      <button class="admin-mobile-nav-item" data-target="schools">
-        <i data-lucide="school"></i>
-        <span>Schools</span>
-      </button>
-      <button class="admin-mobile-nav-item" data-target="sessions">
-        <i data-lucide="users"></i>
-        <span>Sessions</span>
-      </button>
-    </nav>
   </div>
 
-  <!-- ================= MODALS & OVERLAYS ================= -->
-  
   <!-- PASSWORD RESET MODAL -->
   <div id="password-reset-modal" class="admin-modal-overlay hidden">
     <div class="admin-modal-card">
       <div class="admin-modal-header">
         <div>
           <h3 class="admin-modal-title">Reset School Password</h3>
-          <p class="admin-modal-subtitle">Resetting credentials for user ID: <strong id="modal-reset-username">school</strong></p>
+          <p class="admin-modal-subtitle">Resetting for: <strong id="modal-reset-username">school</strong></p>
         </div>
-        <button class="admin-modal-close" onclick="closePasswordResetModal()" title="Close Modal">
-          <i data-lucide="x"></i>
-        </button>
+        <button class="admin-modal-close" onclick="closePasswordResetModal()"><i data-lucide="x"></i></button>
       </div>
-
       <div class="admin-modal-body">
         <div class="admin-form-group">
           <label for="new-password">New Password</label>
           <div class="admin-input-wrapper">
             <i data-lucide="lock" class="admin-input-icon"></i>
-            <input type="password" id="new-password" placeholder="Enter new strong password">
-            <button type="button" class="toggle-password-visibility" title="Show/Hide Password">
-              <i data-lucide="eye"></i>
-            </button>
+            <input type="password" id="new-password" placeholder="Enter new password">
+            <button type="button" class="toggle-password-visibility"><i data-lucide="eye"></i></button>
           </div>
         </div>
-
         <div class="admin-form-group">
           <label for="confirm-password">Confirm Password</label>
           <div class="admin-input-wrapper">
             <i data-lucide="key-round" class="admin-input-icon"></i>
-            <input type="password" id="confirm-password" placeholder="Verify password matches">
-            <button type="button" class="toggle-password-visibility" title="Show/Hide Password">
-              <i data-lucide="eye"></i>
-            </button>
+            <input type="password" id="confirm-password" placeholder="Confirm password">
+            <button type="button" class="toggle-password-visibility"><i data-lucide="eye"></i></button>
           </div>
         </div>
       </div>
-
       <div class="admin-modal-footer">
         <button id="cancel-reset-btn" class="admin-btn-secondary">Cancel</button>
         <button id="submit-reset-btn" class="admin-btn-primary">
-          <i data-lucide="save"></i>
-          <span>Save Password</span>
+          <i data-lucide="save"></i><span>Save Password</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ================= SCRIPTS ================= -->
-  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Application Logic -->
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/dashboard.js"></script>
-
 </body>
 </html>

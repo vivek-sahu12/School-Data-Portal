@@ -77,27 +77,26 @@ function setLoaderState(isLoading) {
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes admin data TTL
 const DETAILS_CACHE_KEY = "admin_schools_detail_cache";
 
-/**
- * Initialize theme
- */
-function initTheme() {
-  document.documentElement.setAttribute("data-theme", STATE.theme);
+function applyTheme(isDark) {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  const themeMeta = document.getElementById('admin-theme-color');
+  if (themeMeta) {
+    themeMeta.content = isDark ? '#0a0f1e' : '#ffffff';
+  }
+  localStorage.setItem('admin_theme', isDark ? 'dark' : 'light');
+  STATE.theme = isDark ? 'dark' : 'light';
   updateThemeIcon();
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem('admin_theme') || 'light';
+  applyTheme(savedTheme === 'dark');
   
   const themeBtn = document.getElementById("admin-theme-toggle");
   if (themeBtn) {
     themeBtn.addEventListener("click", () => {
       const isDark = STATE.theme === "light";
-      STATE.theme = isDark ? "dark" : "light";
-      
-      localStorage.setItem('admin_theme', isDark ? 'dark' : 'light');
-      const themeColorMeta = document.getElementById('theme-color-meta');
-      if (themeColorMeta) {
-        themeColorMeta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
-      }
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      
-      updateThemeIcon();
+      applyTheme(isDark);
     });
   }
 }
@@ -114,19 +113,13 @@ function updateThemeIcon() {
       moonIcon.classList.add("hidden");
     }
   }
-  
-  const isDark = STATE.theme === "dark";
-  const themeColorMeta = document.getElementById('theme-color-meta');
-  if (themeColorMeta) {
-    themeColorMeta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
-  }
 }
 
 /**
  * Navigation handler
  */
 function initNavigation() {
-  const navItems = document.querySelectorAll(".admin-nav-item, .admin-mobile-nav-item");
+  const navItems = document.querySelectorAll(".admin-nav-item");
   navItems.forEach(item => {
     item.addEventListener("click", (e) => {
       e.preventDefault();
@@ -142,13 +135,25 @@ function switchTab(tabId) {
   STATE.activeTab = tabId;
   
   // Update nav item active states
-  document.querySelectorAll(".admin-nav-item, .admin-mobile-nav-item").forEach(item => {
+  document.querySelectorAll(".admin-nav-item").forEach(item => {
     if (item.getAttribute("data-target") === tabId) {
       item.classList.add("active");
     } else {
       item.classList.remove("active");
     }
   });
+
+  // Update header section title
+  const headerTitle = document.getElementById("admin-header-title");
+  if (headerTitle) {
+    if (tabId === "dashboard") {
+      headerTitle.textContent = "Dashboard";
+    } else if (tabId === "schools") {
+      headerTitle.textContent = "Schools";
+    } else if (tabId === "sessions") {
+      headerTitle.textContent = "Sessions";
+    }
+  }
 
   // Toggle view sections
   document.querySelectorAll(".admin-view-section").forEach(sec => {
@@ -398,7 +403,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       tr.innerHTML = `
         <td>
           <div class="school-identity">
-            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
+            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border); background:#fff; flex-shrink:0;">` : ''}
             <div>
               <div class="school-name-text">${school.schoolName}</div>
               <div class="school-id-sub">ID: ${school.userId}</div>
@@ -421,15 +426,9 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
         <td><span class="last-login-date">${lastLoginStr}</span></td>
         <td>
           <div class="table-actions">
-            <button class="admin-btn-action view-school-btn" data-userid="${school.userId}" title="View School">
-              <i data-lucide="eye"></i>
-            </button>
-            <button class="admin-btn-action reset-pwd-btn" data-userid="${school.userId}" title="Reset Password">
-              <i data-lucide="key-round"></i>
-            </button>
-            <button class="admin-btn-action view-sessions-btn" data-userid="${school.userId}" title="View Sessions">
-              <i data-lucide="clock"></i>
-            </button>
+            <button class="btn-action-text view-btn view-school-btn" data-userid="${school.userId}">View</button>
+            <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">Reset</button>
+            <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">Sessions</button>
           </div>
         </td>
       `;
@@ -444,7 +443,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       card.innerHTML = `
         <div class="school-card-header">
           <div class="school-identity">
-            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
+            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border); background:#fff; flex-shrink:0;">` : ''}
             <div>
               <div class="school-name-text">${school.schoolName}</div>
               <div class="school-id-sub">ID: ${school.userId}</div>
@@ -484,18 +483,9 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
         </div>
         
         <div class="school-card-actions">
-          <button class="admin-btn-action-mobile view-school-btn" data-userid="${school.userId}">
-            <i data-lucide="eye"></i>
-            <span>View</span>
-          </button>
-          <button class="admin-btn-action-mobile reset-pwd-btn" data-userid="${school.userId}">
-            <i data-lucide="key-round"></i>
-            <span>Reset</span>
-          </button>
-          <button class="admin-btn-action-mobile view-sessions-btn" data-userid="${school.userId}">
-            <i data-lucide="clock"></i>
-            <span>Sessions</span>
-          </button>
+          <button class="btn-action-text view-btn view-school-btn" data-userid="${school.userId}">View</button>
+          <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">Reset</button>
+          <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">Sessions</button>
         </div>
       `;
       cardsContainer.appendChild(card);
@@ -805,11 +795,11 @@ function renderSessions() {
 
     // 1. Mobile cards container (hidden on desktop)
     const mobileCardsList = document.createElement("div");
-    mobileCardsList.className = "session-cards-list mobile-only-block";
+    mobileCardsList.className = "session-cards-list mobile-only";
 
     // 2. Desktop table container (hidden on mobile)
     const desktopTableWrapper = document.createElement("div");
-    desktopTableWrapper.className = "desktop-only-block admin-table-card";
+    desktopTableWrapper.className = "desktop-only admin-table-card";
     
     const desktopTable = document.createElement("table");
     desktopTable.className = "admin-table";
@@ -878,7 +868,7 @@ function renderSessions() {
         </td>
         <td>
           ${isActive ? `
-            <button class="btn-danger force-logout-btn admin-btn-action" data-userid="${userId}" data-deviceid="${devId}">
+            <button class="btn-danger force-logout-btn" data-userid="${userId}" data-deviceid="${devId}">
               <i data-lucide="log-out"></i>
               <span>Force Logout</span>
             </button>
@@ -1044,7 +1034,7 @@ function initAdminDashboard() {
       }
 
       // Close drawer when sidebar nav item is clicked
-      document.querySelectorAll(".admin-nav-item, .admin-mobile-nav-item").forEach(item => {
+      document.querySelectorAll(".admin-nav-item").forEach(item => {
         item.addEventListener("click", () => {
           setDrawerOpen(false);
         });
