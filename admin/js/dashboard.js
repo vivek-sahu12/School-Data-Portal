@@ -5,9 +5,9 @@
 
 // State Management
 const STATE = {
-  schools: [],      // From getAdminData
-  sessions: [],     // From getAdminData
-  detailsCache: {}, // { userId: { studentCount, editLogs, lastFetched } }
+  schools: [],
+  sessions: [],
+  detailsCache: {}, // keyed by school userId: { studentCount: N, editLogs: [...] }
   activeTab: "dashboard",
   filters: {
     schools: { search: "", status: "all" },
@@ -17,6 +17,63 @@ const STATE = {
   theme: localStorage.getItem("admin_theme") || "light",
   isFetchingDetails: false
 };
+
+let isDrawerOpen = false;
+
+function setDrawerOpen(open) {
+  isDrawerOpen = !!open;
+  const sidebar = document.getElementById("admin-sidebar");
+  const backdrop = document.getElementById("admin-sidebar-backdrop");
+  
+  if (sidebar) {
+    if (isDrawerOpen) {
+      sidebar.classList.add("open");
+      document.body.classList.add("drawer-open-lock");
+    } else {
+      sidebar.classList.remove("open");
+      document.body.classList.remove("drawer-open-lock");
+    }
+  }
+  
+  if (backdrop) {
+    if (isDrawerOpen) {
+      backdrop.classList.add("open");
+    } else {
+      backdrop.classList.remove("open");
+    }
+  }
+}
+
+function setLoaderState(isLoading) {
+  const skeleton = document.getElementById("admin-skeleton-loader");
+  const globalLoader = document.getElementById("admin-global-loader");
+  
+  if (skeleton) {
+    if (isLoading) {
+      skeleton.classList.remove("hidden");
+      // Hide all view sections
+      document.querySelectorAll(".admin-view-section").forEach(sec => sec.classList.add("hidden"));
+    } else {
+      skeleton.classList.add("hidden");
+      // Restore the current active view section
+      const activeTab = STATE.activeTab || "dashboard";
+      document.querySelectorAll(".admin-view-section").forEach(sec => {
+        if (sec.id === `admin-${activeTab}-view`) {
+          sec.classList.remove("hidden");
+        } else {
+          sec.classList.add("hidden");
+        }
+      });
+      renderActiveTab();
+    }
+  } else if (globalLoader) {
+    if (isLoading) {
+      globalLoader.classList.remove("hidden");
+    } else {
+      globalLoader.classList.add("hidden");
+    }
+  }
+}
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes admin data TTL
 const DETAILS_CACHE_KEY = "admin_schools_detail_cache";
@@ -50,6 +107,13 @@ function updateThemeIcon() {
       sunIcon.classList.remove("hidden");
       moonIcon.classList.add("hidden");
     }
+  }
+  
+  // Update browser bar theme-color
+  const isDark = STATE.theme === "dark";
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', isDark ? '#0b0f19' : '#ffffff');
   }
 }
 
@@ -114,8 +178,7 @@ async function fetchAdminData(force = false) {
   const cacheTime = localStorage.getItem("admin_schools_data_cache_time");
   const now = Date.now();
 
-  const loader = document.getElementById("admin-global-loader");
-  if (loader) loader.classList.remove("hidden");
+  setLoaderState(true);
 
   // Load schools detail cache if exists
   const localDetails = localStorage.getItem(DETAILS_CACHE_KEY);
@@ -132,7 +195,7 @@ async function fetchAdminData(force = false) {
       const parsed = JSON.parse(cacheData);
       STATE.schools = parsed.schools || [];
       STATE.sessions = parsed.sessions || [];
-      if (loader) loader.classList.add("hidden");
+      setLoaderState(false);
       renderActiveTab();
       triggerBackgroundDetailsFetch();
       return;
@@ -163,7 +226,7 @@ async function fetchAdminData(force = false) {
   } catch (error) {
     showToast(error.message || "Could not retrieve admin data.", "error");
   } finally {
-    if (loader) loader.classList.add("hidden");
+    setLoaderState(false);
   }
 }
 
@@ -279,7 +342,12 @@ function renderStats() {
   document.getElementById("stat-total-schools").textContent = totalSchools;
   document.getElementById("stat-active-schools").textContent = activeSchools;
   document.getElementById("stat-inactive-schools").textContent = inactiveSchools;
-  document.getElementById("stat-total-students").textContent = totalStudentsStr;
+  
+  if (STATE.isFetchingDetails && !hasStudentsCache) {
+    document.getElementById("stat-total-students").innerHTML = `<span class="skeleton-pulse" style="width: 80px; height: 32px; display: inline-block; border-radius: 4px;"></span>`;
+  } else {
+    document.getElementById("stat-total-students").textContent = totalStudentsStr;
+  }
 }
 
 /**
@@ -343,7 +411,12 @@ function renderSchoolsList() {
 
     // Student counts
     const cachedDetails = STATE.detailsCache[school.userId];
-    const studentCountStr = cachedDetails ? cachedDetails.studentCount.toLocaleString() : "—";
+    let studentCountStr = "—";
+    if (cachedDetails) {
+      studentCountStr = cachedDetails.studentCount.toLocaleString();
+    } else if (STATE.isFetchingDetails && isActive) {
+      studentCountStr = `<span class="skeleton-pulse" style="width: 50px; height: 18px; display: inline-block; border-radius: 4px;"></span>`;
+    }
 
     const logoUrl = school.logoUrl ? convertDriveUrl(school.logoUrl) : null;
     tr.innerHTML = `
@@ -469,9 +542,15 @@ function renderSchoolsList() {
  * Feature 3 — View as School
  */
 function viewAsSchool(school) {
+  const url = (school.sheetUrl || "").toString().trim();
+  if (!url || !url.startsWith("http")) {
+    showToast(`Failed: No valid Sheet URL is configured for ${school.schoolName}`, "error");
+    return;
+  }
+
   const payload = {
     schoolName: school.schoolName,
-    sheetUrl: school.sheetUrl,
+    sheetUrl: url,
     logoUrl: school.logoUrl,
     adminSession: true
   };
@@ -815,20 +894,41 @@ function initAdminDashboard() {
     submitResetBtn.addEventListener("click", submitPasswordReset);
   }
 
-  // Mobile hamburger menu toggle
-  const mobileToggle = document.getElementById("admin-mobile-menu-toggle");
-  const sidebar = document.getElementById("admin-sidebar");
-  if (mobileToggle && sidebar) {
-    mobileToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("open");
-    });
-
-    // Close when clicking outside on mobile overlay
-    document.addEventListener("click", (e) => {
-      if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target) && sidebar.classList.contains("open")) {
-        sidebar.classList.remove("open");
+  // Close password reset modal on overlay click
+  const passwordResetModal = document.getElementById("password-reset-modal");
+  if (passwordResetModal) {
+    passwordResetModal.addEventListener("click", (e) => {
+      if (e.target === passwordResetModal) {
+        closePasswordResetModal();
       }
     });
+  }
+
+  // Mobile hamburger menu toggle with backdrop drawer lock
+  const mobileToggle = document.getElementById("admin-mobile-menu-toggle");
+  const backdrop = document.getElementById("admin-sidebar-backdrop");
+  if (mobileToggle) {
+    if (!window.adminSidebarListenersBound) {
+      mobileToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setDrawerOpen(!isDrawerOpen);
+      });
+
+      if (backdrop) {
+        backdrop.addEventListener("click", () => {
+          setDrawerOpen(false);
+        });
+      }
+
+      // Close drawer when sidebar nav item is clicked
+      document.querySelectorAll(".admin-nav-item, .admin-mobile-nav-item").forEach(item => {
+        item.addEventListener("click", () => {
+          setDrawerOpen(false);
+        });
+      });
+
+      window.adminSidebarListenersBound = true;
+    }
   }
 }
 

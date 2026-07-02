@@ -2,7 +2,11 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
   <title>Admin Portal — School Data Portal</title>
 
   <!-- Favicon -->
@@ -69,6 +73,9 @@
 
   <!-- ================= 2. ADMIN APP CONTAINER ================= -->
   <div id="admin-app-screen" class="admin-app-layout hidden">
+
+    <!-- MOBILE SIDEBAR BACKDROP -->
+    <div id="admin-sidebar-backdrop" class="admin-sidebar-backdrop"></div>
 
     <!-- DESKTOP SIDEBAR -->
     <aside id="admin-sidebar" class="admin-sidebar">
@@ -157,6 +164,27 @@
 
       <!-- MAIN SCROLLABLE CONTENT VIEWPORT -->
       <main class="admin-content-viewport">
+
+        <!-- SKELETON LOADER CONTAINER -->
+        <div id="admin-skeleton-loader" class="admin-skeleton-loader hidden">
+          <div class="skeleton-header">
+            <div class="skeleton-title skeleton-pulse"></div>
+            <div class="skeleton-subtitle skeleton-pulse"></div>
+          </div>
+          <div class="skeleton-grid">
+            <div class="skeleton-card skeleton-pulse"></div>
+            <div class="skeleton-card skeleton-pulse"></div>
+            <div class="skeleton-card skeleton-pulse"></div>
+            <div class="skeleton-card skeleton-pulse"></div>
+          </div>
+          <div class="skeleton-table">
+            <div class="skeleton-row skeleton-pulse"></div>
+            <div class="skeleton-row skeleton-pulse"></div>
+            <div class="skeleton-row skeleton-pulse"></div>
+            <div class="skeleton-row skeleton-pulse"></div>
+            <div class="skeleton-row skeleton-pulse"></div>
+          </div>
+        </div>
 
         <!-- 1. DASHBOARD OVERVIEW PANEL -->
         <section id="admin-dashboard-view" class="admin-view-section">

@@ -544,12 +544,21 @@ document.addEventListener("DOMContentLoaded", () => {
   if (adminViewing) {
     try {
       const data = JSON.parse(adminViewing);
+      const url = (data.sheetUrl || "").toString().trim();
+      if (!url || !url.startsWith("http")) {
+        localStorage.removeItem("admin_viewing_school");
+        showToast("Invalid School Sheet URL. Redirecting to admin...", "error");
+        setTimeout(() => {
+          window.location.href = "admin/index.html";
+        }, 2000);
+        return;
+      }
       // Create a simulated school session
       const simSchool = {
         userId: "admin_viewing",
         sessionToken: "admin_token",
         schoolName: data.schoolName,
-        sheetUrl: data.sheetUrl,
+        sheetUrl: url,
         logoUrl: data.logoUrl || "",
         editable: "Yes" // Set editable = true always
       };
