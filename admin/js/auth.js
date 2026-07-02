@@ -123,33 +123,9 @@ async function verifyAdminSession() {
     logoutAdmin();
     return false;
   }
-
-  const payload = {
-    action: "checkSession",
-    userId: session.username,
-    deviceId: deviceId
-  };
-
-  try {
-    const response = await fetch(ADMIN_SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.valid === false) {
-        localStorage.removeItem(ADMIN_SESSION_KEY);
-        alert(data.message || "Admin session expired. Please log in again.");
-        window.location.reload();
-        return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    console.warn("Could not verify session with server, offline mode active.", err);
-    return true; // standard fallback
-  }
+  // Admin session is managed and verified locally to prevent invalid session checks 
+  // against the per-school database checkSession action.
+  return true;
 }
 
 /**
