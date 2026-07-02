@@ -68,16 +68,28 @@ function convertDriveUrl(url) {
   if (!url) return "";
   const str = url.toString().trim();
   
-  // Match standard file/d/FILE_ID/ format
+  // Extract file ID from various Google Drive URL formats
+  let fileId = null;
+
+  // Match standard /file/d/FILE_ID/ format
   const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (fileDMatch && fileDMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${fileDMatch[1]}`;
-  }
+  if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
   
   // Match id=FILE_ID query parameter format (e.g. open?id=FILE_ID or uc?id=FILE_ID)
-  const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (idQueryMatch && idQueryMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${idQueryMatch[1]}`;
+  if (!fileId) {
+    const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idQueryMatch && idQueryMatch[1]) fileId = idQueryMatch[1];
+  }
+
+  // Match general /d/FILE_ID format
+  if (!fileId) {
+    const dMatch = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (dMatch && dMatch[1]) fileId = dMatch[1];
+  }
+
+  // Use lh3.googleusercontent.com for reliable direct image serving (no CORS/redirect issues)
+  if (fileId) {
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
   
   return str;

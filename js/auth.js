@@ -6,12 +6,34 @@
 const SESSION_KEY = "school-portal-session";
 
 function convertDriveUrl(url) {
-  if (!url) return null;
-  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return "https://drive.google.com/uc?export=view&id=" + match[1];
+  if (!url) return "";
+  const str = url.toString().trim();
+  
+  // Extract file ID from various Google Drive URL formats
+  let fileId = null;
+
+  // Match standard /file/d/FILE_ID/ format
+  const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
+  
+  // Match id=FILE_ID query parameter format (e.g. open?id=FILE_ID or uc?id=FILE_ID)
+  if (!fileId) {
+    const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idQueryMatch && idQueryMatch[1]) fileId = idQueryMatch[1];
   }
-  return url;
+
+  // Match general /d/FILE_ID format
+  if (!fileId) {
+    const dMatch = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (dMatch && dMatch[1]) fileId = dMatch[1];
+  }
+
+  // Use lh3.googleusercontent.com for reliable direct image serving (no CORS/redirect issues)
+  if (fileId) {
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  
+  return str;
 }
 
 
@@ -361,7 +383,72 @@ async function verifySessionStillValid() {
     window.location.reload();
     return false;
   }
+
+  // If server returned an editable field, sync it to both session stores
+  if (data && data.valid === true && data.editable !== undefined) {
+    const newEditable = data.editable;
+    
+    // Update sdip_session
+    try {
+      const sdipRaw = localStorage.getItem('sdip_session');
+      if (sdipRaw) {
+        const sdipSession = JSON.parse(sdipRaw);
+        const oldEditable = sdipSession.editable;
+        sdipSession.editable = newEditable;
+        localStorage.setItem('sdip_session', JSON.stringify(sdipSession));
+        
+        // Also update the primary session key used by getCurrentSchool()
+        const mainRaw = localStorage.getItem(SESSION_KEY);
+        if (mainRaw) {
+          const mainSession = JSON.parse(mainRaw);
+          mainSession.editable = newEditable;
+          localStorage.setItem(SESSION_KEY, JSON.stringify(mainSession));
+        }
+        
+        // If editable status actually changed, re-evaluate UI immediately
+        const oldAllowed = (oldEditable || "").toString().trim().toLowerCase() === "yes";
+        const newAllowed = (newEditable || "").toString().trim().toLowerCase() === "yes";
+        
+        if (oldAllowed !== newAllowed) {
+          console.log(`Edit permission changed: ${oldEditable} → ${newEditable}`);
+          applyEditablePermissionChange(newAllowed);
+        }
+      }
+    } catch (editableErr) {
+      console.warn('Failed to update editable in session stores:', editableErr);
+    }
+  }
+
   return true;
+}
+
+/**
+ * Immediately applies a change in edit permission to the UI.
+ * - If revoked (allowed=false): remove edit buttons and close any open edit form.
+ * - If granted (allowed=true): re-initialize background sync timer.
+ * No page reload required.
+ */
+function applyEditablePermissionChange(allowed) {
+  if (!allowed) {
+    // Permission REVOKED — close open edit forms gracefully
+    const editModal = document.getElementById("student-edit-modal");
+    if (editModal && !editModal.classList.contains("hidden")) {
+      editModal.classList.add("hidden");
+      showToast("Editing permission has been revoked by the administrator.", "warning");
+    }
+    
+    // Remove any visible edit buttons from detail popups
+    const editBtn = document.getElementById("edit-student-btn");
+    if (editBtn) editBtn.remove();
+    
+    showToast("Edit access has been disabled for this school.", "warning");
+  } else {
+    // Permission GRANTED — start background sync timer if not already running
+    if (typeof window.initBackgroundSyncTimer === "function") {
+      window.initBackgroundSyncTimer();
+    }
+    showToast("Edit access has been enabled for this school.", "success");
+  }
 }
 
 /**
@@ -394,31 +481,43 @@ function showAppScreen(school) {
   
   // Display cached or online school logo
   const logoEl = document.querySelector(".header-logo");
+  const logoWrapper = document.querySelector(".logo-wrapper");
   if (logoEl) {
-    logoEl.style.display = "block"; // reset display
-    let logoUrl = null;
     try {
       const sessionRaw = localStorage.getItem("sdip_session");
       if (sessionRaw) {
-        const sess = JSON.parse(sessionRaw);
-        logoUrl = sess.logoUrl;
+        const session = JSON.parse(sessionRaw);
+        const logoUrl = session.logoUrl;
+        const convertedUrl = convertDriveUrl(logoUrl);
+        if (convertedUrl) {
+          logoEl.src = convertedUrl;
+          logoEl.style.display = 'block';
+          // Remove SVG-style padding so the photo fills the wrapper
+          if (logoWrapper) {
+            logoWrapper.style.padding = '0';
+            logoWrapper.style.overflow = 'hidden';
+          }
+          logoEl.onerror = function() {
+            // Revert to default icon on failure
+            logoEl.src = 'assets/icon.svg';
+            logoEl.style.display = 'block';
+            if (logoWrapper) {
+              logoWrapper.style.padding = '6px';
+              logoWrapper.style.overflow = '';
+            }
+          };
+        } else {
+          logoEl.src = 'assets/icon.svg';
+          logoEl.style.display = 'block';
+        }
+      } else {
+        logoEl.src = 'assets/icon.svg';
+        logoEl.style.display = 'block';
       }
     } catch (e) {
       console.error("Failed to read logoUrl from sdip_session:", e);
-    }
-
-    if (logoUrl) {
-      const convertedUrl = convertDriveUrl(logoUrl);
-      if (convertedUrl) {
-        logoEl.src = convertedUrl;
-        logoEl.onerror = () => {
-          logoEl.style.display = "none";
-        };
-      } else {
-        logoEl.style.display = "none";
-      }
-    } else {
-      logoEl.style.display = "none";
+      logoEl.src = 'assets/icon.svg';
+      logoEl.style.display = 'block';
     }
   }
   

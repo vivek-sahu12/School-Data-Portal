@@ -446,9 +446,6 @@ function renderSchoolsList() {
       <td><span class="last-login-date">${lastLoginStr}</span></td>
       <td>
         <div class="table-actions">
-          <button class="admin-btn-action view-school-btn" data-userid="${school.userId}" title="View as School">
-            <i data-lucide="eye"></i>
-          </button>
           <button class="admin-btn-action reset-pwd-btn" data-userid="${school.userId}" title="Reset Password">
             <i data-lucide="key-round"></i>
           </button>
@@ -514,10 +511,7 @@ function renderSchoolsList() {
       }
     });
 
-    // Bind View
-    tr.querySelector(".view-school-btn").addEventListener("click", () => {
-      viewAsSchool(school);
-    });
+
 
     // Bind Reset Password
     tr.querySelector(".reset-pwd-btn").addEventListener("click", () => {
@@ -934,10 +928,27 @@ function initAdminDashboard() {
 
 function convertDriveUrl(url) {
   if (!url) return null;
-  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return "https://drive.google.com/uc?export=view&id=" + match[1];
+  const str = url.toString().trim();
+  
+  let fileId = null;
+
+  const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
+  
+  if (!fileId) {
+    const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idQueryMatch && idQueryMatch[1]) fileId = idQueryMatch[1];
   }
+
+  if (!fileId) {
+    const dMatch = str.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (dMatch && dMatch[1]) fileId = dMatch[1];
+  }
+
+  if (fileId) {
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  
   return url;
 }
 
