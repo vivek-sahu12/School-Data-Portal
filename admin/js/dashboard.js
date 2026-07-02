@@ -87,9 +87,16 @@ function initTheme() {
   const themeBtn = document.getElementById("admin-theme-toggle");
   if (themeBtn) {
     themeBtn.addEventListener("click", () => {
-      STATE.theme = STATE.theme === "light" ? "dark" : "light";
-      document.documentElement.setAttribute("data-theme", STATE.theme);
-      localStorage.setItem("admin_theme", STATE.theme);
+      const isDark = STATE.theme === "light";
+      STATE.theme = isDark ? "dark" : "light";
+      
+      localStorage.setItem('admin_theme', isDark ? 'dark' : 'light');
+      const themeColorMeta = document.getElementById('theme-color-meta');
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
+      }
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      
       updateThemeIcon();
     });
   }
@@ -108,11 +115,10 @@ function updateThemeIcon() {
     }
   }
   
-  // Update browser bar theme-color
   const isDark = STATE.theme === "dark";
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme) {
-    metaTheme.setAttribute('content', isDark ? '#0b0f19' : '#ffffff');
+  const themeColorMeta = document.getElementById('theme-color-meta');
+  if (themeColorMeta) {
+    themeColorMeta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
   }
 }
 
@@ -160,6 +166,7 @@ function switchTab(tabId) {
 function renderActiveTab() {
   if (STATE.activeTab === "dashboard") {
     renderStats();
+    renderSchoolsList();
   } else if (STATE.activeTab === "schools") {
     renderSchoolsList();
   } else if (STATE.activeTab === "sessions") {
@@ -322,81 +329,57 @@ function renderStats() {
   const activeSchools = STATE.schools.filter(s => s.status.toLowerCase() === "active").length;
   const inactiveSchools = totalSchools - activeSchools;
   
-  // Total Students (sum from details cache)
-  let totalStudents = 0;
-  let hasStudentsCache = false;
-  
-  STATE.schools.forEach(school => {
-    const details = STATE.detailsCache[school.userId];
-    if (details && typeof details.studentCount === "number") {
-      totalStudents += details.studentCount;
-      hasStudentsCache = true;
-    }
-  });
-
-  const totalStudentsStr = hasStudentsCache ? totalStudents.toLocaleString() : (STATE.isFetchingDetails ? "Syncing..." : "—");
+  // Active Sessions
+  const activeSessions = STATE.sessions.filter(sess => !sess.logoutTimestamp || sess.logoutTimestamp.toString().trim() === "").length;
 
   document.getElementById("stat-total-schools").textContent = totalSchools;
   document.getElementById("stat-active-schools").textContent = activeSchools;
   document.getElementById("stat-inactive-schools").textContent = inactiveSchools;
   
-  if (STATE.isFetchingDetails && !hasStudentsCache) {
-    document.getElementById("stat-total-students").innerHTML = `<span class="skeleton-pulse" style="width: 80px; height: 32px; display: inline-block; border-radius: 4px;"></span>`;
-  } else {
-    document.getElementById("stat-total-students").textContent = totalStudentsStr;
+  const sessionsEl = document.getElementById("stat-active-sessions");
+  if (sessionsEl) {
+    sessionsEl.textContent = activeSessions;
   }
 }
 
 /**
- * Feature 2 - Schools List
+ * Populate Schools Container Helper for Card and Table layout
  */
-function renderSchoolsList() {
-  const container = document.getElementById("schools-table-body");
-  if (!container) return;
+function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
+  if (tableBody) tableBody.innerHTML = "";
+  if (cardsContainer) cardsContainer.innerHTML = "";
 
-  const searchQuery = STATE.filters.schools.search.toLowerCase().trim();
-  const statusFilter = STATE.filters.schools.status;
-
-  const filteredSchools = STATE.schools.filter(school => {
-    const nameMatch = school.schoolName.toLowerCase().includes(searchQuery) || school.userId.toLowerCase().includes(searchQuery);
-    
-    let statusMatch = true;
-    if (statusFilter === "active") {
-      statusMatch = school.status.toLowerCase() === "active";
-    } else if (statusFilter === "inactive") {
-      statusMatch = school.status.toLowerCase() !== "active";
-    }
-    
-    return nameMatch && statusMatch;
-  });
-
-  container.innerHTML = "";
-  
   if (filteredSchools.length === 0) {
-    container.innerHTML = `
-      <tr>
-        <td colspan="7" class="admin-empty-row">
-          <i data-lucide="search" class="empty-icon"></i>
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="admin-empty-row" style="text-align: center; padding: 32px; color: var(--text-muted);">
+            <i data-lucide="search" class="empty-icon" style="margin: 0 auto 12px auto; display: block; opacity: 0.5;"></i>
+            <p>No schools matched your criteria.</p>
+          </td>
+        </tr>
+      `;
+    }
+    if (cardsContainer) {
+      cardsContainer.innerHTML = `
+        <div class="admin-empty-card" style="text-align: center; padding: 32px; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-color); color: var(--text-muted);">
+          <i data-lucide="search" class="empty-icon" style="margin: 0 auto 12px auto; display: block; opacity: 0.5;"></i>
           <p>No schools matched your criteria.</p>
-        </td>
-      </tr>
-    `;
+        </div>
+      `;
+    }
     if (typeof lucide !== 'undefined') lucide.createIcons();
     return;
   }
 
   filteredSchools.forEach(school => {
-    const tr = document.createElement("tr");
-    
-    // Status flag check
     const isActive = school.status.toLowerCase() === "active";
     const isEditable = school.editable.toLowerCase() === "yes";
-    
-    // Last login check (most recent Login Timestamp in Login_Sessions for school userId)
+
+    // Last login check
     let lastLoginStr = "Never";
     const schoolSessions = STATE.sessions.filter(s => s.userId === school.userId);
     if (schoolSessions.length > 0) {
-      // Find latest login session
       const logins = schoolSessions
         .map(s => s.loginTimestamp ? new Date(s.loginTimestamp) : new Date(0))
         .filter(d => !isNaN(d.getTime()));
@@ -406,127 +389,263 @@ function renderSchoolsList() {
       }
     }
 
-    // Student counts
-    const cachedDetails = STATE.detailsCache[school.userId];
-    let studentCountStr = "—";
-    if (cachedDetails) {
-      studentCountStr = cachedDetails.studentCount.toLocaleString();
-    } else if (STATE.isFetchingDetails && isActive) {
-      studentCountStr = `<span class="skeleton-pulse" style="width: 50px; height: 18px; display: inline-block; border-radius: 4px;"></span>`;
+    const logoUrl = school.logoUrl ? convertDriveUrl(school.logoUrl) : null;
+
+    // 1. Create table row (Desktop)
+    let tr = null;
+    if (tableBody) {
+      tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div class="school-identity">
+            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
+            <div>
+              <div class="school-name-text">${school.schoolName}</div>
+              <div class="school-id-sub">ID: ${school.userId}</div>
+            </div>
+          </div>
+        </td>
+        <td><code>${school.userId}</code></td>
+        <td>
+          <label class="switch-toggle">
+            <input type="checkbox" class="status-toggle-cb" data-userid="${school.userId}" ${isActive ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </td>
+        <td>
+          <label class="switch-toggle">
+            <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </td>
+        <td><span class="last-login-date">${lastLoginStr}</span></td>
+        <td>
+          <div class="table-actions">
+            <button class="admin-btn-action view-school-btn" data-userid="${school.userId}" title="View School">
+              <i data-lucide="eye"></i>
+            </button>
+            <button class="admin-btn-action reset-pwd-btn" data-userid="${school.userId}" title="Reset Password">
+              <i data-lucide="key-round"></i>
+            </button>
+            <button class="admin-btn-action view-sessions-btn" data-userid="${school.userId}" title="View Sessions">
+              <i data-lucide="clock"></i>
+            </button>
+          </div>
+        </td>
+      `;
+      tableBody.appendChild(tr);
     }
 
-    const logoUrl = school.logoUrl ? convertDriveUrl(school.logoUrl) : null;
-    tr.innerHTML = `
-      <td data-label="School Name">
-        <div class="school-identity">
-          ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
-          <div>
-            <div class="school-name-text">${school.schoolName}</div>
-            <div class="school-id-sub">ID: ${school.userId}</div>
+    // 2. Create card (Mobile)
+    let card = null;
+    if (cardsContainer) {
+      card = document.createElement("div");
+      card.className = "school-mobile-card";
+      card.innerHTML = `
+        <div class="school-card-header">
+          <div class="school-identity">
+            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
+            <div>
+              <div class="school-name-text">${school.schoolName}</div>
+              <div class="school-id-sub">ID: ${school.userId}</div>
+            </div>
           </div>
         </div>
-      </td>
-      <td data-label="User ID"><code>${school.userId}</code></td>
-      <td data-label="Status">
-        <label class="switch-toggle">
-          <input type="checkbox" class="status-toggle-cb" data-userid="${school.userId}" ${isActive ? 'checked' : ''}>
-          <span class="switch-slider"></span>
-        </label>
-      </td>
-      <td data-label="Editing Allowed">
-        <label class="switch-toggle">
-          <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
-          <span class="switch-slider"></span>
-        </label>
-      </td>
-      <td data-label="Cached Students">${studentCountStr}</td>
-      <td data-label="Last Active Time"><span class="last-login-date">${lastLoginStr}</span></td>
-      <td data-label="Quick Actions">
-        <div class="table-actions">
-          <button class="admin-btn-action reset-pwd-btn" data-userid="${school.userId}" title="Reset Password">
-            <i data-lucide="key-round"></i>
+        
+        <div class="school-card-badges">
+          <span class="badge-status-pill ${isActive ? 'active' : 'inactive'}">
+            ${isActive ? 'Active' : 'Inactive'}
+          </span>
+          <span class="badge-editable-pill ${isEditable ? 'yes' : 'no'}">
+            Editable: ${isEditable ? 'Yes' : 'No'}
+          </span>
+        </div>
+        
+        <div class="school-card-toggles">
+          <div class="toggle-group">
+            <span>Status:</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="status-toggle-cb" data-userid="${school.userId}" ${isActive ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-group">
+            <span>Editable:</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="school-card-info">
+          <span>Last Login:</span>
+          <span>${lastLoginStr}</span>
+        </div>
+        
+        <div class="school-card-actions">
+          <button class="admin-btn-action-mobile view-school-btn" data-userid="${school.userId}">
+            <i data-lucide="eye"></i>
+            <span>View</span>
           </button>
-          <button class="admin-btn-action view-sessions-btn" data-userid="${school.userId}" title="View Sessions">
+          <button class="admin-btn-action-mobile reset-pwd-btn" data-userid="${school.userId}">
+            <i data-lucide="key-round"></i>
+            <span>Reset</span>
+          </button>
+          <button class="admin-btn-action-mobile view-sessions-btn" data-userid="${school.userId}">
             <i data-lucide="clock"></i>
+            <span>Sessions</span>
           </button>
         </div>
-      </td>
-    `;
-    
-    // Bind Status optimistic toggling
-    const statusCB = tr.querySelector(".status-toggle-cb");
-    statusCB.addEventListener("change", async () => {
-      const isChecked = statusCB.checked;
-      const nextStatus = isChecked ? "Active" : "Inactive";
-      const oldVal = school.status;
-      
-      // Optimistic update state
-      school.status = nextStatus;
-      showToast(`${school.schoolName} status toggling to ${nextStatus}`, "info");
+      `;
+      cardsContainer.appendChild(card);
+    }
 
-      try {
-        const res = await ApiService.updateField(school.userId, "Status", nextStatus);
-        if (!res || !res.success) {
-          throw new Error(res.message || "Failed to update Status.");
-        }
-        showToast(`${school.schoolName} updated successfully`, "success");
-        // Update caches
-        localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
-        renderStats();
-      } catch (err) {
-        // Revert
-        school.status = oldVal;
-        statusCB.checked = !isChecked;
-        showToast(`Failed to update status: ${err.message}`, "error");
-        renderStats();
+    // Helper to bind status toggle event
+    const bindStatusToggle = (element) => {
+      const statusCB = element.querySelector(".status-toggle-cb");
+      if (statusCB) {
+        statusCB.addEventListener("change", async () => {
+          const isChecked = statusCB.checked;
+          const nextStatus = isChecked ? "Active" : "Inactive";
+          const oldVal = school.status;
+
+          // Optimistic update state
+          school.status = nextStatus;
+          showToast(`${school.schoolName} status toggling to ${nextStatus}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Status", nextStatus);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Status.");
+            }
+            showToast(`${school.schoolName} updated successfully`, "success");
+            // Update caches
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderStats();
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.status = oldVal;
+            statusCB.checked = !isChecked;
+            showToast(`Failed to update status: ${err.message}`, "error");
+            renderStats();
+            renderSchoolsList();
+          }
+        });
       }
-    });
+    };
 
-    // Bind Editable optimistic toggling
-    const editableCB = tr.querySelector(".editable-toggle-cb");
-    editableCB.addEventListener("change", async () => {
-      const isChecked = editableCB.checked;
-      const nextEditable = isChecked ? "Yes" : "No";
-      const oldVal = school.editable;
-      
-      // Optimistic update state
-      school.editable = nextEditable;
-      showToast(`Setting editing permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+    // Helper to bind editable toggle event
+    const bindEditableToggle = (element) => {
+      const editableCB = element.querySelector(".editable-toggle-cb");
+      if (editableCB) {
+        editableCB.addEventListener("change", async () => {
+          const isChecked = editableCB.checked;
+          const nextEditable = isChecked ? "Yes" : "No";
+          const oldVal = school.editable;
 
-      try {
-        const res = await ApiService.updateField(school.userId, "Editable", nextEditable);
-        if (!res || !res.success) {
-          throw new Error(res.message || "Failed to update Editable field.");
-        }
-        showToast(`${school.schoolName} permissions updated`, "success");
-        localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
-      } catch (err) {
-        // Revert
-        school.editable = oldVal;
-        editableCB.checked = !isChecked;
-        showToast(`Failed to update editable permission: ${err.message}`, "error");
+          // Optimistic update state
+          school.editable = nextEditable;
+          showToast(`Setting editing permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Editable", nextEditable);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Editable field.");
+            }
+            showToast(`${school.schoolName} permissions updated`, "success");
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.editable = oldVal;
+            editableCB.checked = !isChecked;
+            showToast(`Failed to update editable permission: ${err.message}`, "error");
+            renderSchoolsList();
+          }
+        });
       }
-    });
+    };
 
+    // Bind other actions
+    const bindActions = (element) => {
+      const viewBtn = element.querySelector(".view-school-btn");
+      if (viewBtn) {
+        viewBtn.addEventListener("click", () => {
+          viewAsSchool(school);
+        });
+      }
 
+      const resetBtn = element.querySelector(".reset-pwd-btn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+          openPasswordResetModal(school.userId);
+        });
+      }
 
-    // Bind Reset Password
-    tr.querySelector(".reset-pwd-btn").addEventListener("click", () => {
-      openPasswordResetModal(school.userId);
-    });
+      const sessionsBtn = element.querySelector(".view-sessions-btn");
+      if (sessionsBtn) {
+        sessionsBtn.addEventListener("click", () => {
+          STATE.filters.sessions.search = school.userId;
+          const sessionSearchInput = document.getElementById("sessions-search-input");
+          if (sessionSearchInput) sessionSearchInput.value = school.userId;
+          switchTab("sessions");
+        });
+      }
+    };
 
-    // Bind View Sessions
-    tr.querySelector(".view-sessions-btn").addEventListener("click", () => {
-      STATE.filters.sessions.search = school.userId;
-      const sessionSearchInput = document.getElementById("sessions-search-input");
-      if (sessionSearchInput) sessionSearchInput.value = school.userId;
-      switchTab("sessions");
-    });
-
-    container.appendChild(tr);
+    if (tr) {
+      bindStatusToggle(tr);
+      bindEditableToggle(tr);
+      bindActions(tr);
+    }
+    if (card) {
+      bindStatusToggle(card);
+      bindEditableToggle(card);
+      bindActions(card);
+    }
   });
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+/**
+ * Feature 2 - Schools List
+ */
+function renderSchoolsList() {
+  // Let's filter schools for Schools view:
+  const schoolsSearchVal = (document.getElementById("schools-search-input")?.value || "").toLowerCase().trim();
+  const schoolsStatusVal = document.getElementById("schools-status-select")?.value || "all";
+  
+  const filteredForSchoolsView = STATE.schools.filter(school => {
+    const nameMatch = school.schoolName.toLowerCase().includes(schoolsSearchVal) || school.userId.toLowerCase().includes(schoolsSearchVal);
+    let statusMatch = true;
+    if (schoolsStatusVal === "active") {
+      statusMatch = school.status.toLowerCase() === "active";
+    } else if (schoolsStatusVal === "inactive") {
+      statusMatch = school.status.toLowerCase() !== "active";
+    }
+    return nameMatch && statusMatch;
+  });
+
+  populateSchoolsContainer(
+    document.getElementById("schools-table-body"),
+    document.getElementById("schools-mobile-cards"),
+    filteredForSchoolsView
+  );
+
+  // Let's filter schools for Dashboard view:
+  const dbSearchVal = (document.getElementById("dashboard-schools-search-input")?.value || "").toLowerCase().trim();
+  const filteredForDbView = STATE.schools.filter(school => {
+    return school.schoolName.toLowerCase().includes(dbSearchVal) || school.userId.toLowerCase().includes(dbSearchVal);
+  });
+
+  populateSchoolsContainer(
+    document.getElementById("dashboard-schools-table-body"),
+    document.getElementById("dashboard-schools-mobile-cards"),
+    filteredForDbView
+  );
 }
 
 /**
@@ -601,12 +720,34 @@ async function submitPasswordReset() {
 /**
  * Feature 5 — Device Sessions View
  */
+/**
+ * Helper to format session date consistently as: "30 Jun 2026, 10:45 AM"
+ */
+function formatSessionDate(dateVal) {
+  if (!dateVal) return "—";
+  const d = parseRobustDate(dateVal);
+  if (!d) return "—";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = d.getDate();
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; 
+  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+}
+
+/**
+ * Feature 5 — Device Sessions View Grouped by School
+ */
 function renderSessions() {
   const container = document.getElementById("sessions-container");
   if (!container) return;
 
-  const searchQuery = STATE.filters.sessions.search.toLowerCase().trim();
-  const statusFilter = STATE.filters.sessions.status || "active";
+  const searchQuery = (document.getElementById("sessions-search-input")?.value || "").toLowerCase().trim();
+  const showInactive = document.getElementById("sessions-status-toggle")?.checked || false;
 
   // Filter sessions by search query and active status
   const filteredSessions = STATE.sessions.filter(sess => {
@@ -617,12 +758,7 @@ function renderSessions() {
                           sess.deviceId.toLowerCase().includes(searchQuery);
 
     const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
-    let matchesStatus = true;
-    if (statusFilter === "active") {
-      matchesStatus = !hasLoggedOut;
-    } else if (statusFilter === "inactive") {
-      matchesStatus = hasLoggedOut;
-    }
+    const matchesStatus = showInactive ? true : !hasLoggedOut;
 
     return matchesSearch && matchesStatus;
   });
@@ -633,7 +769,7 @@ function renderSessions() {
     container.innerHTML = `
       <div class="session-empty-state">
         <i data-lucide="shield-alert"></i>
-        <h3>No sessions found</h3>
+        <h3>No active sessions</h3>
         <p>No device sessions match the selected filters or search terms.</p>
       </div>
     `;
@@ -659,103 +795,139 @@ function renderSessions() {
     const groupDiv = document.createElement("div");
     groupDiv.className = "session-group";
 
-    const titleH3 = document.createElement("h3");
-    titleH3.className = "session-group-title";
-    titleH3.textContent = schoolName;
-    groupDiv.appendChild(titleH3);
+    const groupHeader = document.createElement("div");
+    groupHeader.className = "session-group-header";
+    groupHeader.innerHTML = `
+      <h3>${schoolName}</h3>
+      <span class="session-count-badge">${sessionsInGroup.length} sessions</span>
+    `;
+    groupDiv.appendChild(groupHeader);
 
-    const cardsList = document.createElement("div");
-    cardsList.className = "session-cards-list";
+    // 1. Mobile cards container (hidden on desktop)
+    const mobileCardsList = document.createElement("div");
+    mobileCardsList.className = "session-cards-list mobile-only-block";
+
+    // 2. Desktop table container (hidden on mobile)
+    const desktopTableWrapper = document.createElement("div");
+    desktopTableWrapper.className = "desktop-only-block admin-table-card";
+    
+    const desktopTable = document.createElement("table");
+    desktopTable.className = "admin-table";
+    desktopTable.innerHTML = `
+      <thead>
+        <tr>
+          <th>Device ID</th>
+          <th>Login Time</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const desktopTbody = desktopTable.querySelector("tbody");
+    desktopTableWrapper.appendChild(desktopTable);
 
     sessionsInGroup.forEach(sess => {
       const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
       const isActive = !hasLoggedOut;
 
-      let loginStr = "—";
-      if (sess.loginTimestamp) {
-        const d = parseRobustDate(sess.loginTimestamp);
-        if (d) {
-          loginStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-      }
+      const loginStr = formatSessionDate(sess.loginTimestamp);
 
-      // Truncate Device ID
+      // Truncate Device ID to 12 chars
       const devId = sess.deviceId || "—";
-      const displayDevId = devId.length > 12 ? devId.slice(0, 8) + "..." : devId;
+      const displayDevId = devId.length > 12 ? devId.slice(0, 12) + "..." : devId;
 
+      // Mobile Card HTML
       const card = document.createElement("div");
       card.className = `session-card ${isActive ? 'active' : 'inactive'}`;
-
-      // Card Content matching: School Name, User ID, Device ID (truncated), Login Time, Status, force logout
       card.innerHTML = `
-        <div class="session-card-row">
-          <span class="session-card-label">User ID</span>
-          <span class="session-card-value"><code>${userId}</code></span>
-        </div>
-        <div class="session-card-row">
-          <span class="session-card-label">Device ID</span>
-          <span class="session-card-value" title="${devId}">${displayDevId}</span>
-        </div>
-        <div class="session-card-row">
-          <span class="session-card-label">Login Time</span>
-          <span class="session-card-value">${loginStr}</span>
-        </div>
-        <div class="session-card-row">
-          <span class="session-card-label">Status</span>
-          <span class="session-card-value">
-            <span class="badge-status ${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Logged Out'}</span>
+        <div class="session-card-header">
+          <span class="session-school-name">${schoolName}</span>
+          <span class="badge-status-pill ${isActive ? 'active' : 'inactive'}">
+            ${isActive ? 'Active' : 'Logged Out'}
           </span>
         </div>
-        <div class="session-card-row">
-          <span class="session-card-label">Action</span>
-          <span class="session-card-value">
-            ${isActive ? `
-              <button class="btn-danger force-logout-btn" data-userid="${userId}" data-deviceid="${devId}">
-                <i data-lucide="log-out" style="width:14px; height:14px;"></i>
-                <span>Force Logout</span>
-              </button>
-            ` : '—'}
-          </span>
+        <div class="session-card-details">
+          <div class="detail-row">
+            <span class="detail-label">Device ID:</span>
+            <code class="detail-value">${displayDevId}</code>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Login Time:</span>
+            <span class="detail-value">${loginStr}</span>
+          </div>
         </div>
+        ${isActive ? `
+          <button class="btn-danger force-logout-btn" data-userid="${userId}" data-deviceid="${devId}">
+            <i data-lucide="log-out"></i>
+            <span>Force Logout</span>
+          </button>
+        ` : ''}
       `;
+      mobileCardsList.appendChild(card);
 
-      // Bind force logout
-      if (isActive) {
-        const forceBtn = card.querySelector(".force-logout-btn");
-        forceBtn.addEventListener("click", async () => {
-          if (confirm(`Are you sure you want to terminate session on device ${devId} for school ${schoolName}?`)) {
-            showToast("Requesting session termination...", "info");
-            try {
-              const res = await ApiService.forceLogoutSession(userId, devId);
-              if (res && res.success) {
-                showToast("Session terminated", "success");
-                sess.logoutTimestamp = new Date().toISOString();
-                // Update local storage cache
-                const cacheData = localStorage.getItem("admin_schools_data_cache");
-                if (cacheData) {
-                  const parsed = JSON.parse(cacheData);
-                  const sessInCache = parsed.sessions.find(s => s.userId === userId && s.deviceId === devId);
-                  if (sessInCache) {
-                    sessInCache.logoutTimestamp = sess.logoutTimestamp;
-                    localStorage.setItem("admin_schools_data_cache", JSON.stringify(parsed));
+      // Desktop Table Row HTML
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><code class="monospace-dev-id">${displayDevId}</code></td>
+        <td>${loginStr}</td>
+        <td>
+          <span class="badge-status-pill ${isActive ? 'active' : 'inactive'}">
+            ${isActive ? 'Active' : 'Logged Out'}
+          </span>
+        </td>
+        <td>
+          ${isActive ? `
+            <button class="btn-danger force-logout-btn admin-btn-action" data-userid="${userId}" data-deviceid="${devId}">
+              <i data-lucide="log-out"></i>
+              <span>Force Logout</span>
+            </button>
+          ` : '—'}
+        </td>
+      `;
+      desktopTbody.appendChild(tr);
+
+      // Bind force logout helper
+      const bindForceLogout = (element) => {
+        const forceBtn = element.querySelector(".force-logout-btn");
+        if (forceBtn) {
+          forceBtn.addEventListener("click", async () => {
+            if (confirm(`Are you sure you want to terminate session on device ${devId} for school ${schoolName}?`)) {
+              showToast("Requesting session termination...", "info");
+              try {
+                const res = await ApiService.forceLogoutSession(userId, devId);
+                if (res && res.success) {
+                  showToast("Session terminated", "success");
+                  sess.logoutTimestamp = new Date().toISOString();
+                  // Update cache
+                  const cacheData = localStorage.getItem("admin_schools_data_cache");
+                  if (cacheData) {
+                    const parsed = JSON.parse(cacheData);
+                    const sessInCache = parsed.sessions.find(s => s.userId === userId && s.deviceId === devId);
+                    if (sessInCache) {
+                      sessInCache.logoutTimestamp = sess.logoutTimestamp;
+                      localStorage.setItem("admin_schools_data_cache", JSON.stringify(parsed));
+                    }
                   }
+                  renderSessions();
+                  renderStats();
+                } else {
+                  throw new Error(res.message || "Termination rejected.");
                 }
-                renderSessions();
-                renderStats();
-              } else {
-                throw new Error(res.message || "Termination rejected.");
+              } catch(err) {
+                showToast(`Force logout failed: ${err.message}`, "error");
               }
-            } catch(err) {
-              showToast(`Force logout failed: ${err.message}`, "error");
             }
-          }
-        });
-      }
+          });
+        }
+      };
 
-      cardsList.appendChild(card);
+      bindForceLogout(card);
+      bindForceLogout(tr);
     });
 
-    groupDiv.appendChild(cardsList);
+    groupDiv.appendChild(mobileCardsList);
+    groupDiv.appendChild(desktopTableWrapper);
     container.appendChild(groupDiv);
   });
 
@@ -778,41 +950,43 @@ function initAdminDashboard() {
     });
   }
 
-  // Filter Bindings for Schools
+  // Filter Bindings for Schools Section
   const schoolSearch = document.getElementById("schools-search-input");
   if (schoolSearch) {
-    schoolSearch.addEventListener("input", (e) => {
-      STATE.filters.schools.search = e.target.value;
+    schoolSearch.addEventListener("input", () => {
       renderSchoolsList();
     });
   }
 
   const schoolStatusFilter = document.getElementById("schools-status-select");
   if (schoolStatusFilter) {
-    schoolStatusFilter.addEventListener("change", (e) => {
-      STATE.filters.schools.status = e.target.value;
+    schoolStatusFilter.addEventListener("change", () => {
       renderSchoolsList();
     });
   }
 
-  // Filter Bindings for Sessions
+  // Filter Bindings for Dashboard Section
+  const dbSchoolSearch = document.getElementById("dashboard-schools-search-input");
+  if (dbSchoolSearch) {
+    dbSchoolSearch.addEventListener("input", () => {
+      renderSchoolsList();
+    });
+  }
+
+  // Filter Bindings for Sessions Section
   const sessionSearch = document.getElementById("sessions-search-input");
   if (sessionSearch) {
-    sessionSearch.addEventListener("input", (e) => {
-      STATE.filters.sessions.search = e.target.value;
+    sessionSearch.addEventListener("input", () => {
       renderSessions();
     });
   }
 
-  const sessionStatusFilter = document.getElementById("sessions-status-filter");
-  if (sessionStatusFilter) {
-    sessionStatusFilter.addEventListener("change", (e) => {
-      STATE.filters.sessions.status = e.target.value;
+  const sessionStatusToggle = document.getElementById("sessions-status-toggle");
+  if (sessionStatusToggle) {
+    sessionStatusToggle.addEventListener("change", () => {
       renderSessions();
     });
   }
-
-
 
   // Password reset modal close and submit
   const cancelResetBtn = document.getElementById("cancel-reset-btn");
@@ -834,6 +1008,24 @@ function initAdminDashboard() {
       }
     });
   }
+
+  // Password visibility toggle helper
+  document.querySelectorAll(".toggle-password-visibility").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const wrapper = btn.parentElement;
+      const input = wrapper.querySelector("input");
+      const icon = btn.querySelector("i");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.setAttribute("data-lucide", "eye-off");
+      } else {
+        input.type = "password";
+        icon.setAttribute("data-lucide", "eye");
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  });
 
   // Mobile hamburger menu toggle with backdrop drawer lock
   const mobileToggle = document.getElementById("admin-mobile-menu-toggle");
