@@ -141,6 +141,8 @@ async function triggerBackgroundFetch() {
     if (window.isEditAllowed(school.editable) && typeof syncPendingEditsImmediately === "function") {
       try {
         await syncPendingEditsImmediately();
+        // Delay 2.5 seconds to let sheet write commit fully
+        await new Promise(r => setTimeout(r, 2500));
       } catch (syncErr) {
         console.error("Immediate background sync of edits failed, proceeding with data refresh:", syncErr);
       }
@@ -203,6 +205,8 @@ async function forceRefreshData() {
     if (window.isEditAllowed(school.editable) && typeof syncPendingEditsImmediately === "function") {
       try {
         await syncPendingEditsImmediately();
+        // Delay 2.5 seconds to let sheet write commit fully before checking session status
+        await new Promise(r => setTimeout(r, 2500));
       } catch (syncErr) {
         console.error("Immediate manual sync of edits failed, proceeding with data refresh:", syncErr);
       }

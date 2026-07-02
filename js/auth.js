@@ -308,7 +308,9 @@ async function verifySessionStillValid() {
     return true;
   }
 
-  if (!data.valid) {
+  // Only force logout on EXPLICIT valid: false
+  // Any parse error, network error, or unexpected format = treat as valid, skip check
+  if (data && data.valid === false) {
     localStorage.clear();
     alert(data.message || 'Your session has ended. Please log in again.');
     window.location.reload();
