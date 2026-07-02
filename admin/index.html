@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Admin Portal — School Data Portal</title>
+
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" href="../assets/icon.svg">
+  <link rel="shortcut icon" href="../assets/icon.svg" type="image/x-icon">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ================= ADMIN TOASTS ================= -->
+  <div id="admin-toast-container" class="admin-toast-container"></div>
+
+  <!-- ================= GLOBAL LOADER ================= -->
+  <div id="admin-global-loader" class="admin-global-loader hidden">
+    <div class="admin-spinner"></div>
+    <span>Loading system data...</span>
+  </div>
+
+  <!-- ================= 1. ADMIN LOGIN SCREEN ================= -->
+  <div id="admin-login-screen" class="admin-login-container hidden">
+    <div class="admin-login-card">
+      <div class="admin-login-logo-box">
+        <img src="../assets/icon.svg" alt="Admin Logo" class="admin-login-logo">
+      </div>
+      <h1 class="admin-login-title">Control Panel</h1>
+      <p class="admin-login-subtitle">Sign in to manage system access, credentials, and track sessions.</p>
+
+      <form id="admin-login-form">
+        <div class="admin-form-group">
+          <label for="admin-username">User ID</label>
+          <div class="admin-input-wrapper">
+            <i data-lucide="shield-alert" class="admin-input-icon"></i>
+            <input type="text" id="admin-username" placeholder="Enter administrator ID" required autocomplete="username">
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="admin-password">Password</label>
+          <div class="admin-input-wrapper">
+            <i data-lucide="lock" class="admin-input-icon"></i>
+            <input type="password" id="admin-password" placeholder="Enter administrator password" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <div id="login-error" class="admin-login-error hidden">
+          <i data-lucide="alert-circle" class="admin-error-icon"></i>
+          <span id="login-error-text">Unauthorized access attempt.</span>
+        </div>
+
+        <button type="submit" class="admin-btn-primary admin-btn-block">
+          <span>Authorize Admin Access</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 2. ADMIN APP CONTAINER ================= -->
+  <div id="admin-app-screen" class="admin-app-layout hidden">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside id="admin-sidebar" class="admin-sidebar">
+      <div class="admin-sidebar-header">
+        <img src="../assets/icon.svg" alt="Logo" class="admin-sidebar-logo">
+        <div>
+          <h2 class="admin-sidebar-title">Portal Manager</h2>
+          <span class="admin-role-badge">SuperAdmin</span>
+        </div>
+      </div>
+
+      <nav class="admin-sidebar-nav">
+        <button class="admin-nav-item active" data-target="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="admin-nav-item" data-target="schools">
+          <i data-lucide="school"></i>
+          <span>Schools List</span>
+        </button>
+        <button class="admin-nav-item" data-target="sessions">
+          <i data-lucide="users"></i>
+          <span>Active Sessions</span>
+        </button>
+        <button class="admin-nav-item" data-target="logs">
+          <i data-lucide="scroll-text"></i>
+          <span>Edit Activity Logs</span>
+        </button>
+      </nav>
+
+      <div class="admin-sidebar-footer">
+        <div class="admin-user-profile">
+          <div class="admin-avatar">
+            <i data-lucide="user-cog"></i>
+          </div>
+          <div class="admin-user-meta">
+            <span id="admin-username-display" class="admin-username-text">Admin</span>
+            <span class="admin-role-sub text-muted">System Admin</span>
+          </div>
+        </div>
+        <button class="admin-logout-btn admin-sidebar-logout-btn" title="Sign Out">
+          <i data-lucide="log-out"></i>
+          <span>Log Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN APP SCREEN BODY -->
+    <div class="admin-main-body">
+
+      <!-- HEADER BAR -->
+      <header class="admin-header">
+        <div class="admin-header-left">
+          <button id="admin-mobile-menu-toggle" class="admin-header-btn mobile-only-inline" title="Open Sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="admin-header-titles">
+            <h1 class="admin-header-title">Administrator Controls</h1>
+            <p class="admin-header-subtitle">Overviewing status and sync telemetry.</p>
+          </div>
+        </div>
+
+        <div class="admin-header-actions">
+          <!-- Refresh Button -->
+          <button id="admin-refresh-btn" class="admin-header-btn" title="Force Refetch Cloud Data">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+
+          <!-- Theme Toggle -->
+          <button id="admin-theme-toggle" class="admin-header-btn" title="Toggle Theme Preference">
+            <i data-lucide="sun" id="admin-theme-sun" class="hidden"></i>
+            <i data-lucide="moon" id="admin-theme-moon"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Sync Progress Telemetry -->
+      <div id="admin-sync-progress" class="admin-sync-progress hidden">
+        <div class="progress-details">
+          <span id="admin-sync-progress-text">Syncing school databases...</span>
+        </div>
+        <div class="progress-track">
+          <div id="admin-sync-progress-bar" class="progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- MAIN SCROLLABLE CONTENT VIEWPORT -->
+      <main class="admin-content-viewport">
+
+        <!-- 1. DASHBOARD OVERVIEW PANEL -->
+        <section id="admin-dashboard-view" class="admin-view-section">
+          <div class="admin-view-header">
+            <div>
+              <h2 class="admin-section-title">Quick Stats</h2>
+              <p class="admin-section-subtitle">Realtime metrics of schools and records managed.</p>
+            </div>
+          </div>
+
+          <!-- Metrics Grid -->
+          <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+              <div class="stat-icon-box primary">
+                <i data-lucide="school"></i>
+              </div>
+              <div class="stat-details">
+                <p class="stat-label">Total Schools</p>
+                <h3 id="stat-total-schools" class="stat-value">—</h3>
+              </div>
+            </div>
+
+            <div class="admin-stat-card">
+              <div class="stat-icon-box success">
+                <i data-lucide="check-circle-2"></i>
+              </div>
+              <div class="stat-details">
+                <p class="stat-label">Active Schools</p>
+                <h3 id="stat-active-schools" class="stat-value">—</h3>
+              </div>
+            </div>
+
+            <div class="admin-stat-card">
+              <div class="stat-icon-box danger">
+                <i data-lucide="x-circle"></i>
+              </div>
+              <div class="stat-details">
+                <p class="stat-label">Inactive Schools</p>
+                <h3 id="stat-inactive-schools" class="stat-value">—</h3>
+              </div>
+            </div>
+
+            <div class="admin-stat-card">
+              <div class="stat-icon-box warning">
+                <i data-lucide="users-2"></i>
+              </div>
+              <div class="stat-details">
+                <p class="stat-label">Total Students</p>
+                <h3 id="stat-total-students" class="stat-value">—</h3>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. SCHOOLS MANAGEMENT TAB -->
+        <section id="admin-schools-view" class="admin-view-section hidden">
+          <div class="admin-view-header">
+            <div>
+              <h2 class="admin-section-title">Schools Catalog</h2>
+              <p class="admin-section-subtitle">Grant sheet editing, suspend credentials and launch school viewports.</p>
+            </div>
+          </div>
+
+          <!-- Controls Bar -->
+          <div class="admin-filter-bar">
+            <div class="admin-search-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="schools-search-input" placeholder="Search school name or ID...">
+            </div>
+            
+            <div class="admin-dropdown-wrapper">
+              <select id="schools-status-select" class="admin-select">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Schools Data Table -->
+          <div class="admin-table-card">
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>School Name</th>
+                    <th>User ID</th>
+                    <th>Status</th>
+                    <th>Editing Allowed</th>
+                    <th>Cached Students</th>
+                    <th>Last Active Time</th>
+                    <th>Quick Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="schools-table-body">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. ACTIVE SESSIONS VIEW -->
+        <section id="admin-sessions-view" class="admin-view-section hidden">
+          <div class="admin-view-header">
+            <div>
+              <h2 class="admin-section-title">Active Devices</h2>
+              <p class="admin-section-subtitle">Realtime active sessions currently connected, with remote terminate capabilities.</p>
+            </div>
+          </div>
+
+          <div class="admin-filter-bar">
+            <div class="admin-search-wrapper max-w-md">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="sessions-search-input" placeholder="Search school ID or device hash...">
+            </div>
+          </div>
+
+          <!-- Sessions Table -->
+          <div class="admin-table-card">
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>User ID</th>
+                    <th>School Name</th>
+                    <th>Device ID</th>
+                    <th>Authorized Time</th>
+                    <th>Session Controls</th>
+                  </tr>
+                </thead>
+                <tbody id="sessions-table-body">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. EDIT ACTIVITY LOGS VIEW -->
+        <section id="admin-logs-view" class="admin-view-section hidden">
+          <div class="admin-view-header">
+            <div>
+              <h2 class="admin-section-title">Combined Edit Logs</h2>
+              <p class="admin-section-subtitle">Audit trail of student database edits aggregated from all active school sheets.</p>
+            </div>
+          </div>
+
+          <!-- Comprehensive Filter Bar -->
+          <div class="admin-multi-filter-bar">
+            <div class="admin-filter-field">
+              <label for="logs-school-select">School Database</label>
+              <select id="logs-school-select" class="admin-select">
+                <option value="all">All Schools</option>
+              </select>
+            </div>
+
+            <div class="admin-filter-field">
+              <label for="logs-action-select">Action Type</label>
+              <select id="logs-action-select" class="admin-select">
+                <option value="all">All Actions</option>
+                <option value="Update">Update</option>
+                <option value="Create">Create</option>
+                <option value="Delete">Delete</option>
+              </select>
+            </div>
+
+
+          </div>
+
+          <!-- Logs Output -->
+          <div class="admin-table-card">
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>School Name</th>
+                    <th>User ID</th>
+                    <th>Student Subject</th>
+                    <th>Class</th>
+                    <th>Action</th>
+                    <th>Changed Database Fields</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- MOBILE NAVIGATION BOTTOM BAR -->
+    <nav class="admin-mobile-nav mobile-only-flex">
+      <button class="admin-mobile-nav-item active" data-target="dashboard">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </button>
+      <button class="admin-mobile-nav-item" data-target="schools">
+        <i data-lucide="school"></i>
+        <span>Schools</span>
+      </button>
+      <button class="admin-mobile-nav-item" data-target="sessions">
+        <i data-lucide="users"></i>
+        <span>Sessions</span>
+      </button>
+      <button class="admin-mobile-nav-item" data-target="logs">
+        <i data-lucide="scroll-text"></i>
+        <span>Logs</span>
+      </button>
+      <button class="admin-mobile-nav-item admin-logout-btn" style="color: var(--danger);">
+        <i data-lucide="log-out"></i>
+        <span>Sign Out</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ================= MODALS & OVERLAYS ================= -->
+  
+  <!-- PASSWORD RESET MODAL -->
+  <div id="password-reset-modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <div>
+          <h3 class="admin-modal-title">Reset School Password</h3>
+          <p class="admin-modal-subtitle">Resetting credentials for user ID: <strong id="modal-reset-username">school</strong></p>
+        </div>
+        <button class="admin-modal-close" onclick="closePasswordResetModal()" title="Close Modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div class="admin-form-group">
+          <label for="new-password">New Password</label>
+          <div class="admin-input-wrapper">
+            <i data-lucide="lock" class="admin-input-icon"></i>
+            <input type="password" id="new-password" placeholder="Enter new strong password">
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="confirm-password">Confirm Password</label>
+          <div class="admin-input-wrapper">
+            <i data-lucide="key-round" class="admin-input-icon"></i>
+            <input type="password" id="confirm-password" placeholder="Verify password matches">
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button id="cancel-reset-btn" class="admin-btn-secondary">Cancel</button>
+        <button id="submit-reset-btn" class="admin-btn-primary">
+          <i data-lucide="save"></i>
+          <span>Save Password</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Application Logic -->
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+
+</body>
+</html>

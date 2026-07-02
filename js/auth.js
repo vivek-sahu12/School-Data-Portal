@@ -5,6 +5,16 @@
 
 const SESSION_KEY = "school-portal-session";
 
+function convertDriveUrl(url) {
+  if (!url) return null;
+  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) {
+    return "https://drive.google.com/uc?export=view&id=" + match[1];
+  }
+  return url;
+}
+
+
 /**
  * Check if a user is currently logged in
  */
@@ -16,11 +26,30 @@ function isLoggedIn() {
  * Retrieve current logged-in school metadata
  */
 function getCurrentSchool() {
+  const adminViewing = localStorage.getItem("admin_viewing_school");
+  if (adminViewing) {
+    try {
+      const data = JSON.parse(adminViewing);
+      return {
+        userId: "admin_viewing",
+        sessionToken: "admin_token",
+        schoolName: data.schoolName,
+        sheetUrl: data.sheetUrl,
+        logoUrl: data.logoUrl || "",
+        editable: "Yes"
+      };
+    } catch(e) {
+      console.error("Error parsing admin_viewing_school:", e);
+    }
+  }
   const sessionData = localStorage.getItem(SESSION_KEY);
   return sessionData ? JSON.parse(sessionData) : null;
 }
 
 window.isEditAllowed = function(editableValue) {
+  if (localStorage.getItem("admin_viewing_school")) {
+    return true;
+  }
   return (editableValue || "").toString().trim().toLowerCase() === "yes";
 };
 
@@ -108,6 +137,15 @@ async function attemptLogin(userId, password) {
     const data = await response.json();
     
     if (data && data.success) {
+      if (data.role && data.role.toString().trim() === "SuperAdmin") {
+        const errTextEl = document.getElementById("login-error-text");
+        const errDivEl = document.getElementById("login-error");
+        if (errTextEl && errDivEl) {
+          errTextEl.textContent = "Access denied. Please use the Admin Panel to login.";
+          errDivEl.classList.remove("hidden");
+        }
+        return { success: false, message: "Access denied. Please use the Admin Panel to login." };
+      }
       // Set session (store session token, school name, sheet url, logo url, editable, and userId)
       const sessionObj = {
         userId: userId.trim(),
@@ -122,7 +160,11 @@ async function attemptLogin(userId, password) {
       localStorage.setItem('sdip_session', JSON.stringify({
         username: userId.trim(),
         loginTime: Date.now(),
-        sessionToken: data.sessionToken
+        sessionToken: data.sessionToken,
+        schoolName: data.schoolName,
+        logoUrl: data.logoUrl,
+        editable: data.editable,
+        role: data.role
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -211,6 +253,9 @@ async function logout() {
 }
 
 async function verifySessionStillValid() {
+  if (localStorage.getItem("admin_viewing_school")) {
+    return true;
+  }
   const sessionRaw = localStorage.getItem('sdip_session');
   const deviceId = localStorage.getItem('device_id');
 
@@ -350,17 +395,95 @@ function showAppScreen(school) {
   // Display cached or online school logo
   const logoEl = document.querySelector(".header-logo");
   if (logoEl) {
-    const cachedLogo = localStorage.getItem("school-portal-logo-base64");
-    if (cachedLogo) {
-      logoEl.src = cachedLogo;
-    } else if (school.logoUrl) {
-      const convertedUrl = typeof convertDriveUrl === "function" ? convertDriveUrl(school.logoUrl) : school.logoUrl;
-      logoEl.src = convertedUrl;
-      logoEl.onerror = () => {
-        logoEl.src = "assets/icon.svg";
-      };
+    logoEl.style.display = "block"; // reset display
+    let logoUrl = null;
+    try {
+      const sessionRaw = localStorage.getItem("sdip_session");
+      if (sessionRaw) {
+        const sess = JSON.parse(sessionRaw);
+        logoUrl = sess.logoUrl;
+      }
+    } catch (e) {
+      console.error("Failed to read logoUrl from sdip_session:", e);
+    }
+
+    if (logoUrl) {
+      const convertedUrl = convertDriveUrl(logoUrl);
+      if (convertedUrl) {
+        logoEl.src = convertedUrl;
+        logoEl.onerror = () => {
+          logoEl.style.display = "none";
+        };
+      } else {
+        logoEl.style.display = "none";
+      }
     } else {
-      logoEl.src = "assets/icon.svg";
+      logoEl.style.display = "none";
+    }
+  }
+  
+  // Inject Admin View Banner if viewing as admin
+  if (localStorage.getItem("admin_viewing_school")) {
+    if (!document.getElementById("admin-view-banner")) {
+      const banner = document.createElement("div");
+      banner.id = "admin-view-banner";
+      banner.style.backgroundColor = "#dc2626";
+      banner.style.color = "#ffffff";
+      banner.style.padding = "10px 16px";
+      banner.style.display = "flex";
+      banner.style.justifyContent = "space-between";
+      banner.style.alignItems = "center";
+      banner.style.fontWeight = "600";
+      banner.style.fontSize = "14px";
+      banner.style.fontFamily = "'Inter', sans-serif";
+      banner.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      banner.style.position = "sticky";
+      banner.style.top = "0";
+      banner.style.zIndex = "10000";
+      
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 8px; height: 8px; background-color: #ffffff; border-radius: 50%; animation: pulse 1.5s infinite;"></span>
+          <span>Admin View — ${school.schoolName}</span>
+        </div>
+        <button id="exit-admin-view-btn" style="background-color: #ffffff; color: #dc2626; border: none; padding: 6px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 12px; transition: all 0.2s ease; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+          Exit Admin View
+        </button>
+      `;
+      
+      if (!document.getElementById("admin-banner-styles")) {
+        const style = document.createElement("style");
+        style.id = "admin-banner-styles";
+        style.textContent = `
+          @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+          }
+          #exit-admin-view-btn:hover {
+            background-color: #f3f4f6 !important;
+            transform: translateY(-1px);
+          }
+          #exit-admin-view-btn:active {
+            transform: translateY(0);
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      document.getElementById("app-screen").prepend(banner);
+      
+      document.getElementById("exit-admin-view-btn").addEventListener("click", () => {
+        localStorage.removeItem("admin_viewing_school");
+        localStorage.removeItem("school-portal-session");
+        localStorage.removeItem("school-portal-data");
+        window.location.href = "admin/index.html";
+      });
+    }
+  } else {
+    const banner = document.getElementById("admin-view-banner");
+    if (banner) {
+      banner.remove();
     }
   }
   
@@ -417,11 +540,48 @@ function showToast(message, type = "info") {
 
 // Check session on page load
 document.addEventListener("DOMContentLoaded", () => {
-  const school = getCurrentSchool();
-  if (school) {
-    showAppScreen(school);
+  const adminViewing = localStorage.getItem("admin_viewing_school");
+  if (adminViewing) {
+    try {
+      const data = JSON.parse(adminViewing);
+      // Create a simulated school session
+      const simSchool = {
+        userId: "admin_viewing",
+        sessionToken: "admin_token",
+        schoolName: data.schoolName,
+        sheetUrl: data.sheetUrl,
+        logoUrl: data.logoUrl || "",
+        editable: "Yes" // Set editable = true always
+      };
+      
+      // Store in standard session keys so the app uses them
+      localStorage.setItem(SESSION_KEY, JSON.stringify(simSchool));
+      localStorage.setItem('sdip_session', JSON.stringify({
+        username: "admin_viewing",
+        loginTime: Date.now(),
+        sessionToken: "admin_token",
+        schoolName: data.schoolName,
+        logoUrl: data.logoUrl || "",
+        editable: "Yes",
+        role: "Admin"
+      }));
+      
+      // Ensure we clear any cached data from previous schools so we fetch it fresh
+      localStorage.removeItem("school-portal-data");
+      localStorage.removeItem("school-portal-last-fetch");
+      
+      showAppScreen(simSchool);
+    } catch (e) {
+      console.error("Failed to parse admin_viewing_school:", e);
+      showLoginScreen();
+    }
   } else {
-    showLoginScreen();
+    const school = getCurrentSchool();
+    if (school) {
+      showAppScreen(school);
+    } else {
+      showLoginScreen();
+    }
   }
 
   // Bind Login Form submission
