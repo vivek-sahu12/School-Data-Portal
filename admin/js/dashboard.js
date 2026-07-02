@@ -417,7 +417,7 @@ function renderSchoolsList() {
 
     const logoUrl = school.logoUrl ? convertDriveUrl(school.logoUrl) : null;
     tr.innerHTML = `
-      <td>
+      <td data-label="School Name">
         <div class="school-identity">
           ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color); background:#fff; flex-shrink:0;">` : ''}
           <div>
@@ -426,22 +426,22 @@ function renderSchoolsList() {
           </div>
         </div>
       </td>
-      <td><code>${school.userId}</code></td>
-      <td>
+      <td data-label="User ID"><code>${school.userId}</code></td>
+      <td data-label="Status">
         <label class="switch-toggle">
           <input type="checkbox" class="status-toggle-cb" data-userid="${school.userId}" ${isActive ? 'checked' : ''}>
           <span class="switch-slider"></span>
         </label>
       </td>
-      <td>
+      <td data-label="Editing Allowed">
         <label class="switch-toggle">
           <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
           <span class="switch-slider"></span>
         </label>
       </td>
-      <td>${studentCountStr}</td>
-      <td><span class="last-login-date">${lastLoginStr}</span></td>
-      <td>
+      <td data-label="Cached Students">${studentCountStr}</td>
+      <td data-label="Last Active Time"><span class="last-login-date">${lastLoginStr}</span></td>
+      <td data-label="Quick Actions">
         <div class="table-actions">
           <button class="admin-btn-action reset-pwd-btn" data-userid="${school.userId}" title="Reset Password">
             <i data-lucide="key-round"></i>
@@ -684,7 +684,7 @@ function renderSessions() {
       const displayDevId = devId.length > 12 ? devId.slice(0, 8) + "..." : devId;
 
       const card = document.createElement("div");
-      card.className = "session-card";
+      card.className = `session-card ${isActive ? 'active' : 'inactive'}`;
 
       // Card Content matching: School Name, User ID, Device ID (truncated), Login Time, Status, force logout
       card.innerHTML = `

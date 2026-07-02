@@ -756,6 +756,9 @@
         if (typeof isFetching !== 'undefined') {
           isFetching = false;
         }
+        if (typeof isSyncInProgress !== 'undefined') {
+          isSyncInProgress = false;
+        }
         if (typeof setRefreshSpinner === 'function') {
           setRefreshSpinner(false);
         }
