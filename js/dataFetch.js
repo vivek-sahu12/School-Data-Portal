@@ -71,7 +71,7 @@ function initializeDataFetchWorkflow() {
     // Check if cache is older than 24 hours
     const lastFetch = localStorage.getItem(TIMEOUT_KEY);
     const age = lastFetch ? Date.now() - parseInt(lastFetch) : Infinity;
-    
+
     if (age > REFRESH_INTERVAL_MS) {
       console.log("[Sync] Cached data is older than 24 hours. Triggering runSyncPipeline('pageload').");
       runSyncPipeline('pageload');
@@ -90,7 +90,7 @@ function getStoredUserId() {
     try {
       const session = JSON.parse(sessionRaw);
       return session.username || "";
-    } catch (e) {}
+    } catch (e) { }
   }
   return "";
 }
@@ -105,14 +105,14 @@ function getStoredSheetUrl() {
     try {
       const session = JSON.parse(sessionRaw);
       if (session.sheetUrl) return session.sheetUrl;
-    } catch (e) {}
+    } catch (e) { }
   }
   const sdipRaw = localStorage.getItem("sdip_session");
   if (sdipRaw) {
     try {
       const session = JSON.parse(sdipRaw);
       if (session.sheetUrl) return session.sheetUrl;
-    } catch (e) {}
+    } catch (e) { }
   }
   return "";
 }
@@ -125,7 +125,7 @@ function updateStoredEditable(value) {
       const session = JSON.parse(sdipRaw);
       session.editable = value;
       localStorage.setItem("sdip_session", JSON.stringify(session));
-    } catch (e) {}
+    } catch (e) { }
   }
   // Update school-portal-session
   const sessionRaw = localStorage.getItem("school-portal-session");
@@ -134,7 +134,7 @@ function updateStoredEditable(value) {
       const session = JSON.parse(sessionRaw);
       session.editable = value;
       localStorage.setItem("school-portal-session", JSON.stringify(session));
-    } catch (e) {}
+    } catch (e) { }
   }
   // Immediately re-evaluate edit button visibility
   updateEditButtonVisibility();
@@ -147,7 +147,7 @@ function updateEditButtonVisibility() {
     try {
       const session = JSON.parse(sdipRaw);
       editable = session.editable || "";
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const allowed = window.isEditAllowed(editable);
@@ -160,7 +160,7 @@ function updateEditButtonVisibility() {
         showToast("Editing permission has been revoked by the administrator.", "warning");
       }
     }
-    
+
     // Remove any visible edit buttons from detail popups
     const editBtn = document.getElementById("edit-student-btn");
     if (editBtn) editBtn.remove();
@@ -222,19 +222,19 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     console.log('[Sync] Already in progress, skipping.');
     return;
   }
-  
+
   isSyncInProgress = true;
   console.log('[Sync] Pipeline started. Trigger:', triggeredBy);
-  
+
   // Set UI state to fetching
   setRefreshSpinner(true);
   const hasCached = isDataLoaded();
   const appLoading = document.getElementById("app-loading-bar");
   const skeletonLoader = document.getElementById("skeleton-loader");
   const retryContainer = document.getElementById("retry-container");
-  
+
   if (retryContainer) retryContainer.classList.add("hidden");
-  
+
   if (!hasCached) {
     // Hide view sections only if no cached data is available to display
     document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
@@ -243,7 +243,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     // Show lightweight top loading bar if we have cached data to display
     if (appLoading) appLoading.classList.remove("hidden");
   }
-  
+
   if (triggeredBy === 'manual') {
     if (typeof showToast === "function") {
       showToast("Synchronizing with cloud server...", "info");
@@ -277,10 +277,10 @@ async function runSyncPipeline(triggeredBy = 'auto') {
           deviceId: getStoredDeviceId()
         })
       }, 10000); // 10 second timeout
-      
+
       const sessionData = await sessionResult.json();
       console.log('[Sync] Step 2: Response:', sessionData);
-      
+
       // ONLY force logout on explicit valid:false — never on network error
       if (sessionData && sessionData.valid === false) {
         console.warn('[Sync] Step 2: Session invalid —', sessionData.message);
@@ -288,13 +288,13 @@ async function runSyncPipeline(triggeredBy = 'auto') {
         forceLogout(sessionData.message || 'Your session has ended. Please log in again.');
         return; // STOP pipeline
       }
-      
+
       // Step 2b: Update editable in session if returned
       if (sessionData && sessionData.valid === true && sessionData.editable !== undefined) {
         updateStoredEditable(sessionData.editable);
         console.log('[Sync] Step 2b: Editable updated to:', sessionData.editable);
       }
-      
+
     } catch (err) {
       // Network error — do NOT force logout, just skip and continue
       console.warn('[Sync] Step 2: Network error (non-fatal, skipping session check):', err.message);
@@ -305,25 +305,25 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     try {
       let sheetUrl = getStoredSheetUrl();
       if (!sheetUrl) throw new Error('No sheetUrl in session');
-      
+
       // Add a cache-busting timestamp to bypass Google's network caches
       sheetUrl = `${sheetUrl}${sheetUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      
-      const dataResult = await fetchWithTimeout(sheetUrl, {}, 15000);
+
+      const dataResult = await fetchWithTimeout(sheetUrl, {}, 45000);
       const freshData = await dataResult.json();
-      
+
       // Validate response has expected structure
       if (!freshData || typeof freshData !== 'object') {
         throw new Error('Invalid data structure received');
       }
-      
+
       // Save to localStorage with new timestamp
       saveDataToCache(freshData);
       console.log('[Sync] Step 3: Data fetched and cached successfully.');
-      
+
       // Refresh cached logo as well
       await refreshCachedLogo();
-      
+
       if (triggeredBy === 'manual') {
         if (typeof showToast === "function") {
           showToast("Sync complete. Fresh data loaded.", "success");
@@ -333,12 +333,12 @@ async function runSyncPipeline(triggeredBy = 'auto') {
           showToast("Database auto-updated in background.", "success");
         }
       }
-      
+
     } catch (err) {
       // Non-fatal: keep showing existing cached data
       console.warn('[Sync] Step 3: Data fetch failed (showing cached data):', err.message);
       showSyncFailedNotice(); // small non-blocking toast
-      
+
       if (!isDataLoaded() && retryContainer) {
         retryContainer.classList.remove("hidden");
       }
@@ -357,12 +357,12 @@ async function runSyncPipeline(triggeredBy = 'auto') {
   } finally {
     // ALWAYS release the lock, even if something unexpected throws
     isSyncInProgress = false;
-    
+
     // Hide loading indicators
     if (skeletonLoader) skeletonLoader.classList.add("hidden");
     if (appLoading) appLoading.classList.add("hidden");
     setRefreshSpinner(false);
-    
+
     // Restore active view if we hid it
     if (isDataLoaded()) {
       const activeTab = window.currentActiveTab || "dashboard";
@@ -376,7 +376,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     } else {
       if (retryContainer) retryContainer.classList.remove("hidden");
     }
-    
+
     console.log('[Sync] Pipeline complete.');
   }
 }
@@ -387,7 +387,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
 function updateSyncTimeText() {
   const lastFetch = localStorage.getItem(TIMEOUT_KEY);
   const textEl = document.getElementById("sync-time-text");
-  
+
   if (!textEl) return;
 
   if (!lastFetch) {
@@ -396,13 +396,13 @@ function updateSyncTimeText() {
   }
 
   const date = new Date(parseInt(lastFetch));
-  
+
   // Clean formatting: e.g. "Synced 10:15 AM"
   const hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
-  
+
   textEl.textContent = `Synced ${displayHours}:${minutes} ${ampm}`;
   textEl.parentElement.title = `Last successful sync: ${date.toLocaleString()}`;
 }
@@ -455,7 +455,7 @@ document.addEventListener("DOMContentLoaded", () => {
       runSyncPipeline('manual');
     });
   }
-  
+
   // Set up periodic background auto-refresh check every 5 minutes
   setInterval(() => {
     const lastFetch = localStorage.getItem("school-portal-last-fetch");
