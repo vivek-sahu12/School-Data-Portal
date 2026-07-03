@@ -45,16 +45,54 @@ function initPdfExport(data) {
   const addBlankBtn = document.getElementById("add-blank-column-btn");
   if (addBlankBtn && !addBlankBtn.dataset.listenerBound) {
     addBlankBtn.addEventListener("click", () => {
-      if (selectedPdfColumnsOrdered.length >= 7) {
-        showToast("You can select a maximum of 7 columns.", "warning");
-        return;
-      }
       const uniqueId = `__blank_${Math.random().toString(36).substr(2, 5)}`;
       selectedPdfColumnsOrdered.push(uniqueId);
       renderPdfColumnsList();
     });
     addBlankBtn.dataset.listenerBound = "true";
   }
+}
+
+/**
+ * Get smart default column list based on report category or sheet key
+ */
+function getSmartDefaultColumns(sheetKey, headers) {
+  const normKey = sheetKey.toLowerCase();
+  
+  const findHeader = (pattern) => {
+    return headers.find(h => pattern.test(h.toLowerCase().trim()));
+  };
+
+  const nameKey = findHeader(/name/);
+  const classKey = findHeader(/class/);
+  const sectionKey = findHeader(/section/);
+
+  const defaults = [];
+  if (nameKey) defaults.push(nameKey);
+  if (classKey) defaults.push(classKey);
+  if (sectionKey) defaults.push(sectionKey);
+
+  if (normKey === "a1") {
+    const aadhar = findHeader(/aadhar|adhar/);
+    if (aadhar) defaults.push(aadhar);
+  } else if (normKey === "a2") {
+    const phone = findHeader(/phone|mobile|contact/);
+    if (phone) defaults.push(phone);
+  } else if (normKey === "b1" || normKey === "b2") {
+    const pen = findHeader(/pen/);
+    if (pen) defaults.push(pen);
+  } else if (normKey === "b3" || normKey === "b4") {
+    const samagra = findHeader(/samagra/);
+    if (samagra) defaults.push(samagra);
+  } else if (normKey === "c1" || normKey === "c2") {
+    return headers;
+  } else {
+    // Standard tables - name, class, section + first 4 rest columns
+    const rest = headers.filter(h => h !== nameKey && h !== classKey && h !== sectionKey);
+    return [...defaults, ...rest.slice(0, 4)];
+  }
+
+  return headers.filter(h => defaults.includes(h));
 }
 
 /**
@@ -78,12 +116,8 @@ function openPdfModalForSheet(sheetKey) {
   };
   pdfOriginalHeaders = Object.keys(records[0]).filter(col => !isUidKey(col));
   
-  // Initialize state (keep at most first 7 checked by default)
-  if (pdfOriginalHeaders.length > 7) {
-    selectedPdfColumnsOrdered = pdfOriginalHeaders.slice(0, 7);
-  } else {
-    selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
-  }
+  // Smart Default Selection based on report category
+  selectedPdfColumnsOrdered = getSmartDefaultColumns(sheetKey, pdfOriginalHeaders);
 
   // Render the checklist grid
   renderPdfColumnsList();
@@ -109,12 +143,7 @@ function closePdfModal() {
  */
 function toggleAllPdfColumns(isChecked) {
   if (isChecked) {
-    if (pdfOriginalHeaders.length > 7) {
-      selectedPdfColumnsOrdered = pdfOriginalHeaders.slice(0, 7);
-      showToast("Selected the first 7 columns. Maximum limit is 7.", "info");
-    } else {
-      selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
-    }
+    selectedPdfColumnsOrdered = [...pdfOriginalHeaders];
   } else {
     selectedPdfColumnsOrdered = [];
   }
@@ -158,11 +187,6 @@ function renderPdfColumnsList() {
         // Deselect and remove from ordered list
         selectedPdfColumnsOrdered.splice(index, 1);
       } else {
-        // Enforce 7 columns limit
-        if (selectedPdfColumnsOrdered.length >= 7) {
-          showToast("You can select a maximum of 7 columns.", "warning");
-          return;
-        }
         // Select and push to the end of ordered list
         selectedPdfColumnsOrdered.push(col);
       }
@@ -291,12 +315,10 @@ function generatePdfReport() {
     const sumReq = reqWidths.reduce((s, w) => s + w, 0);
     let finalWidths = [...reqWidths];
 
-    if (sumReq < printWidth) {
-      // Scale up to fill the printable A4 page width
-      const scale = printWidth / sumReq;
-      finalWidths = reqWidths.map(w => w * scale);
-    }
-    // If sumReq >= printWidth, do NOT scale down (prevent shrinking to avoid truncation/clipping)
+    // Scale column widths proportionally to exactly fit the printable page width.
+    // This prevents overflowing off the right page boundary when many columns are selected.
+    const scale = printWidth / sumReq;
+    finalWidths = reqWidths.map(w => w * scale);
 
     const columnStyles = {};
     finalWidths.forEach((w, idx) => {

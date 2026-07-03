@@ -267,37 +267,68 @@ async function runSyncPipeline(triggeredBy = 'auto') {
 
     // ── STEP 2: checkSession (Active/Inactive + session validity) ─
     console.log('[Sync] Step 2: Checking session validity...');
-    let sessionResult;
-    try {
-      sessionResult = await fetchWithTimeout(ADMIN_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'checkSession',
-          userId: getStoredUserId(),
-          deviceId: getStoredDeviceId()
-        })
-      }, 10000); // 10 second timeout
+    let isAdminViewing = false;
+    const adminViewing = localStorage.getItem("admin_viewing_school");
+    const adminSession = localStorage.getItem("admin_session");
+    if (adminViewing && adminSession) {
+      try {
+        const sess = JSON.parse(adminSession);
+        if (sess && sess.sessionToken) {
+          isAdminViewing = true;
+        }
+      } catch (e) {}
+    }
 
-      const sessionData = await sessionResult.json();
-      console.log('[Sync] Step 2: Response:', sessionData);
+    if (isAdminViewing) {
+      console.log("[Sync] Step 2: Admin viewing school, skipping session validity check.");
+    } else {
+      let sessionResult;
+      try {
+        sessionResult = await fetchWithTimeout(ADMIN_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'checkSession',
+            userId: getStoredUserId(),
+            deviceId: getStoredDeviceId()
+          })
+        }, 10000); // 10 second timeout
 
-      // ONLY force logout on explicit valid:false — never on network error
-      if (sessionData && sessionData.valid === false) {
-        console.warn('[Sync] Step 2: Session invalid —', sessionData.message);
-        isSyncInProgress = false;
-        forceLogout(sessionData.message || 'Your session has ended. Please log in again.');
-        return; // STOP pipeline
+        const sessionData = await sessionResult.json();
+        console.log('[Sync] Step 2: Response:', sessionData);
+
+        // ONLY force logout on explicit valid:false — never on network error
+        if (sessionData && sessionData.valid === false) {
+          console.warn('[Sync] Step 2: Session invalid —', sessionData.message);
+          isSyncInProgress = false;
+          forceLogout(sessionData.message || 'Your session has ended. Please log in again.');
+          return; // STOP pipeline
+        }
+
+        // Step 2b: Update editable in session if returned
+        if (sessionData && sessionData.valid === true) {
+          if (sessionData.editable !== undefined) {
+            updateStoredEditable(sessionData.editable);
+            console.log('[Sync] Step 2b: Editable updated to:', sessionData.editable);
+          }
+          if (sessionData.report !== undefined) {
+            const sdipRaw = localStorage.getItem("sdip_session");
+            if (sdipRaw) {
+              try {
+                const session = JSON.parse(sdipRaw);
+                session.report = sessionData.report;
+                localStorage.setItem("sdip_session", JSON.stringify(session));
+              } catch (e) { }
+            }
+          }
+          if (typeof updateReportsNavVisibility === "function") {
+            updateReportsNavVisibility();
+          }
+        }
+
+      } catch (err) {
+        // Network error — do NOT force logout, just skip and continue
+        console.warn('[Sync] Step 2: Network error (non-fatal, skipping session check):', err.message);
       }
-
-      // Step 2b: Update editable in session if returned
-      if (sessionData && sessionData.valid === true && sessionData.editable !== undefined) {
-        updateStoredEditable(sessionData.editable);
-        console.log('[Sync] Step 2b: Editable updated to:', sessionData.editable);
-      }
-
-    } catch (err) {
-      // Network error — do NOT force logout, just skip and continue
-      console.warn('[Sync] Step 2: Network error (non-fatal, skipping session check):', err.message);
     }
 
     // ── STEP 3: Fetch fresh school data ──────────────────────────

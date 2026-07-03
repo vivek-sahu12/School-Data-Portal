@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -12,6 +13,7 @@
   <link rel="shortcut icon" href="../assets/icon.svg" type="image/x-icon">
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
 
   <div id="admin-toast-container" class="admin-toast-container"></div>
@@ -29,14 +31,16 @@
           <label for="admin-username">User ID</label>
           <div class="admin-input-wrapper">
             <i data-lucide="shield-alert" class="admin-input-icon"></i>
-            <input type="text" id="admin-username" placeholder="Enter administrator ID" required autocomplete="username">
+            <input type="text" id="admin-username" placeholder="Enter administrator ID" required
+              autocomplete="username">
           </div>
         </div>
         <div class="admin-form-group">
           <label for="admin-password">Password</label>
           <div class="admin-input-wrapper">
             <i data-lucide="lock" class="admin-input-icon"></i>
-            <input type="password" id="admin-password" placeholder="Enter password" required autocomplete="current-password">
+            <input type="password" id="admin-password" placeholder="Enter password" required
+              autocomplete="current-password">
           </div>
         </div>
         <div id="login-error" class="admin-login-error hidden">
@@ -96,8 +100,10 @@
             <i data-lucide="menu"></i>
           </button>
           <div class="header-logo desktop-only">
-            <img src="../assets/icon.svg" alt="Logo" class="header-logo-img" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
-            <span class="header-logo-text" style="font-weight: 700; font-size: var(--text-lg); vertical-align: middle;">School Portal</span>
+            <img src="../assets/icon.svg" alt="Logo" class="header-logo-img"
+              style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">
+            <span class="header-logo-text"
+              style="font-weight: 700; font-size: var(--text-lg); vertical-align: middle;">School Portal</span>
           </div>
         </div>
         <h1 id="admin-header-title" class="header-section-title">Dashboard</h1>
@@ -114,7 +120,9 @@
 
       <div id="admin-sync-progress" class="admin-sync-progress hidden">
         <div class="progress-details"><span id="admin-sync-progress-text">Syncing...</span></div>
-        <div class="progress-track"><div id="admin-sync-progress-bar" class="progress-fill" style="width:0%"></div></div>
+        <div class="progress-track">
+          <div id="admin-sync-progress-bar" class="progress-fill" style="width:0%"></div>
+        </div>
       </div>
 
       <main class="admin-content-viewport">
@@ -170,7 +178,18 @@
             </div>
             <div class="desktop-only admin-table-card">
               <table class="admin-table">
-                <thead><tr><th>School</th><th>User ID</th><th>Status</th><th>Editable</th><th>Last Login</th><th>Actions</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>School</th>
+                    <th>User ID</th>
+                    <th>Status</th>
+                    <th>Editable</th>
+                    <th>Report</th>
+                    <th>Devices</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
                 <tbody id="dashboard-schools-table-body"></tbody>
               </table>
             </div>
@@ -197,7 +216,18 @@
           </div>
           <div class="desktop-only admin-table-card">
             <table class="admin-table">
-              <thead><tr><th>School</th><th>User ID</th><th>Status</th><th>Editable</th><th>Last Login</th><th>Actions</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>School</th>
+                  <th>User ID</th>
+                  <th>Status</th>
+                  <th>Editable</th>
+                  <th>Report</th>
+                  <th>Devices</th>
+                  <th>Last Login</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
               <tbody id="schools-table-body"></tbody>
             </table>
           </div>
@@ -267,9 +297,38 @@
     </div>
   </div>
 
+  <!-- DEVICES LIMIT MODAL -->
+  <div id="devices-limit-modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <div>
+          <h3 class="admin-modal-title">Edit Device Limit</h3>
+          <p class="admin-modal-subtitle">Configure allowed sessions for: <strong id="modal-devices-username">school</strong></p>
+        </div>
+        <button class="admin-modal-close" onclick="closeDevicesLimitModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="admin-modal-body">
+        <div class="admin-form-group">
+          <label for="devices-limit-input">Max Concurrent Login Devices</label>
+          <div class="admin-input-wrapper">
+            <i data-lucide="smartphone" class="admin-input-icon"></i>
+            <input type="number" id="devices-limit-input" min="1" max="99" placeholder="Enter limit (e.g. 3)" style="padding-left: 36px; width: 100%; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); font-weight: 600;">
+          </div>
+        </div>
+      </div>
+      <div class="admin-modal-footer">
+        <button id="cancel-devices-btn" class="admin-btn-secondary" onclick="closeDevicesLimitModal()">Cancel</button>
+        <button id="submit-devices-btn" class="admin-btn-primary">
+          <i data-lucide="save"></i><span>Save Limit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/dashboard.js"></script>
 </body>
+
 </html>

@@ -23,7 +23,7 @@ function setDrawerOpen(open) {
   isDrawerOpen = !!open;
   const sidebar = document.getElementById("admin-sidebar");
   const backdrop = document.getElementById("admin-sidebar-backdrop");
-  
+
   if (sidebar) {
     if (isDrawerOpen) {
       sidebar.classList.add("open");
@@ -33,7 +33,7 @@ function setDrawerOpen(open) {
       document.body.classList.remove("drawer-open-lock");
     }
   }
-  
+
   if (backdrop) {
     if (isDrawerOpen) {
       backdrop.classList.add("open");
@@ -46,7 +46,7 @@ function setDrawerOpen(open) {
 function setLoaderState(isLoading) {
   const skeleton = document.getElementById("admin-skeleton-loader");
   const globalLoader = document.getElementById("admin-global-loader");
-  
+
   if (skeleton) {
     if (isLoading) {
       skeleton.classList.remove("hidden");
@@ -91,7 +91,7 @@ function applyTheme(isDark) {
 function initTheme() {
   const savedTheme = localStorage.getItem('admin_theme') || 'light';
   applyTheme(savedTheme === 'dark');
-  
+
   const themeBtn = document.getElementById("admin-theme-toggle");
   if (themeBtn) {
     themeBtn.addEventListener("click", () => {
@@ -133,7 +133,7 @@ function initNavigation() {
 
 function switchTab(tabId) {
   STATE.activeTab = tabId;
-  
+
   // Update nav item active states
   document.querySelectorAll(".admin-nav-item").forEach(item => {
     if (item.getAttribute("data-target") === tabId) {
@@ -194,7 +194,7 @@ async function fetchAdminData(force = false) {
   if (localDetails) {
     try {
       STATE.detailsCache = JSON.parse(localDetails);
-    } catch(e) {
+    } catch (e) {
       STATE.detailsCache = {};
     }
   }
@@ -208,7 +208,7 @@ async function fetchAdminData(force = false) {
       renderActiveTab();
       triggerBackgroundDetailsFetch();
       return;
-    } catch(e) {
+    } catch (e) {
       console.warn("Error parsing cached admin data, refetching...", e);
     }
   }
@@ -221,11 +221,11 @@ async function fetchAdminData(force = false) {
     if (res && res.success) {
       STATE.schools = res.schools || [];
       STATE.sessions = res.sessions || [];
-      
+
       // Save cache
       localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
       localStorage.setItem("admin_schools_data_cache_time", now.toString());
-      
+
       showToast("Data synced with server", "success");
       renderActiveTab();
       triggerBackgroundDetailsFetch();
@@ -245,8 +245,11 @@ async function fetchAdminData(force = false) {
 async function triggerBackgroundDetailsFetch() {
   if (STATE.isFetchingDetails) return;
   STATE.isFetchingDetails = true;
-  
-  const activeSchools = STATE.schools.filter(s => s.status.toLowerCase() === "active" && s.sheetUrl);
+
+  const activeSchools = STATE.schools.filter(s => {
+    const url = (s.sheetUrl || s.sheet_url || s["Sheet URL"] || "").toString().trim();
+    return s.status.toLowerCase() === "active" && url && url.startsWith("http");
+  });
   if (activeSchools.length === 0) {
     STATE.isFetchingDetails = false;
     return;
@@ -255,13 +258,13 @@ async function triggerBackgroundDetailsFetch() {
   const progressContainer = document.getElementById("admin-sync-progress");
   const progressBar = document.getElementById("admin-sync-progress-bar");
   const progressText = document.getElementById("admin-sync-progress-text");
-  
+
   if (progressContainer) progressContainer.classList.remove("hidden");
-  
+
   let successCount = 0;
   for (let i = 0; i < activeSchools.length; i++) {
     const school = activeSchools[i];
-    
+
     // Update progress bar
     const percent = Math.round(((i) / activeSchools.length) * 100);
     if (progressBar) progressBar.style.width = `${percent}%`;
@@ -270,15 +273,16 @@ async function triggerBackgroundDetailsFetch() {
     // Only refetch if not cached or cache is older than 1 hour (details are less volatile)
     const cached = STATE.detailsCache[school.userId];
     const cacheAge = cached ? Date.now() - cached.lastFetched : Infinity;
-    
+
     if (cacheAge < 60 * 60 * 1000) {
       successCount++;
       continue;
     }
 
     try {
-      const data = await ApiService.fetchSchoolDetails(school.sheetUrl);
-      
+      const url = (school.sheetUrl || school.sheet_url || school["Sheet URL"] || "").toString().trim();
+      const data = await ApiService.fetchSchoolDetails(url);
+
       // Calculate total students across School Data, UDISE, 3.0
       let totalStudents = 0;
       const studentWorksheets = ["School Data", "UDISE", "3.0"];
@@ -301,27 +305,27 @@ async function triggerBackgroundDetailsFetch() {
         editLogs: editLogs,
         lastFetched: Date.now()
       };
-      
+
       localStorage.setItem(DETAILS_CACHE_KEY, JSON.stringify(STATE.detailsCache));
       successCount++;
-      
+
       // Update displays if current tab is active
       if (STATE.activeTab === "dashboard") renderStats();
       if (STATE.activeTab === "schools") renderSchoolsList();
-    } catch(err) {
+    } catch (err) {
       console.warn(`Failed to sync details for ${school.schoolName}:`, err);
     }
   }
 
   if (progressBar) progressBar.style.width = "100%";
   if (progressText) progressText.textContent = `Sync complete. ${successCount}/${activeSchools.length} schools updated.`;
-  
+
   setTimeout(() => {
     if (progressContainer) progressContainer.classList.add("hidden");
   }, 3000);
 
   STATE.isFetchingDetails = false;
-  
+
   // Final render updates
   renderActiveTab();
 }
@@ -333,14 +337,14 @@ function renderStats() {
   const totalSchools = STATE.schools.length;
   const activeSchools = STATE.schools.filter(s => s.status.toLowerCase() === "active").length;
   const inactiveSchools = totalSchools - activeSchools;
-  
+
   // Active Sessions
   const activeSessions = STATE.sessions.filter(sess => !sess.logoutTimestamp || sess.logoutTimestamp.toString().trim() === "").length;
 
   document.getElementById("stat-total-schools").textContent = totalSchools;
   document.getElementById("stat-active-schools").textContent = activeSchools;
   document.getElementById("stat-inactive-schools").textContent = inactiveSchools;
-  
+
   const sessionsEl = document.getElementById("stat-active-sessions");
   if (sessionsEl) {
     sessionsEl.textContent = activeSessions;
@@ -380,6 +384,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
   filteredSchools.forEach(school => {
     const isActive = school.status.toLowerCase() === "active";
     const isEditable = school.editable.toLowerCase() === "yes";
+    const isReportEnabled = (school.report || "").toLowerCase() === "yes";
 
     // Last login check
     let lastLoginStr = "Never";
@@ -423,12 +428,27 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
             <span class="switch-slider"></span>
           </label>
         </td>
+        <td>
+          <label class="switch-toggle">
+            <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </td>
+        <td>
+          <button class="device-badge-btn" data-userid="${school.userId}" title="Click to edit device limit">
+            <i data-lucide="smartphone"></i>
+            <span>${parseInt(school.devices || school.Devices) || 1}</span>
+          </button>
+        </td>
         <td><span class="last-login-date">${lastLoginStr}</span></td>
         <td>
           <div class="table-actions">
-            <button class="btn-action-text view-btn view-school-btn" data-userid="${school.userId}">View</button>
-            <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">Reset</button>
-            <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">Sessions</button>
+            <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">
+              <i data-lucide="key-round"></i><span>Reset</span>
+            </button>
+            <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">
+              <i data-lucide="monitor"></i><span>Sessions</span>
+            </button>
           </div>
         </td>
       `;
@@ -443,49 +463,59 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       card.innerHTML = `
         <div class="school-card-header">
           <div class="school-identity">
-            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:36px; height:36px; border-radius:8px; object-fit:cover; border:1px solid var(--border); background:#fff; flex-shrink:0;">` : ''}
+            ${logoUrl ? `<img class="school-logo-img" src="${logoUrl}" onerror="this.remove();" style="width:40px; height:40px; border-radius:10px; object-fit:cover; border:1px solid var(--border); background:#fff; flex-shrink:0;">` : ''}
             <div>
-              <div class="school-name-text">${school.schoolName}</div>
-              <div class="school-id-sub">ID: ${school.userId}</div>
+              <div class="school-card-title">${school.schoolName}</div>
+              <div class="school-card-id">ID: <code>${school.userId}</code></div>
             </div>
           </div>
         </div>
         
-        <div class="school-card-badges">
-          <span class="badge-status-pill ${isActive ? 'active' : 'inactive'}">
-            ${isActive ? 'Active' : 'Inactive'}
-          </span>
-          <span class="badge-editable-pill ${isEditable ? 'yes' : 'no'}">
-            Editable: ${isEditable ? 'Yes' : 'No'}
-          </span>
-        </div>
-        
         <div class="school-card-toggles">
           <div class="toggle-group">
-            <span>Status:</span>
+            <span>Status</span>
             <label class="switch-toggle">
               <input type="checkbox" class="status-toggle-cb" data-userid="${school.userId}" ${isActive ? 'checked' : ''}>
               <span class="switch-slider"></span>
             </label>
           </div>
           <div class="toggle-group">
-            <span>Editable:</span>
+            <span>Editable</span>
             <label class="switch-toggle">
               <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
               <span class="switch-slider"></span>
             </label>
           </div>
+          <div class="toggle-group">
+            <span>Report</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-group devices-group">
+            <span>Devices</span>
+            <button class="device-badge-btn" data-userid="${school.userId}" title="Click to edit device limit" style="padding: 2px 6px; font-size: 11px; height: 26px;">
+              <i data-lucide="smartphone" style="width: 12px; height: 12px;"></i>
+              <span>${parseInt(school.devices || school.Devices) || 1}</span>
+            </button>
+          </div>
         </div>
         
-        <div class="school-card-info">
-          <span>Last Login:</span>
-          <span>${lastLoginStr}</span>
+        <div class="school-card-info-row">
+          <div class="info-item">
+            <span class="info-label">Last Login:</span>
+            <span class="info-value">${lastLoginStr}</span>
+          </div>
         </div>
         
         <div class="school-card-actions">
-          <button class="btn-action-text view-btn view-school-btn" data-userid="${school.userId}">View</button>
-          <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">Reset</button>
-          <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">Sessions</button>
+          <button class="btn-action-text reset-btn reset-pwd-btn" data-userid="${school.userId}">
+            <i data-lucide="key-round"></i><span>Reset</span>
+          </button>
+          <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">
+            <i data-lucide="monitor"></i><span>Sessions</span>
+          </button>
         </div>
       `;
       cardsContainer.appendChild(card);
@@ -558,15 +588,50 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       }
     };
 
-    // Bind other actions
-    const bindActions = (element) => {
-      const viewBtn = element.querySelector(".view-school-btn");
-      if (viewBtn) {
-        viewBtn.addEventListener("click", () => {
-          viewAsSchool(school);
+    // Helper to bind report toggle event
+    const bindReportToggle = (element) => {
+      const reportCB = element.querySelector(".report-toggle-cb");
+      if (reportCB) {
+        reportCB.addEventListener("change", async () => {
+          const isChecked = reportCB.checked;
+          const nextReport = isChecked ? "Yes" : "No";
+          const oldVal = school.report;
+
+          // Optimistic update state
+          school.report = nextReport;
+          showToast(`Setting report permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Report", nextReport);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Report field.");
+            }
+            showToast(`${school.schoolName} reports permission updated`, "success");
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.report = oldVal;
+            reportCB.checked = !isChecked;
+            showToast(`Failed to update report permission: ${err.message}`, "error");
+            renderSchoolsList();
+          }
         });
       }
+    };
 
+    // Helper to bind devices input click event
+    const bindDevicesInput = (element) => {
+      const devicesBtn = element.querySelector(".device-badge-btn");
+      if (devicesBtn) {
+        devicesBtn.addEventListener("click", () => {
+          openDevicesLimitModal(school.userId);
+        });
+      }
+    };
+
+    // Bind other actions
+    const bindActions = (element) => {
       const resetBtn = element.querySelector(".reset-pwd-btn");
       if (resetBtn) {
         resetBtn.addEventListener("click", () => {
@@ -588,11 +653,15 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
     if (tr) {
       bindStatusToggle(tr);
       bindEditableToggle(tr);
+      bindReportToggle(tr);
+      bindDevicesInput(tr);
       bindActions(tr);
     }
     if (card) {
       bindStatusToggle(card);
       bindEditableToggle(card);
+      bindReportToggle(card);
+      bindDevicesInput(card);
       bindActions(card);
     }
   });
@@ -607,7 +676,7 @@ function renderSchoolsList() {
   // Let's filter schools for Schools view:
   const schoolsSearchVal = (document.getElementById("schools-search-input")?.value || "").toLowerCase().trim();
   const schoolsStatusVal = document.getElementById("schools-status-select")?.value || "all";
-  
+
   const filteredForSchoolsView = STATE.schools.filter(school => {
     const nameMatch = school.schoolName.toLowerCase().includes(schoolsSearchVal) || school.userId.toLowerCase().includes(schoolsSearchVal);
     let statusMatch = true;
@@ -642,9 +711,9 @@ function renderSchoolsList() {
  * Feature 3 — View as School
  */
 function viewAsSchool(school) {
-  const url = (school.sheetUrl || "").toString().trim();
+  const url = (school.sheetUrl || school.sheet_url || school["Sheet URL"] || "").toString().trim();
   if (!url || !url.startsWith("http")) {
-    showToast(`Failed: No valid Sheet URL is configured for ${school.schoolName}`, "error");
+    showToast(`Failed: No valid Sheet URL is configured for ${school.schoolName}. Current value: "${url || 'empty'}"`, "error");
     return;
   }
 
@@ -652,11 +721,12 @@ function viewAsSchool(school) {
     schoolName: school.schoolName,
     sheetUrl: url,
     logoUrl: school.logoUrl,
+    userId: school.userId,
     adminSession: true
   };
   localStorage.setItem("admin_viewing_school", JSON.stringify(payload));
   showToast(`Bypassing auth and loading School View for ${school.schoolName}`, "success");
-  
+
   // Open main app in new tab
   window.open("../index.html", "_blank");
 }
@@ -693,7 +763,7 @@ async function submitPasswordReset() {
   }
 
   showToast("Updating password...", "info");
-  
+
   try {
     const res = await ApiService.updateField(resetUserId, "Password", newPass);
     if (res && res.success) {
@@ -702,8 +772,75 @@ async function submitPasswordReset() {
     } else {
       throw new Error(res.message || "Backend rejected update.");
     }
-  } catch(err) {
+  } catch (err) {
     showToast(`Password reset failed: ${err.message}`, "error");
+  }
+}
+
+/**
+ * Feature 4.5 — Devices Limit Modal
+ */
+let editDevicesUserId = "";
+
+function openDevicesLimitModal(userId) {
+  editDevicesUserId = userId;
+  const school = STATE.schools.find(s => s.userId === userId);
+  const currentLimit = school ? (parseInt(school.devices || school.Devices) || 1) : 1;
+  const schoolName = school ? school.schoolName : userId;
+
+  document.getElementById("modal-devices-username").textContent = `${schoolName} (${userId})`;
+  document.getElementById("devices-limit-input").value = currentLimit;
+  document.getElementById("devices-limit-modal").classList.remove("hidden");
+}
+
+function closeDevicesLimitModal() {
+  document.getElementById("devices-limit-modal").classList.add("hidden");
+  editDevicesUserId = "";
+}
+
+async function submitDevicesLimit() {
+  if (!editDevicesUserId) return;
+  const valInput = document.getElementById("devices-limit-input").value;
+  let val = parseInt(valInput);
+  if (isNaN(val) || val < 1) {
+    showToast("Please enter a valid number (minimum 1)", "warning");
+    return;
+  }
+
+  const school = STATE.schools.find(s => s.userId === editDevicesUserId);
+  const schoolName = school ? school.schoolName : editDevicesUserId;
+
+  // Confirm dialog
+  if (!confirm(`Are you sure you want to update the device limit for ${schoolName} to ${val}?`)) {
+    return;
+  }
+
+  const oldVal = school ? (parseInt(school.devices || school.Devices) || 1) : 1;
+  if (val === oldVal) {
+    closeDevicesLimitModal();
+    return;
+  }
+
+  showToast(`Updating device limit for ${schoolName} to ${val}...`, "info");
+
+  try {
+    const res = await ApiService.updateField(editDevicesUserId, "Devices", val);
+    if (!res || !res.success) {
+      throw new Error(res.message || "Failed to update Devices field.");
+    }
+    
+    if (school) {
+      school.devices = val;
+      school.Devices = val;
+    }
+    
+    showToast(`${schoolName} device limit updated to ${val}`, "success");
+    localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+    
+    closeDevicesLimitModal();
+    renderSchoolsList();
+  } catch (err) {
+    showToast(`Failed to update device limit: ${err.message}`, "error");
   }
 }
 
@@ -725,7 +862,7 @@ function formatSessionDate(dateVal) {
   const minutes = d.getMinutes().toString().padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12; 
+  hours = hours ? hours : 12;
   return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
 }
 
@@ -744,8 +881,8 @@ function renderSessions() {
     const schoolObj = STATE.schools.find(s => s.userId === sess.userId);
     const schoolName = schoolObj ? schoolObj.schoolName.toLowerCase() : "";
     const matchesSearch = sess.userId.toLowerCase().includes(searchQuery) ||
-                          schoolName.includes(searchQuery) ||
-                          sess.deviceId.toLowerCase().includes(searchQuery);
+      schoolName.includes(searchQuery) ||
+      sess.deviceId.toLowerCase().includes(searchQuery);
 
     const hasLoggedOut = sess.logoutTimestamp && sess.logoutTimestamp.toString().trim() !== "";
     const matchesStatus = showInactive ? true : !hasLoggedOut;
@@ -800,7 +937,7 @@ function renderSessions() {
     // 2. Desktop table container (hidden on mobile)
     const desktopTableWrapper = document.createElement("div");
     desktopTableWrapper.className = "desktop-only admin-table-card";
-    
+
     const desktopTable = document.createElement("table");
     desktopTable.className = "admin-table";
     desktopTable.innerHTML = `
@@ -904,7 +1041,7 @@ function renderSessions() {
                 } else {
                   throw new Error(res.message || "Termination rejected.");
                 }
-              } catch(err) {
+              } catch (err) {
                 showToast(`Force logout failed: ${err.message}`, "error");
               }
             }
@@ -999,6 +1136,27 @@ function initAdminDashboard() {
     });
   }
 
+  // Devices limit modal close and submit
+  const cancelDevicesBtn = document.getElementById("cancel-devices-btn");
+  if (cancelDevicesBtn) {
+    cancelDevicesBtn.addEventListener("click", closeDevicesLimitModal);
+  }
+
+  const submitDevicesBtn = document.getElementById("submit-devices-btn");
+  if (submitDevicesBtn) {
+    submitDevicesBtn.addEventListener("click", submitDevicesLimit);
+  }
+
+  // Close devices limit modal on overlay click
+  const devicesLimitModal = document.getElementById("devices-limit-modal");
+  if (devicesLimitModal) {
+    devicesLimitModal.addEventListener("click", (e) => {
+      if (e.target === devicesLimitModal) {
+        closeDevicesLimitModal();
+      }
+    });
+  }
+
   // Password visibility toggle helper
   document.querySelectorAll(".toggle-password-visibility").forEach(btn => {
     btn.addEventListener("click", (e) => {
@@ -1048,12 +1206,12 @@ function initAdminDashboard() {
 function convertDriveUrl(url) {
   if (!url) return null;
   const str = url.toString().trim();
-  
+
   let fileId = null;
 
   const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
-  
+
   if (!fileId) {
     const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (idQueryMatch && idQueryMatch[1]) fileId = idQueryMatch[1];
@@ -1067,7 +1225,7 @@ function convertDriveUrl(url) {
   if (fileId) {
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
-  
+
   return url;
 }
 

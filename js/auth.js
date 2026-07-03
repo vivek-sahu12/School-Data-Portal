@@ -38,6 +38,23 @@ function convertDriveUrl(url) {
 
 
 /**
+ * Helper to check if we are in a secure admin viewing session
+ */
+function isAdminViewingSession() {
+  const adminViewing = localStorage.getItem("admin_viewing_school");
+  const adminSession = localStorage.getItem("admin_session");
+  if (adminViewing && adminSession) {
+    try {
+      const sess = JSON.parse(adminSession);
+      return sess && sess.sessionToken;
+    } catch (e) {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
  * Check if a user is currently logged in
  */
 function isLoggedIn() {
@@ -48,12 +65,12 @@ function isLoggedIn() {
  * Retrieve current logged-in school metadata
  */
 function getCurrentSchool() {
-  const adminViewing = localStorage.getItem("admin_viewing_school");
-  if (adminViewing) {
+  if (isAdminViewingSession()) {
+    const adminViewing = localStorage.getItem("admin_viewing_school");
     try {
       const data = JSON.parse(adminViewing);
       return {
-        userId: "admin_viewing",
+        userId: data.userId || "admin_viewing",
         sessionToken: "admin_token",
         schoolName: data.schoolName,
         sheetUrl: data.sheetUrl,
@@ -69,7 +86,7 @@ function getCurrentSchool() {
 }
 
 window.isEditAllowed = function(editableValue) {
-  if (localStorage.getItem("admin_viewing_school")) {
+  if (isAdminViewingSession()) {
     return true;
   }
   return (editableValue || "").toString().trim().toLowerCase() === "yes";
@@ -186,7 +203,8 @@ async function attemptLogin(userId, password) {
         schoolName: data.schoolName,
         logoUrl: data.logoUrl,
         editable: data.editable,
-        role: data.role
+        role: data.role,
+        report: data.report || 'No'
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -202,6 +220,9 @@ async function attemptLogin(userId, password) {
         localStorage.removeItem("school-portal-logo-base64");
       }
       
+      if (typeof updateReportsNavVisibility === "function") {
+        updateReportsNavVisibility();
+      }
       return { success: true, school: sessionObj };
     } else {
       return { success: false, message: data.message || "Invalid User ID or Password." };
@@ -267,6 +288,10 @@ async function logout() {
   // Clear all localStorage
   localStorage.clear();
   
+  if (typeof updateReportsNavVisibility === "function") {
+    updateReportsNavVisibility();
+  }
+  
   // Reset UI back to login screen
   showLoginScreen();
   
@@ -274,7 +299,66 @@ async function logout() {
   showToast("Logged out successfully.", "info");
 }
 
-// Session validation and editable status update have been moved to the unified sync pipeline in js/dataFetch.js
+async function verifySessionStillValid() {
+  if (isAdminViewingSession()) {
+    console.log("Admin viewing school session, skipping session validity check.");
+    return true;
+  }
+
+  const sessionRaw = localStorage.getItem('sdip_session');
+  const deviceId = localStorage.getItem('device_id');
+
+  if (!sessionRaw || !deviceId) {
+    console.warn('Missing session data, skipping check');
+    return true;
+  }
+
+  const session = JSON.parse(sessionRaw);
+  const userId = session.username;
+
+  console.log('verifySessionStillValid - checking:', { userId, deviceId });
+
+  try {
+    const res = await fetch(ADMIN_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'checkSession', userId, deviceId })
+    });
+    const data = await res.json();
+    console.log('verifySessionStillValid - server response:', data);
+
+    if (!data.valid) {
+      localStorage.clear();
+      alert(data.message || 'Your session has ended. Please log in again.');
+      window.location.reload();
+      return false;
+    }
+    
+    if (data.editable !== undefined) {
+      session.editable = data.editable;
+      localStorage.setItem('sdip_session', JSON.stringify(session));
+      const sessionRaw2 = localStorage.getItem("school-portal-session");
+      if (sessionRaw2) {
+        const session2 = JSON.parse(sessionRaw2);
+        session2.editable = data.editable;
+        localStorage.setItem("school-portal-session", JSON.stringify(session2));
+      }
+    }
+    
+    if (data.report !== undefined) {
+      session.report = data.report;
+      localStorage.setItem('sdip_session', JSON.stringify(session));
+    }
+    
+    if (typeof updateReportsNavVisibility === "function") {
+      updateReportsNavVisibility();
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('verifySessionStillValid - network error, skipping check:', err);
+    return true;
+  }
+}
 
 
 /**
@@ -348,7 +432,7 @@ function showAppScreen(school) {
   }
   
   // Inject Admin View Banner if viewing as admin
-  if (localStorage.getItem("admin_viewing_school")) {
+  if (isAdminViewingSession()) {
     if (!document.getElementById("admin-view-banner")) {
       const banner = document.createElement("div");
       banner.id = "admin-view-banner";
@@ -399,9 +483,15 @@ function showAppScreen(school) {
       document.getElementById("app-screen").prepend(banner);
       
       document.getElementById("exit-admin-view-btn").addEventListener("click", () => {
-        localStorage.removeItem("admin_viewing_school");
-        localStorage.removeItem("school-portal-session");
-        localStorage.removeItem("school-portal-data");
+        const adminSession = localStorage.getItem("admin_session");
+        const deviceId = localStorage.getItem("device_id");
+        localStorage.clear();
+        if (adminSession) {
+          localStorage.setItem("admin_session", adminSession);
+        }
+        if (deviceId) {
+          localStorage.setItem("device_id", deviceId);
+        }
         window.location.href = "admin/index.html";
       });
     }
@@ -465,8 +555,8 @@ function showToast(message, type = "info") {
 
 // Check session on page load
 document.addEventListener("DOMContentLoaded", () => {
-  const adminViewing = localStorage.getItem("admin_viewing_school");
-  if (adminViewing) {
+  if (isAdminViewingSession()) {
+    const adminViewing = localStorage.getItem("admin_viewing_school");
     try {
       const data = JSON.parse(adminViewing);
       const url = (data.sheetUrl || "").toString().trim();
@@ -478,9 +568,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 2000);
         return;
       }
-      // Create a simulated school session
+      // Create a simulated school session using the school's actual userId if available
+      const targetUserId = data.userId || "admin_viewing";
       const simSchool = {
-        userId: "admin_viewing",
+        userId: targetUserId,
         sessionToken: "admin_token",
         schoolName: data.schoolName,
         sheetUrl: url,
@@ -491,7 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Store in standard session keys so the app uses them
       localStorage.setItem(SESSION_KEY, JSON.stringify(simSchool));
       localStorage.setItem('sdip_session', JSON.stringify({
-        username: "admin_viewing",
+        username: targetUserId,
         loginTime: Date.now(),
         sessionToken: "admin_token",
         schoolName: data.schoolName,
@@ -510,12 +601,20 @@ document.addEventListener("DOMContentLoaded", () => {
       showLoginScreen();
     }
   } else {
+    // If admin_viewing_school is in localStorage but no valid admin session exists, clean it up
+    if (localStorage.getItem("admin_viewing_school")) {
+      localStorage.removeItem("admin_viewing_school");
+    }
     const school = getCurrentSchool();
     if (school) {
       showAppScreen(school);
     } else {
       showLoginScreen();
     }
+  }
+
+  if (typeof updateReportsNavVisibility === "function") {
+    updateReportsNavVisibility();
   }
 
   // Bind Login Form submission

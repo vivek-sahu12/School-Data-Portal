@@ -558,6 +558,115 @@
           </div>
         </section>
 
+        <!-- REPORTS VIEW -->
+        <section id="reports-view" class="view-section hidden">
+          <!-- View header will be updated dynamically depending on state (main vs detail) -->
+          <div id="reports-main-header" class="view-header">
+            <div>
+              <h2 class="view-title">Discrepancy & Analysis Reports</h2>
+              <p class="view-subtitle">Automated validation checks and insights based on cached school database.</p>
+            </div>
+          </div>
+
+          <div id="reports-detail-header" class="view-header hidden"
+            style="flex-direction: column; align-items: flex-start; gap: 16px; width: 100%;">
+            <button id="report-back-btn" class="btn-secondary"
+              style="height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+              <i data-lucide="arrow-left"></i>
+              <span>Back to Reports</span>
+            </button>
+            <div
+              style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; gap: 16px; flex-wrap: wrap;">
+              <div>
+                <h2 id="report-detail-title" class="view-title" style="margin: 0;">Report Detail</h2>
+                <p id="report-detail-subtitle" class="view-subtitle" style="margin-top: 4px;">Detailed report list.</p>
+              </div>
+              <div id="report-detail-count-badge"
+                style="background-color: var(--primary-light); color: var(--primary); padding: 6px 16px; border-radius: var(--radius-full); font-weight: 700; font-size: 0.9rem;">
+                Total: 0
+              </div>
+            </div>
+          </div>
+
+          <div id="reports-main-content" style="display: flex; flex-direction: column; gap: 32px;">
+            <!-- Summary Cards Section -->
+            <div id="reports-summary-cards" class="metrics-grid"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+              <!-- Dynamic Summary Cards -->
+            </div>
+
+            <div>
+              <h3 class="subsection-title" style="margin-bottom: 16px; font-weight: 700; color: var(--text-primary);">
+                Detailed Reports & Analyses</h3>
+              <div id="reports-category-grid" class="metrics-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
+                <!-- Dynamic Categories -->
+              </div>
+            </div>
+          </div>
+
+          <div id="reports-detail-content" class="hidden" style="display: flex; flex-direction: column; gap: 24px;">
+            <!-- Dynamic Detail Summary Cards -->
+            <div id="report-detail-summary-cards" class="metrics-grid"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+              <!-- Dynamic -->
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar"
+              style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background-color: var(--bg-surface); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div class="filter-dropdown-wrapper" id="report-class-filter-wrapper" style="min-width: 150px;">
+                <select id="report-class-select" class="form-select" style="width: 100%;">
+                  <option value="">All Classes</option>
+                </select>
+              </div>
+              <div class="search-box" style="flex: 1; min-width: 200px;">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="report-search-input" class="search-input" placeholder="Search in columns..."
+                  style="width: 100%;">
+              </div>
+              <div class="filter-actions-group" style="display: flex; gap: 8px;">
+                <button class="btn-primary" id="report-export-pdf-btn">
+                  <i data-lucide="file-text"></i>
+                  <span>Export PDF</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Chart Card (if applicable, e.g. C1/C2) -->
+            <div id="report-chart-card" class="table-card hidden"
+              style="padding: 20px; display: flex; flex-direction: column; gap: 16px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+              <div style="position: relative; height: 350px; width: 100%;">
+                <canvas id="report-chart-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="table-card">
+              <div class="table-responsive">
+                <table id="report-detail-table" class="data-table">
+                  <thead id="report-detail-thead">
+                    <!-- Dynamic -->
+                  </thead>
+                  <tbody id="report-detail-tbody">
+                    <!-- Dynamic -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination Bar -->
+              <div id="report-pagination-bar"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+                <span id="report-pagination-info" class="text-sm font-medium text-muted">Showing 0 to 0 of 0
+                  entries</span>
+                <div style="display: flex; gap: 8px; align-items: center;" id="report-pagination-buttons">
+                  <!-- Prev/Next/Numbers -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
@@ -645,12 +754,14 @@
       </div>
 
       <div class="modal-body" style="padding-top: 10px; overflow-y: auto; flex: 1;">
-        <form id="student-edit-form" class="edit-form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+        <form id="student-edit-form" class="edit-form-grid"
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
           <!-- Filled dynamically -->
         </form>
       </div>
 
-      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border-color);">
+      <div class="modal-footer"
+        style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border-color);">
         <button id="cancel-student-edit-btn" class="btn-secondary">Cancel</button>
         <button id="save-student-edit-btn" class="btn-primary">Save Changes</button>
       </div>
@@ -724,6 +835,7 @@
   <script src="js/universalSearch.js"></script>
   <script src="js/pdfExport.js"></script>
   <script src="js/editStudent.js"></script>
+  <script src="js/reports.js"></script>
 
   <!-- Main bootstrapper -->
   <script>
@@ -731,24 +843,24 @@
     const clearBlockedUIState = () => {
       try {
         document.body.style.overflow = '';
-        
+
         // Hide loading bar & skeleton loaders
         const appLoading = document.getElementById("app-loading-bar");
         if (appLoading) appLoading.classList.add("hidden");
-        
+
         const skeletonLoader = document.getElementById("skeleton-loader");
         if (skeletonLoader) skeletonLoader.classList.add("hidden");
-        
+
         // Hide modals and drawer
         const pdfModal = document.getElementById("pdf-export-modal");
         if (pdfModal) pdfModal.classList.add("hidden");
-        
+
         const studentModal = document.getElementById("student-detail-modal");
         if (studentModal) studentModal.classList.add("hidden");
-        
+
         const studentEditModal = document.getElementById("student-edit-modal");
         if (studentEditModal) studentEditModal.classList.add("hidden");
-        
+
         const drawer = document.getElementById("mobile-drawer");
         if (drawer) drawer.classList.remove("active");
 
@@ -762,7 +874,7 @@
         if (typeof setRefreshSpinner === 'function') {
           setRefreshSpinner(false);
         }
-        
+
         // Restore active section view if it was hidden
         const hasCached = typeof isDataLoaded === 'function' ? isDataLoaded() : false;
         if (!hasCached) {

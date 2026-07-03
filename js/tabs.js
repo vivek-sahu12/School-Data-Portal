@@ -638,6 +638,12 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (target === "three-point-zero") viewId = "three-point-zero-view";
       else if (target === "school-data") viewId = "school-data-view";
       else if (target === "universal-search") viewId = "universal-search-view";
+      else if (target === "reports") {
+        viewId = "reports-view";
+        if (typeof window.renderReports === "function") {
+          window.renderReports();
+        }
+      }
 
       const targetSec = document.getElementById(viewId);
       if (targetSec) {

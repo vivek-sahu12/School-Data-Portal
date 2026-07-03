@@ -1846,6 +1846,51 @@ select option {
     word-break: break-word;
   }
 
+  /* Reports responsive styling to prevent horizontal scrolling */
+  #reports-view .table-responsive {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+
+  #reports-view .data-table {
+    width: 100% !important;
+  }
+
+  #reports-view .data-table th,
+  #reports-view .data-table td {
+    padding: 6px 4px !important;
+    font-size: 0.725rem !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-overflow: unset !important;
+    overflow: visible !important;
+  }
+
+  #reports-view .student-report-table {
+    table-layout: fixed !important;
+  }
+
+  #reports-view .student-report-table .col-relevant {
+    display: none !important;
+  }
+
+  @media (max-width: 768px) and (min-width: 480px) {
+    #reports-view .student-report-table .col-relevant {
+      display: table-cell !important;
+    }
+  }
+
+  #reports-view .student-report-table th.col-class,
+  #reports-view .student-report-table td.col-class {
+    width: 55px !important;
+  }
+
+  #reports-view .student-report-table th:last-child,
+  #reports-view .student-report-table td:last-child {
+    width: 75px !important;
+    text-align: center;
+  }
+
   .toast-container {
     bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     right: 12px;
@@ -2061,3 +2106,11 @@ select option {
 .toast {
   animation: slideInUpToast 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
+
+/* Mobile-responsive 2x2 grid for Caste Category Breakdown summary cards */
+@media (max-width: 768px) {
+  #report-detail-summary-cards.c2-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
