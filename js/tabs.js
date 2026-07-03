@@ -606,54 +606,160 @@ function setDrawerState(open) {
   }
 }
 
+// Unified history state navigation function
+window.navigateState = function(state, push = true) {
+  if (!state) return;
+
+  // Ignore navigation if not logged in
+  if (!localStorage.getItem("sdip_session")) {
+    return;
+  }
+
+  const target = state.tab || "dashboard";
+  window.currentActiveTab = target;
+
+  // 1. Sync active state in navigation bars
+  const navItems = document.querySelectorAll(".nav-item");
+  const drawerItems = document.querySelectorAll(".drawer-nav-item");
+  
+  navItems.forEach(ni => {
+    if (ni.dataset.target === target) ni.classList.add("active");
+    else ni.classList.remove("active");
+  });
+
+  drawerItems.forEach(di => {
+    if (di.dataset.target === target) di.classList.add("active");
+    else di.classList.remove("active");
+  });
+
+  // 2. Update view section visibilities
+  const sections = document.querySelectorAll(".view-section");
+  sections.forEach(sec => sec.classList.add("hidden"));
+
+  let viewId = "";
+  if (target === "dashboard") viewId = "dashboard-view";
+  else if (target === "udise") viewId = "udise-view";
+  else if (target === "three-point-zero") viewId = "three-point-zero-view";
+  else if (target === "school-data") viewId = "school-data-view";
+  else if (target === "universal-search") viewId = "universal-search-view";
+  else if (target === "reports") viewId = "reports-view";
+
+  const targetSec = document.getElementById(viewId);
+  if (targetSec) {
+    targetSec.classList.remove("hidden");
+  }
+
+  // 3. Handle Reports State if target is reports
+  if (target === "reports") {
+    if (window.REPORTS_STATE) {
+      window.REPORTS_STATE.activeCategory = state.reportCategory || null;
+      window.REPORTS_STATE.activeSubset = state.reportSubset || null;
+      
+      const mainHeader = document.getElementById("reports-main-header");
+      const mainContent = document.getElementById("reports-main-content");
+      const detailHeader = document.getElementById("reports-detail-header");
+      const detailContent = document.getElementById("reports-detail-content");
+
+      if (mainHeader && mainContent && detailHeader && detailContent) {
+        if (state.reportCategory) {
+          mainHeader.classList.add("hidden");
+          mainContent.classList.add("hidden");
+          detailHeader.classList.remove("hidden");
+          detailContent.classList.remove("hidden");
+
+          // Reset inputs and sync with subset state
+          const searchInput = document.getElementById("report-search-input");
+          if (searchInput) {
+            searchInput.value = "";
+            window.REPORTS_STATE.searchQuery = "";
+          }
+          
+          // Populate class list dropdown first so we can select the class
+          if (typeof getCachedDatabase === "function" && typeof populateClassFilter === "function") {
+            const cachedDb = getCachedDatabase();
+            if (cachedDb) {
+              populateClassFilter(cachedDb["School Data"] || []);
+            }
+          }
+
+          const classSelect = document.getElementById("report-class-select");
+          if (classSelect) {
+            const desiredClass = (state.reportSubset && state.reportSubset.class) ? state.reportSubset.class : "";
+            classSelect.value = desiredClass;
+            window.REPORTS_STATE.selectedClass = desiredClass;
+          }
+
+          if (typeof window.renderActiveCategoryDetail === "function") {
+            window.renderActiveCategoryDetail();
+          }
+        } else {
+          mainHeader.classList.remove("hidden");
+          mainContent.classList.remove("hidden");
+          detailHeader.classList.add("hidden");
+          detailContent.classList.add("hidden");
+
+          if (typeof window.renderReports === "function") {
+            window.renderReports();
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Push history state if requested
+  if (push) {
+    history.pushState(state, "", "");
+  }
+
+  // Create Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+};
+
+// Initialize history state on page load
+window.addEventListener("load", () => {
+  if (localStorage.getItem("sdip_session")) {
+    const initialState = {
+      tab: window.currentActiveTab || "dashboard",
+      reportCategory: (window.REPORTS_STATE && window.REPORTS_STATE.activeCategory) || null,
+      reportSubset: (window.REPORTS_STATE && window.REPORTS_STATE.activeSubset) || null
+    };
+    history.replaceState(initialState, "", "");
+  }
+});
+
+// Bind popstate event
+window.addEventListener("popstate", (event) => {
+  if (!localStorage.getItem("sdip_session")) {
+    return;
+  }
+  if (event.state) {
+    window.navigateState(event.state, false);
+  } else {
+    // Fallback to dashboard
+    window.navigateState({
+      tab: "dashboard",
+      reportCategory: null,
+      reportSubset: null
+    }, false);
+  }
+});
+
 // Bind Navigation and Drawer clicks
 document.addEventListener("DOMContentLoaded", () => {
   const navItems = document.querySelectorAll(".nav-item");
   const drawerItems = document.querySelectorAll(".drawer-nav-item");
 
-  // Handle normal Navigation clicks (both top desktop nav and mobile bottom bar)
+  // Handle normal Navigation clicks
   navItems.forEach(item => {
     item.addEventListener("click", () => {
       const target = item.dataset.target;
-
-      // Sync active state in navigation bars
-      navItems.forEach(ni => {
-        if (ni.dataset.target === target) ni.classList.add("active");
-        else ni.classList.remove("active");
+      window.navigateState({
+        tab: target,
+        reportCategory: null,
+        reportSubset: null
       });
-
-      // Sync active state in mobile drawer items
-      drawerItems.forEach(di => {
-        if (di.dataset.target === target) di.classList.add("active");
-        else di.classList.remove("active");
-      });
-
-      // Update view section visibilities
-      const sections = document.querySelectorAll(".view-section");
-      sections.forEach(sec => sec.classList.add("hidden"));
-
-      let viewId = "";
-      if (target === "dashboard") viewId = "dashboard-view";
-      else if (target === "udise") viewId = "udise-view";
-      else if (target === "three-point-zero") viewId = "three-point-zero-view";
-      else if (target === "school-data") viewId = "school-data-view";
-      else if (target === "universal-search") viewId = "universal-search-view";
-      else if (target === "reports") {
-        viewId = "reports-view";
-        if (typeof window.renderReports === "function") {
-          window.renderReports();
-        }
-      }
-
-      const targetSec = document.getElementById(viewId);
-      if (targetSec) {
-        targetSec.classList.remove("hidden");
-        window.currentActiveTab = target;
-
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
-      }
     });
   });
 
@@ -700,11 +806,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const target = dItem.dataset.target;
       setDrawerState(false);
 
-      // Find nav-item and click it
-      const navItem = Array.from(document.querySelectorAll(".nav-item")).find(ni => ni.dataset.target === target);
-      if (navItem) {
-        navItem.click();
-      }
+      window.navigateState({
+        tab: target,
+        reportCategory: null,
+        reportSubset: null
+      });
     });
   });
 

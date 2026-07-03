@@ -11,8 +11,10 @@ const REPORTS_STATE = {
   searchQuery: "",
   selectedClass: "",
   currentPage: 1,
-  pageSize: 15
+  pageSize: 15,
+  activeSubset: null
 };
+window.REPORTS_STATE = REPORTS_STATE;
 
 let duplicatesCache = null;
 
@@ -148,6 +150,54 @@ function isAadharInvalid(val) {
  * Categories configuration definition
  */
 const REPORT_CATEGORIES = [
+  {
+    id: "c1",
+    title: "Class-wise Gender Ratio",
+    description: "Class-wise breakdown of Boys, Girls, and Total with analytical bar chart.",
+    icon: "bar-chart-2",
+    badge: "Analytics",
+    headers: ["Class", "Boys", "Girls", "Total"],
+    isChart: true,
+    compute: (schoolData, schoolHeaders, sortedClasses) => {
+      const genderKey = schoolHeaders.find(h => /gender|sex/i.test(h)) || "Gender";
+      return sortedClasses.map(cls => {
+        let boys = 0, girls = 0;
+        schoolData.forEach(row => {
+          if ((row["Class"] || "").toString().trim() === cls) {
+            const g = (row[genderKey] || "").toString().trim().toLowerCase();
+            if (g.startsWith("b") || g === "male" || g === "m") boys++;
+            else if (g.startsWith("g") || g === "female" || g === "f") girls++;
+          }
+        });
+        return { "Class": cls, "Boys": boys, "Girls": girls, "Total": boys + girls };
+      });
+    }
+  },
+  {
+    id: "c2",
+    title: "Category Breakdown",
+    description: "Class-wise breakdown of caste categories (GEN, OBC, SC, ST) with stacked bar chart.",
+    icon: "pie-chart",
+    badge: "Analytics",
+    headers: ["Class", "GEN", "OBC", "SC", "ST", "Total"],
+    isChart: true,
+    compute: (schoolData, schoolHeaders, sortedClasses) => {
+      const categoryKey = schoolHeaders.find(h => /category|caste|social/i.test(h)) || "Category";
+      return sortedClasses.map(cls => {
+        let gen = 0, obc = 0, sc = 0, st = 0;
+        schoolData.forEach(row => {
+          if ((row["Class"] || "").toString().trim() === cls) {
+            const cat = (row[categoryKey] || "").toString().trim().toUpperCase();
+            if (cat === "GEN" || cat === "GENERAL") gen++;
+            else if (cat === "OBC") obc++;
+            else if (cat === "SC") sc++;
+            else if (cat === "ST") st++;
+          }
+        });
+        return { "Class": cls, "GEN": gen, "OBC": obc, "SC": sc, "ST": st, "Total": gen + obc + sc + st };
+      });
+    }
+  },
   {
     id: "a1",
     title: "Aadhaar Missing",
@@ -300,54 +350,6 @@ const REPORT_CATEGORIES = [
     map: (row, schoolHeaders) => {
       const key = schoolHeaders.find(h => /samagra/i.test(h)) || "Samagra ID";
       return { "Name": row["Name"] || "-", "Class": row["Class"] || "-", "Samagra ID": row[key] || "-" };
-    }
-  },
-  {
-    id: "c1",
-    title: "Class-wise Gender Ratio",
-    description: "Class-wise breakdown of Boys, Girls, and Total with analytical bar chart.",
-    icon: "bar-chart-2",
-    badge: "Analytics",
-    headers: ["Class", "Boys", "Girls", "Total"],
-    isChart: true,
-    compute: (schoolData, schoolHeaders, sortedClasses) => {
-      const genderKey = schoolHeaders.find(h => /gender|sex/i.test(h)) || "Gender";
-      return sortedClasses.map(cls => {
-        let boys = 0, girls = 0;
-        schoolData.forEach(row => {
-          if ((row["Class"] || "").toString().trim() === cls) {
-            const g = (row[genderKey] || "").toString().trim().toLowerCase();
-            if (g.startsWith("b") || g === "male" || g === "m") boys++;
-            else if (g.startsWith("g") || g === "female" || g === "f") girls++;
-          }
-        });
-        return { "Class": cls, "Boys": boys, "Girls": girls, "Total": boys + girls };
-      });
-    }
-  },
-  {
-    id: "c2",
-    title: "Category Breakdown",
-    description: "Class-wise breakdown of caste categories (GEN, OBC, SC, ST) with stacked bar chart.",
-    icon: "pie-chart",
-    badge: "Analytics",
-    headers: ["Class", "GEN", "OBC", "SC", "ST", "Total"],
-    isChart: true,
-    compute: (schoolData, schoolHeaders, sortedClasses) => {
-      const categoryKey = schoolHeaders.find(h => /category|caste|social/i.test(h)) || "Category";
-      return sortedClasses.map(cls => {
-        let gen = 0, obc = 0, sc = 0, st = 0;
-        schoolData.forEach(row => {
-          if ((row["Class"] || "").toString().trim() === cls) {
-            const cat = (row[categoryKey] || "").toString().trim().toUpperCase();
-            if (cat === "GEN" || cat === "GENERAL") gen++;
-            else if (cat === "OBC") obc++;
-            else if (cat === "SC") sc++;
-            else if (cat === "ST") st++;
-          }
-        });
-        return { "Class": cls, "GEN": gen, "OBC": obc, "SC": sc, "ST": st, "Total": gen + obc + sc + st };
-      });
     }
   }
 ];
@@ -692,31 +694,40 @@ window.renderReports = function () {
  * Open detail category screen
  */
 function openCategoryDetail(categoryId) {
-  REPORTS_STATE.activeCategory = categoryId;
-  REPORTS_STATE.searchQuery = "";
-  REPORTS_STATE.selectedClass = "";
-  REPORTS_STATE.currentPage = 1;
+  if (window.navigateState) {
+    window.navigateState({
+      tab: "reports",
+      reportCategory: categoryId,
+      reportSubset: null
+    });
+  } else {
+    REPORTS_STATE.activeCategory = categoryId;
+    REPORTS_STATE.searchQuery = "";
+    REPORTS_STATE.selectedClass = "";
+    REPORTS_STATE.currentPage = 1;
+    REPORTS_STATE.activeSubset = null;
 
-  // Toggle DOM Visibility
-  document.getElementById("reports-main-header").classList.add("hidden");
-  document.getElementById("reports-main-content").classList.add("hidden");
-  document.getElementById("reports-detail-header").classList.remove("hidden");
-  document.getElementById("reports-detail-content").classList.remove("hidden");
+    // Toggle DOM Visibility
+    document.getElementById("reports-main-header").classList.add("hidden");
+    document.getElementById("reports-main-content").classList.add("hidden");
+    document.getElementById("reports-detail-header").classList.remove("hidden");
+    document.getElementById("reports-detail-content").classList.remove("hidden");
 
-  // Reset Input elements
-  const searchInput = document.getElementById("report-search-input");
-  if (searchInput) searchInput.value = "";
-  const classSelect = document.getElementById("report-class-select");
-  if (classSelect) classSelect.value = "";
+    // Reset Input elements
+    const searchInput = document.getElementById("report-search-input");
+    if (searchInput) searchInput.value = "";
+    const classSelect = document.getElementById("report-class-select");
+    if (classSelect) classSelect.value = "";
 
-  // Prepare metadata & filter bar
-  const cachedData = getCachedDatabase();
-  if (cachedData) {
-    const schoolData = cachedData["School Data"] || [];
-    populateClassFilter(schoolData);
+    // Prepare metadata & filter bar
+    const cachedData = getCachedDatabase();
+    if (cachedData) {
+      const schoolData = cachedData["School Data"] || [];
+      populateClassFilter(schoolData);
+    }
+
+    renderActiveCategoryDetail();
   }
-
-  renderActiveCategoryDetail();
 }
 
 /**
@@ -725,6 +736,8 @@ function openCategoryDetail(categoryId) {
 function populateClassFilter(schoolData) {
   const select = document.getElementById("report-class-select");
   if (!select) return;
+
+  const currentVal = select.value || REPORTS_STATE.selectedClass;
 
   select.innerHTML = '<option value="">All Classes</option>';
 
@@ -741,6 +754,8 @@ function populateClassFilter(schoolData) {
     opt.textContent = /^\d+$/.test(cls) ? `Class ${cls}` : cls;
     select.appendChild(opt);
   });
+
+  select.value = currentVal;
 }
 
 /**
@@ -780,6 +795,97 @@ function getCategoryRecords(cat, cachedData) {
 }
 
 /**
+ * Filter students matching specific category or gender subset selection
+ */
+function getSubsetStudents(subset, cachedData) {
+  const schoolData = cachedData["School Data"] || [];
+  const schoolHeaders = Object.keys(schoolData[0] || {});
+  
+  const genderKey = schoolHeaders.find(h => /gender|sex/i.test(h)) || "Gender";
+  const categoryKey = schoolHeaders.find(h => /category|caste|social/i.test(h)) || "Category";
+
+  return schoolData.filter(row => {
+    if (subset.class) {
+      if ((row["Class"] || "").toString().trim() !== subset.class) {
+        return false;
+      }
+    }
+    if (subset.type === "gender") {
+      const g = (row[genderKey] || "").toString().trim().toLowerCase();
+      const isBoy = g.startsWith("b") || g === "male" || g === "m";
+      const isGirl = g.startsWith("g") || g === "female" || g === "f";
+      if (subset.filterName === "Boys" && !isBoy) return false;
+      if (subset.filterName === "Girls" && !isGirl) return false;
+    } else if (subset.type === "category") {
+      const cat = (row[categoryKey] || "").toString().trim().toUpperCase();
+      if (subset.filterName === "GEN" && cat !== "GEN" && cat !== "GENERAL") return false;
+      if (subset.filterName === "OBC" && cat !== "OBC") return false;
+      if (subset.filterName === "SC" && cat !== "SC") return false;
+      if (subset.filterName === "ST" && cat !== "ST") return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Configure cell styling and click event for student breakdown grid numbers
+ */
+function makeCellClickable(td, type, cls, filterName, value) {
+  if (value > 0) {
+    td.style.color = "var(--primary)";
+    td.style.cursor = "pointer";
+    td.style.textDecoration = "underline";
+    td.style.fontWeight = "600";
+    td.title = `Click to view ${value} students`;
+    
+    td.addEventListener("mouseenter", () => {
+      td.style.color = "var(--primary-hover)";
+    });
+    td.addEventListener("mouseleave", () => {
+      td.style.color = "var(--primary)";
+    });
+
+    td.addEventListener("click", () => {
+      openSubsetList(type, cls, filterName);
+    });
+  } else {
+    td.style.color = "var(--text-muted)";
+  }
+}
+
+/**
+ * Open subset student list and apply parameters to states
+ */
+function openSubsetList(type, cls, filterName) {
+  if (window.navigateState) {
+    window.navigateState({
+      tab: "reports",
+      reportCategory: REPORTS_STATE.activeCategory,
+      reportSubset: {
+        type: type,
+        class: cls,
+        filterName: filterName
+      }
+    });
+  } else {
+    REPORTS_STATE.activeSubset = {
+      type: type,
+      class: cls,
+      filterName: filterName
+    };
+    REPORTS_STATE.searchQuery = "";
+    REPORTS_STATE.currentPage = 1;
+
+    const searchInput = document.getElementById("report-search-input");
+    if (searchInput) searchInput.value = "";
+    const classSelect = document.getElementById("report-class-select");
+    if (classSelect) classSelect.value = cls || "";
+
+    renderActiveCategoryDetail();
+  }
+}
+
+/**
  * Get currently filtered categories dataset (applied query and class selector)
  */
 function getFilteredCategoryData() {
@@ -790,12 +896,29 @@ function getFilteredCategoryData() {
   const cat = REPORT_CATEGORIES.find(c => c.id === catId);
   if (!cat) return [];
 
-  const allRecords = getCategoryRecords(cat, cachedData);
-
-  let filtered = allRecords;
+  let filtered;
+  if (REPORTS_STATE.activeSubset) {
+    filtered = getSubsetStudents(REPORTS_STATE.activeSubset, cachedData).map(row => {
+      const schoolHeaders = Object.keys(row);
+      const genderKey = schoolHeaders.find(h => /gender|sex/i.test(h)) || "Gender";
+      const categoryKey = schoolHeaders.find(h => /category|caste|social/i.test(h)) || "Category";
+      
+      const mapped = {
+        "Name": row["Name"] || "-",
+        "Class": row["Class"] || "-",
+        "Gender": row[genderKey] || "-",
+        "Category": row[categoryKey] || "-",
+        _original: row,
+        _sourceSheet: "School Data"
+      };
+      return mapped;
+    });
+  } else {
+    filtered = getCategoryRecords(cat, cachedData);
+  }
 
   // Apply Class Filter
-  if (REPORTS_STATE.selectedClass && !cat.isChart) {
+  if (REPORTS_STATE.selectedClass && (!cat.isChart || REPORTS_STATE.activeSubset)) {
     filtered = filtered.filter(row => (row["Class"] || "").toString().trim() === REPORTS_STATE.selectedClass);
   }
 
@@ -928,7 +1051,7 @@ function renderActiveCategoryDetail() {
 
   const tableEl = document.getElementById("report-detail-table");
   if (tableEl) {
-    if (cat.isChart) {
+    if (cat.isChart && !REPORTS_STATE.activeSubset) {
       tableEl.classList.remove("student-report-table");
       tableEl.classList.add("analytics-report-table");
     } else {
@@ -941,13 +1064,21 @@ function renderActiveCategoryDetail() {
   const schoolData = cachedData ? (cachedData["School Data"] || []) : [];
 
   // Update headers
-  document.getElementById("report-detail-title").textContent = cat.title;
-  document.getElementById("report-detail-subtitle").textContent = cat.description;
+  if (REPORTS_STATE.activeSubset) {
+    const subset = REPORTS_STATE.activeSubset;
+    const classStr = subset.class ? `Class ${subset.class}` : "All Classes";
+    const filterStr = subset.filterName;
+    document.getElementById("report-detail-title").textContent = `${cat.title} - ${classStr} (${filterStr})`;
+    document.getElementById("report-detail-subtitle").textContent = `Detailed list of students in ${classStr} matching ${filterStr}.`;
+  } else {
+    document.getElementById("report-detail-title").textContent = cat.title;
+    document.getElementById("report-detail-subtitle").textContent = cat.description;
+  }
 
-  // Toggle Class Filter box (hide if category is class-wise chart summary)
+  // Toggle Class Filter box (hide if category is class-wise chart summary, unless viewing subset)
   const classFilterWrapper = document.getElementById("report-class-filter-wrapper");
   if (classFilterWrapper) {
-    classFilterWrapper.style.display = cat.isChart ? "none" : "block";
+    classFilterWrapper.style.display = (cat.isChart && !REPORTS_STATE.activeSubset) ? "none" : "block";
   }
 
   // Calculate filtered list
@@ -960,7 +1091,7 @@ function renderActiveCategoryDetail() {
 
   // Handle Chart.js component
   const chartCard = document.getElementById("report-chart-card");
-  if (cat.isChart) {
+  if (cat.isChart && !REPORTS_STATE.activeSubset) {
     chartCard.classList.remove("hidden");
     renderCategoryChartJs(cat, filteredData);
   } else {
@@ -981,11 +1112,21 @@ function renderActiveCategoryDetail() {
   const endIndex = Math.min(startIndex + REPORTS_STATE.pageSize, totalCount);
   const paginated = filteredData.slice(startIndex, endIndex);
 
+  // Determine headers
+  let headers = cat.headers;
+  if (REPORTS_STATE.activeSubset) {
+    if (REPORTS_STATE.activeSubset.type === "gender") {
+      headers = ["Name", "Class", "Gender"];
+    } else {
+      headers = ["Name", "Class", "Category"];
+    }
+  }
+
   // Render Table Head
   const thead = document.getElementById("report-detail-thead");
   thead.innerHTML = "";
   const thr = document.createElement("tr");
-  cat.headers.forEach(h => {
+  headers.forEach(h => {
     const th = document.createElement("th");
     th.textContent = h;
     if (h === "Class") {
@@ -997,7 +1138,7 @@ function renderActiveCategoryDetail() {
     }
     thr.appendChild(th);
   });
-  if (!cat.isChart) {
+  if (!cat.isChart || REPORTS_STATE.activeSubset) {
     const th = document.createElement("th");
     th.textContent = "Actions";
     th.style.width = "80px";
@@ -1011,11 +1152,54 @@ function renderActiveCategoryDetail() {
   tbody.innerHTML = "";
 
   if (filteredData.length === 0) {
-    const colSpan = cat.headers.length + (!cat.isChart ? 1 : 0);
+    const colSpan = headers.length + (!cat.isChart || REPORTS_STATE.activeSubset ? 1 : 0);
     tbody.innerHTML = `<tr><td colspan="${colSpan}" style="padding: 32px; text-align: center; color: var(--text-muted);">No matching records found.</td></tr>`;
   } else {
-    if (cat.id === "c1") {
-      // Custom table rendering for C1 with Grand Total
+    if (REPORTS_STATE.activeSubset) {
+      // Render subset student details table rows
+      paginated.forEach(row => {
+        const tr = document.createElement("tr");
+        headers.forEach(h => {
+          const td = document.createElement("td");
+          let val = row[h];
+          if (typeof formatCellValue === "function") {
+            val = formatCellValue(val);
+          }
+          td.textContent = (val !== undefined && val !== null) ? val : "";
+          if (h === "Class") {
+            td.className = "col-class";
+          } else if (h === "Name") {
+            td.className = "col-name";
+          } else {
+            td.className = "col-relevant";
+          }
+          tr.appendChild(td);
+        });
+
+        // Add View Action Button
+        const actionTd = document.createElement("td");
+        actionTd.style.textAlign = "center";
+        const viewBtn = document.createElement("button");
+        viewBtn.className = "btn-secondary";
+        viewBtn.style.padding = "4px 8px";
+        viewBtn.style.fontSize = "0.75rem";
+        viewBtn.style.display = "inline-flex";
+        viewBtn.style.alignItems = "center";
+        viewBtn.style.gap = "4px";
+        viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i><span>View</span>`;
+        viewBtn.addEventListener("click", () => {
+          const targetRow = row._original || row;
+          if (typeof window.openStudentDetailModal === "function") {
+            window.openStudentDetailModal(targetRow, row._sourceSheet);
+          }
+        });
+        actionTd.appendChild(viewBtn);
+        tr.appendChild(actionTd);
+
+        tbody.appendChild(tr);
+      });
+    } else if (cat.id === "c1") {
+      // Custom table rendering for C1 with Grand Total and clickable cells
       let grandBoys = 0;
       let grandGirls = 0;
       let grandTotal = 0;
@@ -1030,15 +1214,18 @@ function renderActiveCategoryDetail() {
 
         const boysTd = document.createElement("td");
         boysTd.textContent = row["Boys"] || 0;
+        makeCellClickable(boysTd, "gender", row["Class"], "Boys", row["Boys"] || 0);
         tr.appendChild(boysTd);
 
         const girlsTd = document.createElement("td");
         girlsTd.textContent = row["Girls"] || 0;
+        makeCellClickable(girlsTd, "gender", row["Class"], "Girls", row["Girls"] || 0);
         tr.appendChild(girlsTd);
 
         const totalTd = document.createElement("td");
         totalTd.textContent = row["Total"] || 0;
         totalTd.style.fontWeight = "600";
+        makeCellClickable(totalTd, "gender", row["Class"], "Total", row["Total"] || 0);
         tr.appendChild(totalTd);
 
         tbody.appendChild(tr);
@@ -1058,20 +1245,23 @@ function renderActiveCategoryDetail() {
 
       const boysTd = document.createElement("td");
       boysTd.textContent = grandBoys;
+      makeCellClickable(boysTd, "gender", null, "Boys", grandBoys);
       gTr.appendChild(boysTd);
 
       const girlsTd = document.createElement("td");
       girlsTd.textContent = grandGirls;
+      makeCellClickable(girlsTd, "gender", null, "Girls", grandGirls);
       gTr.appendChild(girlsTd);
 
       const totalTd = document.createElement("td");
       totalTd.textContent = grandTotal;
+      makeCellClickable(totalTd, "gender", null, "Total", grandTotal);
       gTr.appendChild(totalTd);
 
       tbody.appendChild(gTr);
 
     } else if (cat.id === "c2") {
-      // Custom table rendering for C2 with Grand Total
+      // Custom table rendering for C2 with Grand Total and clickable cells
       let grandGen = 0;
       let grandObc = 0;
       let grandSc = 0;
@@ -1088,23 +1278,28 @@ function renderActiveCategoryDetail() {
 
         const genTd = document.createElement("td");
         genTd.textContent = row["GEN"] || 0;
+        makeCellClickable(genTd, "category", row["Class"], "GEN", row["GEN"] || 0);
         tr.appendChild(genTd);
 
         const obcTd = document.createElement("td");
         obcTd.textContent = row["OBC"] || 0;
+        makeCellClickable(obcTd, "category", row["Class"], "OBC", row["OBC"] || 0);
         tr.appendChild(obcTd);
 
         const scTd = document.createElement("td");
         scTd.textContent = row["SC"] || 0;
+        makeCellClickable(scTd, "category", row["Class"], "SC", row["SC"] || 0);
         tr.appendChild(scTd);
 
         const stTd = document.createElement("td");
         stTd.textContent = row["ST"] || 0;
+        makeCellClickable(stTd, "category", row["Class"], "ST", row["ST"] || 0);
         tr.appendChild(stTd);
 
         const totalTd = document.createElement("td");
         totalTd.textContent = row["Total"] || 0;
         totalTd.style.fontWeight = "600";
+        makeCellClickable(totalTd, "category", row["Class"], "Total", row["Total"] || 0);
         tr.appendChild(totalTd);
 
         tbody.appendChild(tr);
@@ -1126,22 +1321,27 @@ function renderActiveCategoryDetail() {
 
       const genTd = document.createElement("td");
       genTd.textContent = grandGen;
+      makeCellClickable(genTd, "category", null, "GEN", grandGen);
       gTr.appendChild(genTd);
 
       const obcTd = document.createElement("td");
       obcTd.textContent = grandObc;
+      makeCellClickable(obcTd, "category", null, "OBC", grandObc);
       gTr.appendChild(obcTd);
 
       const scTd = document.createElement("td");
       scTd.textContent = grandSc;
+      makeCellClickable(scTd, "category", null, "SC", grandSc);
       gTr.appendChild(scTd);
 
       const stTd = document.createElement("td");
       stTd.textContent = grandSt;
+      makeCellClickable(stTd, "category", null, "ST", grandSt);
       gTr.appendChild(stTd);
 
       const totalTd = document.createElement("td");
       totalTd.textContent = grandTotal;
+      makeCellClickable(totalTd, "category", null, "Total", grandTotal);
       gTr.appendChild(totalTd);
 
       tbody.appendChild(gTr);
@@ -1334,12 +1534,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const backBtn = document.getElementById("report-back-btn");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
-      REPORTS_STATE.activeCategory = null;
-      document.getElementById("reports-main-header").classList.remove("hidden");
-      document.getElementById("reports-main-content").classList.remove("hidden");
-      document.getElementById("reports-detail-header").classList.add("hidden");
-      document.getElementById("reports-detail-content").classList.add("hidden");
-      window.renderReports();
+      history.back();
     });
   }
 
@@ -1378,7 +1573,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = getFilteredCategoryData();
       const formatted = data.map(r => {
         const obj = {};
-        if (cat.isChart) {
+        if (cat.isChart && !REPORTS_STATE.activeSubset) {
           cat.headers.forEach(h => {
             let val = r[h];
             if (typeof formatCellValue === "function") {
