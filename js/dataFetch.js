@@ -306,16 +306,18 @@ async function runSyncPipeline(triggeredBy = 'auto') {
 
         // Step 2b: Update editable in session if returned
         if (sessionData && sessionData.valid === true) {
-          if (sessionData.editable !== undefined) {
-            updateStoredEditable(sessionData.editable);
-            console.log('[Sync] Step 2b: Editable updated to:', sessionData.editable);
+          const serverEditable = sessionData.editable !== undefined ? sessionData.editable : sessionData.Editable;
+          if (serverEditable !== undefined) {
+            updateStoredEditable(serverEditable);
+            console.log('[Sync] Step 2b: Editable updated to:', serverEditable);
           }
-          if (sessionData.report !== undefined) {
+          const serverReport = sessionData.report !== undefined ? sessionData.report : sessionData.Report;
+          if (serverReport !== undefined) {
             const sdipRaw = localStorage.getItem("sdip_session");
             if (sdipRaw) {
               try {
                 const session = JSON.parse(sdipRaw);
-                session.report = sessionData.report;
+                session.report = serverReport;
                 localStorage.setItem("sdip_session", JSON.stringify(session));
               } catch (e) { }
             }

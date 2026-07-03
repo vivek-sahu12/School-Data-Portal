@@ -382,9 +382,12 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
   }
 
   filteredSchools.forEach(school => {
-    const isActive = school.status.toLowerCase() === "active";
-    const isEditable = school.editable.toLowerCase() === "yes";
-    const isReportEnabled = (school.report || "").toLowerCase() === "yes";
+    const statusVal = school.status || school.Status || "";
+    const isActive = statusVal.toString().toLowerCase() === "active";
+    const editableVal = school.editable || school.Editable || "";
+    const isEditable = editableVal.toString().toLowerCase() === "yes";
+    const reportVal = school.report || school.Report || "";
+    const isReportEnabled = reportVal.toString().toLowerCase() === "yes";
 
     // Last login check
     let lastLoginStr = "Never";
@@ -532,6 +535,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
 
           // Optimistic update state
           school.status = nextStatus;
+          if (school.Status !== undefined) school.Status = nextStatus;
           showToast(`${school.schoolName} status toggling to ${nextStatus}`, "info");
 
           try {
@@ -547,6 +551,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           } catch (err) {
             // Revert
             school.status = oldVal;
+            if (school.Status !== undefined) school.Status = oldVal;
             statusCB.checked = !isChecked;
             showToast(`Failed to update status: ${err.message}`, "error");
             renderStats();
@@ -567,6 +572,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
 
           // Optimistic update state
           school.editable = nextEditable;
+          if (school.Editable !== undefined) school.Editable = nextEditable;
           showToast(`Setting editing permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
 
           try {
@@ -580,6 +586,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           } catch (err) {
             // Revert
             school.editable = oldVal;
+            if (school.Editable !== undefined) school.Editable = oldVal;
             editableCB.checked = !isChecked;
             showToast(`Failed to update editable permission: ${err.message}`, "error");
             renderSchoolsList();
@@ -599,6 +606,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
 
           // Optimistic update state
           school.report = nextReport;
+          if (school.Report !== undefined) school.Report = nextReport;
           showToast(`Setting report permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
 
           try {
@@ -612,6 +620,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           } catch (err) {
             // Revert
             school.report = oldVal;
+            if (school.Report !== undefined) school.Report = oldVal;
             reportCB.checked = !isChecked;
             showToast(`Failed to update report permission: ${err.message}`, "error");
             renderSchoolsList();

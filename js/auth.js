@@ -185,14 +185,20 @@ async function attemptLogin(userId, password) {
         }
         return { success: false, message: "Access denied. Please use the Admin Panel to login." };
       }
+      const schoolNameVal = data.schoolName || data.school_name || data['School Name'] || '';
+      const sheetUrlVal = data.sheetUrl || data.sheet_url || data['Sheet URL'] || '';
+      const logoUrlVal = data.logoUrl || data.logo_url || data['Logo URL'] || '';
+      const editableVal = data.editable !== undefined ? data.editable : (data.Editable !== undefined ? data.Editable : 'No');
+      const reportVal = data.report !== undefined ? data.report : (data.Report !== undefined ? data.Report : 'No');
+
       // Set session (store session token, school name, sheet url, logo url, editable, and userId)
       const sessionObj = {
         userId: userId.trim(),
         sessionToken: data.sessionToken,
-        schoolName: data.schoolName,
-        sheetUrl: data.sheetUrl,
-        logoUrl: data.logoUrl,
-        editable: data.editable
+        schoolName: schoolNameVal,
+        sheetUrl: sheetUrlVal,
+        logoUrl: logoUrlVal,
+        editable: editableVal
       };
       
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionObj));
@@ -200,11 +206,11 @@ async function attemptLogin(userId, password) {
         username: userId.trim(),
         loginTime: Date.now(),
         sessionToken: data.sessionToken,
-        schoolName: data.schoolName,
-        logoUrl: data.logoUrl,
-        editable: data.editable,
+        schoolName: schoolNameVal,
+        logoUrl: logoUrlVal,
+        editable: editableVal,
         role: data.role,
-        report: data.report || 'No'
+        report: reportVal
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -333,19 +339,21 @@ async function verifySessionStillValid() {
       return false;
     }
     
-    if (data.editable !== undefined) {
-      session.editable = data.editable;
+    const serverEditable = data.editable !== undefined ? data.editable : data.Editable;
+    if (serverEditable !== undefined) {
+      session.editable = serverEditable;
       localStorage.setItem('sdip_session', JSON.stringify(session));
       const sessionRaw2 = localStorage.getItem("school-portal-session");
       if (sessionRaw2) {
         const session2 = JSON.parse(sessionRaw2);
-        session2.editable = data.editable;
+        session2.editable = serverEditable;
         localStorage.setItem("school-portal-session", JSON.stringify(session2));
       }
     }
     
-    if (data.report !== undefined) {
-      session.report = data.report;
+    const serverReport = data.report !== undefined ? data.report : data.Report;
+    if (serverReport !== undefined) {
+      session.report = serverReport;
       localStorage.setItem('sdip_session', JSON.stringify(session));
     }
     
