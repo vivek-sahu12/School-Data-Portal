@@ -831,26 +831,28 @@ function getSubsetStudents(subset, cachedData) {
  * Configure cell styling and click event for student breakdown grid numbers
  */
 function makeCellClickable(td, type, cls, filterName, value) {
-  if (value > 0) {
-    td.style.color = "var(--primary)";
-    td.style.cursor = "pointer";
-    td.style.textDecoration = "underline";
-    td.style.fontWeight = "600";
-    td.title = `Click to view ${value} students`;
-    
-    td.addEventListener("mouseenter", () => {
-      td.style.color = "var(--primary-hover)";
-    });
-    td.addEventListener("mouseleave", () => {
-      td.style.color = "var(--primary)";
-    });
+  td.innerHTML = "";
+  
+  const container = document.createElement("div");
+  container.className = "report-badge-container";
 
-    td.addEventListener("click", () => {
+  const badge = document.createElement("button");
+  badge.textContent = value;
+  
+  const nameLower = filterName.toLowerCase();
+  if (value === 0) {
+    badge.className = "report-badge report-badge-zero";
+  } else {
+    badge.className = `report-badge ${nameLower}`;
+    badge.title = `Click to view ${value} students`;
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
       openSubsetList(type, cls, filterName);
     });
-  } else {
-    td.style.color = "var(--text-muted)";
   }
+
+  container.appendChild(badge);
+  td.appendChild(container);
 }
 
 /**
@@ -1052,11 +1054,9 @@ function renderActiveCategoryDetail() {
   const tableEl = document.getElementById("report-detail-table");
   if (tableEl) {
     if (cat.isChart && !REPORTS_STATE.activeSubset) {
-      tableEl.classList.remove("student-report-table");
-      tableEl.classList.add("analytics-report-table");
+      tableEl.className = "analytics-report-table";
     } else {
-      tableEl.classList.remove("analytics-report-table");
-      tableEl.classList.add("student-report-table");
+      tableEl.className = "data-table student-report-table";
     }
   }
 
@@ -1087,7 +1087,15 @@ function renderActiveCategoryDetail() {
   document.getElementById("report-detail-count-badge").textContent = `Total: ${totalCount}`;
 
   // Render detail summary cards
-  renderDetailSummaryCards(catId, filteredData, schoolData);
+  const summaryCardsContainer = document.getElementById("report-detail-summary-cards");
+  if (summaryCardsContainer) {
+    if (REPORTS_STATE.activeSubset) {
+      summaryCardsContainer.classList.add("hidden");
+    } else {
+      summaryCardsContainer.classList.remove("hidden");
+      renderDetailSummaryCards(catId, filteredData, schoolData);
+    }
+  }
 
   // Handle Chart.js component
   const chartCard = document.getElementById("report-chart-card");
@@ -1237,7 +1245,7 @@ function renderActiveCategoryDetail() {
 
       // Add Grand Total row
       const gTr = document.createElement("tr");
-      gTr.style.cssText = "font-weight: 700; background-color: var(--bg-surface-hover); border-top: 2px solid var(--border-color);";
+      gTr.className = "grand-total-row";
 
       const labelTd = document.createElement("td");
       labelTd.textContent = "Grand Total";
@@ -1313,7 +1321,7 @@ function renderActiveCategoryDetail() {
 
       // Add Grand Total row
       const gTr = document.createElement("tr");
-      gTr.style.cssText = "font-weight: 700; background-color: var(--bg-surface-hover); border-top: 2px solid var(--border-color);";
+      gTr.className = "grand-total-row";
 
       const labelTd = document.createElement("td");
       labelTd.textContent = "Grand Total";

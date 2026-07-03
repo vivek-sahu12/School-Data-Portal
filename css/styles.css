@@ -2114,3 +2114,115 @@ select option {
   }
 }
 
+/* Premium Analytics Report Table Styles */
+.analytics-report-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 10px;
+}
+
+.analytics-report-table th {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 14px 16px;
+  border-bottom: 2px solid var(--border-color);
+  text-align: center;
+}
+
+/* Class column should be left-aligned */
+.analytics-report-table th:first-child,
+.analytics-report-table td:first-child {
+  text-align: left;
+  padding-left: 24px;
+}
+
+/* Center align body cells */
+.analytics-report-table td {
+  padding: 10px 16px;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  font-size: 0.925rem;
+  color: var(--text-primary);
+}
+
+/* Hover row effect */
+.analytics-report-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.analytics-report-table tbody tr:hover td {
+  background-color: var(--bg-surface-hover);
+}
+
+/* Grand Total Row styling */
+.analytics-report-table tbody tr.grand-total-row td {
+  font-weight: 800;
+  background-color: var(--bg-surface-hover) !important;
+  border-top: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.analytics-report-table tbody tr.grand-total-row td:first-child {
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+}
+
+/* Minimal Interactive Report Badges */
+.report-badge-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.report-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+/* Animations and hover effects */
+.report-badge:hover:not(.report-badge-zero) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary);
+  background-color: var(--bg-surface);
+}
+
+.report-badge:active:not(.report-badge-zero) {
+  transform: translateY(0);
+}
+
+/* Zero / Empty styling - faded, non-clickable */
+.report-badge.report-badge-zero {
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  border-color: var(--border-color);
+  box-shadow: none;
+  cursor: default;
+  opacity: 0.45;
+}
+

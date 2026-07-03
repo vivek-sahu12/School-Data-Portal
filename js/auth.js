@@ -513,6 +513,18 @@ function showAppScreen(school) {
   
   // Trigger data fetching workflow
   initializeDataFetchWorkflow();
+
+  // Set initial history state if none exists (e.g. immediately after login)
+  if (typeof window.navigateState === "function") {
+    const currentState = history.state;
+    if (!currentState || !currentState.tab) {
+      window.navigateState({
+        tab: "dashboard",
+        reportCategory: null,
+        reportSubset: null
+      }, true);
+    }
+  }
 }
 
 /**
