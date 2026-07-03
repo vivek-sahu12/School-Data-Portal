@@ -89,7 +89,8 @@ window.isEditAllowed = function(editableValue) {
   if (isAdminViewingSession()) {
     return true;
   }
-  return (editableValue || "").toString().trim().toLowerCase() === "yes";
+  const valStr = (editableValue !== undefined && editableValue !== null) ? editableValue.toString().trim().toLowerCase() : "";
+  return valStr === "yes" || valStr === "true";
 };
 
 /**

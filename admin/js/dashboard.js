@@ -385,9 +385,11 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
     const statusVal = school.status || school.Status || "";
     const isActive = statusVal.toString().toLowerCase() === "active";
     const editableVal = school.editable || school.Editable || "";
-    const isEditable = editableVal.toString().toLowerCase() === "yes";
+    const editableStr = editableVal.toString().trim().toLowerCase();
+    const isEditable = editableStr === "yes" || editableStr === "true";
     const reportVal = school.report || school.Report || "";
-    const isReportEnabled = reportVal.toString().toLowerCase() === "yes";
+    const reportStr = reportVal.toString().trim().toLowerCase();
+    const isReportEnabled = reportStr === "yes" || reportStr === "true";
 
     // Last login check
     let lastLoginStr = "Never";
