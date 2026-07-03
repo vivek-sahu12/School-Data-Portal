@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portal-cache-v16';
+const CACHE_NAME = 'school-portal-cache-v17';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const ASSETS_TO_CACHE = [
   './js/universalSearch.js',
   './js/pdfExport.js',
   './js/theme.js',
+  './js/reports.js',
   './assets/icon.svg',
   './manifest.json',
   
