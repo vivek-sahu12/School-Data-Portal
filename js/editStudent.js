@@ -135,6 +135,86 @@ window.injectEditButton = function (modal, studentData, sourcePrefix) {
   }
 };
 
+const CLASS_ORDER = ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+
+// Hardcoded class lists per user ID (keys must be lowercase)
+const USER_CLASS_BOUNDS = {
+  "23431102408": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431116303": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+  // Add user ID mappings here manually (e.g., "username": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
+};
+
+function getClassRange(userId) {
+  const userKey = (userId || "").toString().trim().toLowerCase();
+
+  if (USER_CLASS_BOUNDS[userKey]) {
+    return USER_CLASS_BOUNDS[userKey];
+  }
+
+  // Fallback: return full list if not found
+  return CLASS_ORDER;
+}
+
+// Predefined options helpers
+window.getPredefinedClasses = function () {
+  const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
+  let startClass = "";
+  let endClass = "";
+  if (sessionRaw) {
+    try {
+      const session = JSON.parse(sessionRaw);
+      startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
+      endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
+    } catch (e) { }
+  }
+
+  const ORDER_DISPLAY = ["Nursery", "KG 1", "KG 2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+  const ORDER_NORM = ["nursery", "kg1", "kg2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+
+  if (!startClass || !endClass) {
+    return ORDER_DISPLAY;
+  }
+
+  const cleanClass = (cls) => {
+    let norm = cls.toLowerCase().trim().replace(/\s+/g, "").replace(/^class/g, "");
+    norm = norm.replace(/^(\d+)(st|nd|rd|th)$/, "$1");
+    norm = norm.replace(/kg-?(\d)/, "kg$1");
+    return norm;
+  };
+
+  const normStart = cleanClass(startClass);
+  const normEnd = cleanClass(endClass);
+
+  let startIndex = ORDER_NORM.indexOf(normStart);
+  let endIndex = ORDER_NORM.indexOf(normEnd);
+
+  if (startIndex === -1) startIndex = 0;
+  if (endIndex === -1) endIndex = ORDER_NORM.length - 1;
+
+  if (startIndex > endIndex) {
+    const temp = startIndex;
+    startIndex = endIndex;
+    endIndex = temp;
+  }
+
+  return ORDER_DISPLAY.slice(startIndex, endIndex + 1);
+};
+
+window.getPredefinedSubjects = function () {
+  const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
+  let subjectsStr = "";
+  if (sessionRaw) {
+    try {
+      const session = JSON.parse(sessionRaw);
+      subjectsStr = window.findValueIgnoreCaseAndSpaces(session, 'subjects') || "";
+    } catch (e) { }
+  }
+  if (!subjectsStr) {
+    return ["Arts", "Commerce", "Math", "Bio"];
+  }
+  return subjectsStr.split(",").map(s => s.trim()).filter(Boolean);
+};
+
 // Open Edit Form Modal and render editable inputs
 let originalStudentState = null;
 
@@ -164,21 +244,177 @@ function openEditForm(studentData) {
     label.style.color = "var(--text-muted)";
     label.textContent = key;
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.name = key;
-    input.className = "form-input";
-    input.value = (studentData[key] !== undefined && studentData[key] !== null) ? formatCellValue(studentData[key]) : "";
+    const keyLower = key.toLowerCase().trim();
+    let input;
+
+    if (keyLower === "class") {
+      input = document.createElement("select");
+      input.name = key;
+      input.className = "form-input";
+
+      const dropdown = input;
+      const session = JSON.parse(localStorage.getItem('sdip_session')) || {};
+      const allowedClasses = getClassRange(session.username);
+
+      allowedClasses.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = cls;
+        dropdown.appendChild(opt);
+      });
+
+      const currentVal = (studentData[key] !== undefined && studentData[key] !== null) ? studentData[key].toString().trim() : "";
+      input.value = currentVal;
+    }
+    else if (keyLower === "gender" || keyLower === "sex") {
+      input = document.createElement("select");
+      input.name = key;
+      input.className = "form-input";
+
+      const currentVal = (studentData[key] !== undefined && studentData[key] !== null) ? studentData[key].toString().trim() : "";
+      const genderOptions = ["Boy", "Girl"];
+      genderOptions.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        input.appendChild(opt);
+      });
+
+      let matched = false;
+      for (const opt of input.options) {
+        if (opt.value.toLowerCase() === currentVal.toLowerCase()) {
+          input.value = opt.value;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched && currentVal) {
+        const opt = document.createElement("option");
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        input.appendChild(opt);
+        input.value = currentVal;
+      }
+    }
+    else if (keyLower === "category" || keyLower === "caste") {
+      input = document.createElement("select");
+      input.name = key;
+      input.className = "form-input";
+
+      const currentVal = (studentData[key] !== undefined && studentData[key] !== null) ? studentData[key].toString().trim() : "";
+      const catOptions = ["GEN", "OBC", "SC", "ST"];
+      catOptions.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        input.appendChild(opt);
+      });
+
+      let matched = false;
+      for (const opt of input.options) {
+        if (opt.value.toLowerCase() === currentVal.toLowerCase()) {
+          input.value = opt.value;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched && currentVal) {
+        const opt = document.createElement("option");
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        input.appendChild(opt);
+        input.value = currentVal;
+      }
+    }
+    else if (keyLower === "subject" || keyLower === "stream") {
+      input = document.createElement("select");
+      input.name = key;
+      input.className = "form-input";
+
+      const currentVal = (studentData[key] !== undefined && studentData[key] !== null) ? studentData[key].toString().trim() : "";
+      const subjectOptions = window.getPredefinedSubjects();
+
+      const blankOpt = document.createElement("option");
+      blankOpt.value = "";
+      blankOpt.textContent = "Select Subject/Stream";
+      input.appendChild(blankOpt);
+
+      subjectOptions.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        input.appendChild(opt);
+      });
+
+      let matched = false;
+      for (const opt of input.options) {
+        if (opt.value.toLowerCase() === currentVal.toLowerCase()) {
+          input.value = opt.value;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched && currentVal) {
+        const opt = document.createElement("option");
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        input.appendChild(opt);
+        input.value = currentVal;
+      }
+    }
+    else {
+      input = document.createElement("input");
+      input.type = "text";
+      input.name = key;
+      input.className = "form-input";
+      input.value = (studentData[key] !== undefined && studentData[key] !== null) ? formatCellValue(studentData[key]) : "";
+    }
+
     input.style.padding = "10px 14px";
     input.style.border = "1px solid var(--border-color)";
     input.style.borderRadius = "var(--radius-md)";
     input.style.backgroundColor = "var(--bg-body)";
     input.style.color = "var(--text-main)";
+    input.style.width = "100%";
+    input.style.boxSizing = "border-box";
 
     formGroup.appendChild(label);
     formGroup.appendChild(input);
     form.appendChild(formGroup);
   });
+
+  // Dynamic show/hide listener for Stream/Subject dropdown on high classes (11th & 12th)
+  let classSelect = null;
+  let subjectSelect = null;
+  const selectElements = form.querySelectorAll("select");
+  selectElements.forEach(select => {
+    const nameLower = select.name.toLowerCase().trim();
+    if (nameLower === "class") {
+      classSelect = select;
+    } else if (nameLower === "subject" || nameLower === "stream") {
+      subjectSelect = select;
+    }
+  });
+
+  if (classSelect && subjectSelect) {
+    const updateSubjectFieldState = () => {
+      const selectedClass = classSelect.value.toString().trim();
+      const isHighClass = selectedClass === "11" || selectedClass === "12";
+      if (isHighClass) {
+        subjectSelect.disabled = false;
+        subjectSelect.style.opacity = "1";
+      } else {
+        subjectSelect.value = "";
+        subjectSelect.disabled = true;
+        subjectSelect.style.opacity = "0.5";
+      }
+    };
+    classSelect.addEventListener("change", updateSubjectFieldState);
+    updateSubjectFieldState(); // Initial check
+  }
 
   // Show edit modal
   modal.classList.remove("hidden");
@@ -410,16 +646,16 @@ window.syncPendingEditsImmediately = async function () {
 };
 
 // Initialize Background Sync Timer
-window.initBackgroundSyncTimer = function() {
+window.initBackgroundSyncTimer = function () {
   if (syncIntervalId) {
     clearInterval(syncIntervalId);
   }
   syncIntervalId = setInterval(async () => {
     const queue = getPendingQueue();
     const pendingEdits = queue.filter(e => e.status === "pending" || e.status === "failed");
-    
+
     console.log("Background sync timer check: online =", navigator.onLine, "pending queue length =", pendingEdits.length);
-    
+
     if (navigator.onLine && !isSyncingEdits && pendingEdits.length > 0) {
       await syncEdits(pendingEdits);
     }

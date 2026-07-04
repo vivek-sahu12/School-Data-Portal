@@ -276,7 +276,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
         if (sess && sess.sessionToken) {
           isAdminViewing = true;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (isAdminViewing) {
@@ -312,16 +312,24 @@ async function runSyncPipeline(triggeredBy = 'auto') {
             console.log('[Sync] Step 2b: Editable updated to:', serverEditable);
           }
           const serverReport = sessionData.report !== undefined ? sessionData.report : sessionData.Report;
-          if (serverReport !== undefined) {
-            const sdipRaw = localStorage.getItem("sdip_session");
-            if (sdipRaw) {
+          const serverStartClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'startclass');
+          const serverEndClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'endclass');
+          const serverSubjects = window.findValueIgnoreCaseAndSpaces(sessionData, 'subjects');
+
+          const updateKeys = ["school-portal-session", "sdip_session"];
+          updateKeys.forEach(k => {
+            const raw = localStorage.getItem(k);
+            if (raw) {
               try {
-                const session = JSON.parse(sdipRaw);
-                session.report = serverReport;
-                localStorage.setItem("sdip_session", JSON.stringify(session));
+                const session = JSON.parse(raw);
+                if (serverReport !== undefined) session.report = serverReport;
+                if (serverStartClass !== undefined) session.startClass = serverStartClass;
+                if (serverEndClass !== undefined) session.endClass = serverEndClass;
+                if (serverSubjects !== undefined) session.subjects = serverSubjects;
+                localStorage.setItem(k, JSON.stringify(session));
               } catch (e) { }
             }
-          }
+          });
           if (typeof updateReportsNavVisibility === "function") {
             updateReportsNavVisibility();
           }

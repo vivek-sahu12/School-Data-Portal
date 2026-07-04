@@ -110,3 +110,18 @@ function formatCellValue(value) {
   }
   return str;
 }
+
+/**
+ * Normalizes keys to locate values case/space-insensitively
+ */
+window.findValueIgnoreCaseAndSpaces = function(obj, searchKey) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const cleanSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
+  for (const key in obj) {
+    const cleanKey = key.toLowerCase().replace(/[\s_-]/g, '');
+    if (cleanKey === cleanSearch) {
+      return obj[key];
+    }
+  }
+  return undefined;
+};

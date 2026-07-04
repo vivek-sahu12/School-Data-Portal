@@ -8,14 +8,14 @@ const SESSION_KEY = "school-portal-session";
 function convertDriveUrl(url) {
   if (!url) return "";
   const str = url.toString().trim();
-  
+
   // Extract file ID from various Google Drive URL formats
   let fileId = null;
 
   // Match standard /file/d/FILE_ID/ format
   const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
-  
+
   // Match id=FILE_ID query parameter format (e.g. open?id=FILE_ID or uc?id=FILE_ID)
   if (!fileId) {
     const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -32,7 +32,7 @@ function convertDriveUrl(url) {
   if (fileId) {
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
-  
+
   return str;
 }
 
@@ -77,7 +77,7 @@ function getCurrentSchool() {
         logoUrl: data.logoUrl || "",
         editable: "Yes"
       };
-    } catch(e) {
+    } catch (e) {
       console.error("Error parsing admin_viewing_school:", e);
     }
   }
@@ -85,7 +85,7 @@ function getCurrentSchool() {
   return sessionData ? JSON.parse(sessionData) : null;
 }
 
-window.isEditAllowed = function(editableValue) {
+window.isEditAllowed = function (editableValue) {
   if (isAdminViewingSession()) {
     return true;
   }
@@ -167,7 +167,7 @@ async function attemptLogin(userId, password) {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    
+
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -175,7 +175,7 @@ async function attemptLogin(userId, password) {
     }
 
     const data = await response.json();
-    
+
     if (data && data.success) {
       if (data.role && data.role.toString().trim() === "SuperAdmin") {
         const errTextEl = document.getElementById("login-error-text");
@@ -192,6 +192,10 @@ async function attemptLogin(userId, password) {
       const editableVal = data.editable !== undefined ? data.editable : (data.Editable !== undefined ? data.Editable : 'No');
       const reportVal = data.report !== undefined ? data.report : (data.Report !== undefined ? data.Report : 'No');
 
+      const startClassVal = window.findValueIgnoreCaseAndSpaces(data, 'startclass') || '';
+      const endClassVal = window.findValueIgnoreCaseAndSpaces(data, 'endclass') || '';
+      const subjectsVal = window.findValueIgnoreCaseAndSpaces(data, 'subjects') || '';
+
       // Set session (store session token, school name, sheet url, logo url, editable, and userId)
       const sessionObj = {
         userId: userId.trim(),
@@ -199,9 +203,12 @@ async function attemptLogin(userId, password) {
         schoolName: schoolNameVal,
         sheetUrl: sheetUrlVal,
         logoUrl: logoUrlVal,
-        editable: editableVal
+        editable: editableVal,
+        startClass: startClassVal,
+        endClass: endClassVal,
+        subjects: subjectsVal
       };
-      
+
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionObj));
       localStorage.setItem('sdip_session', JSON.stringify({
         username: userId.trim(),
@@ -211,7 +218,10 @@ async function attemptLogin(userId, password) {
         logoUrl: logoUrlVal,
         editable: editableVal,
         role: data.role,
-        report: reportVal
+        report: reportVal,
+        startClass: startClassVal,
+        endClass: endClassVal,
+        subjects: subjectsVal
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -219,14 +229,14 @@ async function attemptLogin(userId, password) {
         loginTime: Date.now(),
         sessionToken: data.sessionToken
       });
-      
+
       // Fetch and cache school logo for offline use
       if (data.logoUrl) {
         await fetchAndCacheLogo(data.logoUrl);
       } else {
         localStorage.removeItem("school-portal-logo-base64");
       }
-      
+
       if (typeof updateReportsNavVisibility === "function") {
         updateReportsNavVisibility();
       }
@@ -237,9 +247,9 @@ async function attemptLogin(userId, password) {
   } catch (error) {
     clearTimeout(timeoutId);
     console.error("Login request failed: ", error);
-    return { 
-      success: false, 
-      message: "Could not reach the login server. Please check your connection and try again." 
+    return {
+      success: false,
+      message: "Could not reach the login server. Please check your connection and try again."
     };
   }
 }
@@ -255,7 +265,7 @@ async function logout() {
     try {
       const queue = JSON.parse(queueRaw);
       hasPending = queue.some(e => e.status === "pending" || e.status === "failed" || e.status === "syncing");
-    } catch (e) {}
+    } catch (e) { }
   }
 
   if (hasPending && navigator.onLine && typeof window.syncPendingEditsImmediately === "function") {
@@ -273,14 +283,14 @@ async function logout() {
       const session = JSON.parse(sessionRaw);
       const userId = session.username;
       const sessionToken = session.sessionToken;
-      
+
       if (userId && sessionToken) {
         const payload = {
           action: "logout",
           userId: userId,
           sessionToken: sessionToken
         };
-        
+
         // Attempt to notify the admin server of the logout (non-blocking)
         fetch(ADMIN_SCRIPT_URL, {
           method: "POST",
@@ -294,14 +304,14 @@ async function logout() {
 
   // Clear all localStorage
   localStorage.clear();
-  
+
   if (typeof updateReportsNavVisibility === "function") {
     updateReportsNavVisibility();
   }
-  
+
   // Reset UI back to login screen
   showLoginScreen();
-  
+
   // Display a feedback toast
   showToast("Logged out successfully.", "info");
 }
@@ -339,7 +349,7 @@ async function verifySessionStillValid() {
       window.location.reload();
       return false;
     }
-    
+
     const serverEditable = data.editable !== undefined ? data.editable : data.Editable;
     if (serverEditable !== undefined) {
       session.editable = serverEditable;
@@ -351,17 +361,17 @@ async function verifySessionStillValid() {
         localStorage.setItem("school-portal-session", JSON.stringify(session2));
       }
     }
-    
+
     const serverReport = data.report !== undefined ? data.report : data.Report;
     if (serverReport !== undefined) {
       session.report = serverReport;
       localStorage.setItem('sdip_session', JSON.stringify(session));
     }
-    
+
     if (typeof updateReportsNavVisibility === "function") {
       updateReportsNavVisibility();
     }
-    
+
     return true;
   } catch (err) {
     console.error('verifySessionStillValid - network error, skipping check:', err);
@@ -376,13 +386,13 @@ async function verifySessionStillValid() {
 function showLoginScreen() {
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("app-screen").classList.add("hidden");
-  
+
   // Reset logo back to default
   const logoEl = document.querySelector(".header-logo");
   if (logoEl) {
     logoEl.src = "assets/icon.svg";
   }
-  
+
   // Clear input fields
   document.getElementById("username").value = "";
   document.getElementById("password").value = "";
@@ -395,9 +405,9 @@ function showLoginScreen() {
 function showAppScreen(school) {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app-screen").classList.remove("hidden");
-  
+
   document.getElementById("school-name-display").textContent = school.schoolName;
-  
+
   // Display cached or online school logo
   const logoEl = document.querySelector(".header-logo");
   const logoWrapper = document.querySelector(".logo-wrapper");
@@ -416,7 +426,7 @@ function showAppScreen(school) {
             logoWrapper.style.padding = '0';
             logoWrapper.style.overflow = 'hidden';
           }
-          logoEl.onerror = function() {
+          logoEl.onerror = function () {
             // Revert to default icon on failure
             logoEl.src = 'assets/icon.svg';
             logoEl.style.display = 'block';
@@ -439,7 +449,7 @@ function showAppScreen(school) {
       logoEl.style.display = 'block';
     }
   }
-  
+
   // Inject Admin View Banner if viewing as admin
   if (isAdminViewingSession()) {
     if (!document.getElementById("admin-view-banner")) {
@@ -458,7 +468,7 @@ function showAppScreen(school) {
       banner.style.position = "sticky";
       banner.style.top = "0";
       banner.style.zIndex = "10000";
-      
+
       banner.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="display: inline-block; width: 8px; height: 8px; background-color: #ffffff; border-radius: 50%; animation: pulse 1.5s infinite;"></span>
@@ -468,7 +478,7 @@ function showAppScreen(school) {
           Exit Admin View
         </button>
       `;
-      
+
       if (!document.getElementById("admin-banner-styles")) {
         const style = document.createElement("style");
         style.id = "admin-banner-styles";
@@ -490,7 +500,7 @@ function showAppScreen(school) {
       }
 
       document.getElementById("app-screen").prepend(banner);
-      
+
       document.getElementById("exit-admin-view-btn").addEventListener("click", () => {
         const adminSession = localStorage.getItem("admin_session");
         const deviceId = localStorage.getItem("device_id");
@@ -510,7 +520,7 @@ function showAppScreen(school) {
       banner.remove();
     }
   }
-  
+
   // Trigger data fetching workflow
   initializeDataFetchWorkflow();
 
@@ -552,7 +562,7 @@ function showToast(message, type = "info") {
   `;
 
   container.appendChild(toast);
-  
+
   // Initialize dynamic icons inside the toast
   if (typeof lucide !== 'undefined') {
     lucide.createIcons({ attrs: { class: 'size-4' } });
@@ -599,7 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logoUrl: data.logoUrl || "",
         editable: "Yes" // Set editable = true always
       };
-      
+
       // Store in standard session keys so the app uses them
       localStorage.setItem(SESSION_KEY, JSON.stringify(simSchool));
       localStorage.setItem('sdip_session', JSON.stringify({
@@ -611,11 +621,11 @@ document.addEventListener("DOMContentLoaded", () => {
         editable: "Yes",
         role: "Admin"
       }));
-      
+
       // Ensure we clear any cached data from previous schools so we fetch it fresh
       localStorage.removeItem("school-portal-data");
       localStorage.removeItem("school-portal-last-fetch");
-      
+
       showAppScreen(simSchool);
     } catch (e) {
       console.error("Failed to parse admin_viewing_school:", e);
@@ -643,7 +653,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
+
       const userIdVal = document.getElementById("username").value;
       const passwordVal = document.getElementById("password").value;
       const errorDiv = document.getElementById("login-error");

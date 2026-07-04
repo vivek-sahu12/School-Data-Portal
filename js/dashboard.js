@@ -25,6 +25,26 @@ function initDashboard(data) {
   if (threeEl) threeEl.textContent = threeCount;
   if (schoolEl) schoolEl.textContent = schoolCount;
 
+  // Update Configured Range status
+  const rangeDisplay = document.getElementById("configured-range-display");
+  if (rangeDisplay) {
+    const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
+    let startClass = "";
+    let endClass = "";
+    if (sessionRaw) {
+      try {
+        const session = JSON.parse(sessionRaw);
+        startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
+        endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
+      } catch(e) {}
+    }
+    if (startClass && endClass) {
+      rangeDisplay.textContent = `${startClass} to ${endClass}`;
+    } else {
+      rangeDisplay.textContent = "Not Configured (showing all Nursery to Class 12)";
+    }
+  }
+
   // Bind clickable metric cards
   document.querySelectorAll(".clickable-metric-card").forEach(card => {
     if (!card.dataset.listenerBound) {
