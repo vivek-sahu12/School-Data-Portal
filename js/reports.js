@@ -1446,12 +1446,6 @@ function renderCategoryChartJs(cat, data) {
             data: data.map(r => r["Girls"]),
             backgroundColor: "#ec4899",
             borderRadius: 4
-          },
-          {
-            label: "Total",
-            data: data.map(r => r["Total"]),
-            backgroundColor: "#6366f1",
-            borderRadius: 4
           }
         ]
       },

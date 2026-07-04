@@ -124,13 +124,21 @@ function openPdfModalForSheet(sheetKey) {
 
   // Show Modal Overlay
   const modal = document.getElementById("pdf-export-modal");
+  if (typeof window.pushModalHistory === "function") {
+    window.pushModalHistory();
+  }
   if (modal) modal.classList.remove("hidden");
 }
 
 /**
  * Close PDF Modal
+ * @param {boolean} fromPopState - If true, do not call history.back() to avoid infinite loop
  */
-function closePdfModal() {
+function closePdfModal(fromPopState = false) {
+  if (fromPopState !== true && history.state && history.state.modalOpen) {
+    history.back();
+    return;
+  }
   const modal = document.getElementById("pdf-export-modal");
   if (modal) modal.classList.add("hidden");
   activePdfSheetKey = null;

@@ -2226,3 +2226,70 @@ select option {
   opacity: 0.45;
 }
 
+/* Responsive adjustments for Report charts */
+#report-chart-card {
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+#report-chart-card > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+#report-chart-canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  #report-chart-card {
+    padding: 12px !important;
+  }
+  #report-chart-card > div {
+    height: 280px !important;
+  }
+
+  /* Shrink table padding on mobile for report tables */
+  .analytics-report-table th {
+    padding: 10px 4px !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.02em !important;
+  }
+  
+  .analytics-report-table td {
+    padding: 8px 4px !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .analytics-report-table th:first-child,
+  .analytics-report-table td:first-child {
+    padding-left: 10px !important;
+  }
+
+  /* Shrink interactive badges on mobile to fit columns */
+  .report-badge {
+    min-width: 40px !important;
+    height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Ensure horizontal scrollable container is block and allows overflow scrolling */
+  .table-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .table-responsive {
+    width: 100% !important;
+    overflow-x: auto !important;
+    display: block !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+

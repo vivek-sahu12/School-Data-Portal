@@ -296,6 +296,9 @@ function saveStudentEdit() {
   // 3. Hide edit modal
   const modal = document.getElementById("student-edit-modal");
   if (modal) modal.classList.add("hidden");
+  if (history.state && history.state.modalOpen) {
+    history.back();
+  }
 
   // 4. Show success toast and trigger rerender
   if (typeof showToast === "function") {

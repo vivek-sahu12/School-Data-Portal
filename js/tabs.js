@@ -187,6 +187,9 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     injectEditButton(modal, studentData, sourcePrefix);
   }
 
+  if (typeof window.pushModalHistory === "function") {
+    window.pushModalHistory();
+  }
   modal.classList.remove("hidden");
 };
 
@@ -194,6 +197,10 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
  * Close Student Detail Modal
  */
 window.closeStudentDetailModal = function() {
+  if (history.state && history.state.modalOpen) {
+    history.back();
+    return;
+  }
   const modal = document.getElementById("student-detail-modal");
   if (modal) {
     modal.classList.add("hidden");
@@ -729,11 +736,52 @@ window.addEventListener("load", () => {
   }
 });
 
+// Global Modal History Utilities
+window.pushModalHistory = function() {
+  const currentState = history.state || {};
+  if (!currentState.modalOpen) {
+    history.pushState({ ...currentState, modalOpen: true }, "", "");
+  }
+};
+
+window.closeAllModals = function() {
+  const detailModal = document.getElementById("student-detail-modal");
+  const editModal = document.getElementById("student-edit-modal");
+  const pdfModal = document.getElementById("pdf-export-modal");
+  let closed = false;
+
+  if (detailModal && !detailModal.classList.contains("hidden")) {
+    detailModal.classList.add("hidden");
+    closed = true;
+  }
+  if (editModal && !editModal.classList.contains("hidden")) {
+    editModal.classList.add("hidden");
+    closed = true;
+  }
+  if (pdfModal && !pdfModal.classList.contains("hidden")) {
+    if (typeof closePdfModal === "function") {
+      closePdfModal(true);
+    } else {
+      pdfModal.classList.add("hidden");
+    }
+    closed = true;
+  }
+  return closed;
+};
+
 // Bind popstate event
 window.addEventListener("popstate", (event) => {
   if (!localStorage.getItem("sdip_session")) {
     return;
   }
+  
+  // Close any open modals first
+  const closedModal = window.closeAllModals();
+  if (closedModal && event.state && event.state.tab === window.currentActiveTab) {
+    // If a modal was closed and we are staying on the same tab, stop routing
+    return;
+  }
+
   if (event.state) {
     window.navigateState(event.state, false);
   } else {
