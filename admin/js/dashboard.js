@@ -390,6 +390,9 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
     const reportVal = school.report || school.Report || "";
     const reportStr = reportVal.toString().trim().toLowerCase();
     const isReportEnabled = reportStr === "yes" || reportStr === "true";
+    const excelVal = school.excel || school.Excel || "";
+    const excelStr = excelVal.toString().trim().toLowerCase();
+    const isExcelEnabled = excelStr === "yes" || excelStr === "true";
 
     // Last login check
     let lastLoginStr = "Never";
@@ -436,6 +439,12 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
         <td>
           <label class="switch-toggle">
             <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </td>
+        <td>
+          <label class="switch-toggle">
+            <input type="checkbox" class="excel-toggle-cb" data-userid="${school.userId}" ${isExcelEnabled ? 'checked' : ''}>
             <span class="switch-slider"></span>
           </label>
         </td>
@@ -495,6 +504,13 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
             <span>Report</span>
             <label class="switch-toggle">
               <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-group">
+            <span>Excel</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="excel-toggle-cb" data-userid="${school.userId}" ${isExcelEnabled ? 'checked' : ''}>
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -631,6 +647,40 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       }
     };
 
+    // Helper to bind excel toggle event
+    const bindExcelToggle = (element) => {
+      const excelCB = element.querySelector(".excel-toggle-cb");
+      if (excelCB) {
+        excelCB.addEventListener("change", async () => {
+          const isChecked = excelCB.checked;
+          const nextExcel = isChecked ? "Yes" : "No";
+          const oldVal = school.excel || school.Excel;
+
+          // Optimistic update state
+          school.excel = nextExcel;
+          if (school.Excel !== undefined) school.Excel = nextExcel;
+          showToast(`Setting excel permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Excel", nextExcel);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Excel field.");
+            }
+            showToast(`${school.schoolName} excel permission updated`, "success");
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.excel = oldVal;
+            if (school.Excel !== undefined) school.Excel = oldVal;
+            excelCB.checked = !isChecked;
+            showToast(`Failed to update excel permission: ${err.message}`, "error");
+            renderSchoolsList();
+          }
+        });
+      }
+    };
+
     // Helper to bind devices input click event
     const bindDevicesInput = (element) => {
       const devicesBtn = element.querySelector(".device-badge-btn");
@@ -665,6 +715,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       bindStatusToggle(tr);
       bindEditableToggle(tr);
       bindReportToggle(tr);
+      bindExcelToggle(tr);
       bindDevicesInput(tr);
       bindActions(tr);
     }
@@ -672,6 +723,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       bindStatusToggle(card);
       bindEditableToggle(card);
       bindReportToggle(card);
+      bindExcelToggle(card);
       bindDevicesInput(card);
       bindActions(card);
     }
@@ -728,12 +780,17 @@ function viewAsSchool(school) {
     return;
   }
 
+  const excelVal = school.excel || school.Excel || "";
+  const excelStr = excelVal.toString().trim().toLowerCase();
+  const isExcelEnabled = excelStr === "yes" || excelStr === "true" ? "Yes" : "No";
+
   const payload = {
     schoolName: school.schoolName,
     sheetUrl: url,
     logoUrl: school.logoUrl,
     userId: school.userId,
-    adminSession: true
+    adminSession: true,
+    excel: isExcelEnabled
   };
   localStorage.setItem("admin_viewing_school", JSON.stringify(payload));
   showToast(`Bypassing auth and loading School View for ${school.schoolName}`, "success");

@@ -1618,6 +1618,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Bind Excel export button
+  const exportExcelBtn = document.getElementById("report-export-excel-btn");
+  if (exportExcelBtn) {
+    exportExcelBtn.addEventListener("click", () => {
+      if (typeof exportReportToExcel === "function") {
+        exportReportToExcel();
+      }
+    });
+  }
+
   // Bind Theme toggle click action to redraw charts
   const toggleBtn = document.getElementById("theme-toggle-btn");
   if (toggleBtn) {

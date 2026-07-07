@@ -312,6 +312,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
             console.log('[Sync] Step 2b: Editable updated to:', serverEditable);
           }
           const serverReport = sessionData.report !== undefined ? sessionData.report : sessionData.Report;
+          const serverExcel = sessionData.excel !== undefined ? sessionData.excel : sessionData.Excel;
           const serverStartClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'startclass');
           const serverEndClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'endclass');
           const serverSubjects = window.findValueIgnoreCaseAndSpaces(sessionData, 'subjects');
@@ -323,6 +324,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
               try {
                 const session = JSON.parse(raw);
                 if (serverReport !== undefined) session.report = serverReport;
+                if (serverExcel !== undefined) session.excel = serverExcel;
                 if (serverStartClass !== undefined) session.startClass = serverStartClass;
                 if (serverEndClass !== undefined) session.endClass = serverEndClass;
                 if (serverSubjects !== undefined) session.subjects = serverSubjects;
@@ -332,6 +334,9 @@ async function runSyncPipeline(triggeredBy = 'auto') {
           });
           if (typeof updateReportsNavVisibility === "function") {
             updateReportsNavVisibility();
+          }
+          if (typeof updateExcelButtonsVisibility === "function") {
+            updateExcelButtonsVisibility();
           }
         }
 

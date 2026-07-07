@@ -191,6 +191,7 @@ async function attemptLogin(userId, password) {
       const logoUrlVal = data.logoUrl || data.logo_url || data['Logo URL'] || '';
       const editableVal = data.editable !== undefined ? data.editable : (data.Editable !== undefined ? data.Editable : 'No');
       const reportVal = data.report !== undefined ? data.report : (data.Report !== undefined ? data.Report : 'No');
+      const excelVal = data.excel !== undefined ? data.excel : (data.Excel !== undefined ? data.Excel : 'No');
 
       const startClassVal = window.findValueIgnoreCaseAndSpaces(data, 'startclass') || '';
       const endClassVal = window.findValueIgnoreCaseAndSpaces(data, 'endclass') || '';
@@ -204,6 +205,7 @@ async function attemptLogin(userId, password) {
         sheetUrl: sheetUrlVal,
         logoUrl: logoUrlVal,
         editable: editableVal,
+        excel: excelVal,
         startClass: startClassVal,
         endClass: endClassVal,
         subjects: subjectsVal
@@ -219,6 +221,7 @@ async function attemptLogin(userId, password) {
         editable: editableVal,
         role: data.role,
         report: reportVal,
+        excel: excelVal,
         startClass: startClassVal,
         endClass: endClassVal,
         subjects: subjectsVal
@@ -368,8 +371,23 @@ async function verifySessionStillValid() {
       localStorage.setItem('sdip_session', JSON.stringify(session));
     }
 
+    const serverExcel = data.excel !== undefined ? data.excel : data.Excel;
+    if (serverExcel !== undefined) {
+      session.excel = serverExcel;
+      localStorage.setItem('sdip_session', JSON.stringify(session));
+      const sessionRaw2 = localStorage.getItem("school-portal-session");
+      if (sessionRaw2) {
+        const session2 = JSON.parse(sessionRaw2);
+        session2.excel = serverExcel;
+        localStorage.setItem("school-portal-session", JSON.stringify(session2));
+      }
+    }
+
     if (typeof updateReportsNavVisibility === "function") {
       updateReportsNavVisibility();
+    }
+    if (typeof updateExcelButtonsVisibility === "function") {
+      updateExcelButtonsVisibility();
     }
 
     return true;
@@ -601,13 +619,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       // Create a simulated school session using the school's actual userId if available
       const targetUserId = data.userId || "admin_viewing";
+      const targetExcel = data.excel || "No";
       const simSchool = {
         userId: targetUserId,
         sessionToken: "admin_token",
         schoolName: data.schoolName,
         sheetUrl: url,
         logoUrl: data.logoUrl || "",
-        editable: "Yes" // Set editable = true always
+        editable: "Yes", // Set editable = true always
+        excel: targetExcel
       };
 
       // Store in standard session keys so the app uses them
@@ -619,7 +639,8 @@ document.addEventListener("DOMContentLoaded", () => {
         schoolName: data.schoolName,
         logoUrl: data.logoUrl || "",
         editable: "Yes",
-        role: "Admin"
+        role: "Admin",
+        excel: targetExcel
       }));
 
       // Ensure we clear any cached data from previous schools so we fetch it fresh
@@ -646,6 +667,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (typeof updateReportsNavVisibility === "function") {
     updateReportsNavVisibility();
+  }
+  if (typeof updateExcelButtonsVisibility === "function") {
+    updateExcelButtonsVisibility();
   }
 
   // Bind Login Form submission

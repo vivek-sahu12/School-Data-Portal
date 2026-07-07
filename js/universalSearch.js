@@ -17,6 +17,7 @@ function initUniversalSearch(data) {
   const searchInput = document.getElementById("universal-search-input");
   const resetBtn = document.getElementById("universal-reset-btn");
   const pdfBtn = document.getElementById("universal-pdf-btn");
+  const excelBtn = document.getElementById("universal-excel-btn");
 
   if (!sourceSelect || !columnSelect || !searchInput) return;
 
@@ -73,6 +74,16 @@ function initUniversalSearch(data) {
       }
     });
     pdfBtn.dataset.listenerBound = "true";
+  }
+
+  // Bind Excel export button
+  if (excelBtn && !excelBtn.dataset.listenerBound) {
+    excelBtn.addEventListener("click", () => {
+      if (typeof exportSheetToExcel === "function") {
+        exportSheetToExcel("universal");
+      }
+    });
+    excelBtn.dataset.listenerBound = "true";
   }
 
   // Initial column populate

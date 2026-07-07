@@ -238,6 +238,7 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
   const classSelect = document.getElementById(`${domPrefix}-class-select`);
   const columnSelect = document.getElementById(`${domPrefix}-column-select`);
   const pdfBtn = document.getElementById(`${domPrefix}-pdf-btn`);
+  const excelBtn = document.getElementById(`${domPrefix}-excel-btn`);
   const resetBtn = document.getElementById(`${domPrefix}-reset-btn`);
 
   // Helper to dynamically get the most up-to-date data for this sheet
@@ -294,6 +295,16 @@ function setupSheetTab(sheetKey, domPrefix, rows) {
       openPdfModalForSheet(sheetKey);
     });
     pdfBtn.dataset.listenerBound = "true";
+  }
+
+  // 7. Bind Excel Export trigger
+  if (excelBtn && !excelBtn.dataset.listenerBound) {
+    excelBtn.addEventListener("click", () => {
+      if (typeof exportSheetToExcel === "function") {
+        exportSheetToExcel(sheetKey);
+      }
+    });
+    excelBtn.dataset.listenerBound = "true";
   }
 }
 
@@ -650,6 +661,7 @@ window.navigateState = function(state, push = true) {
   else if (target === "school-data") viewId = "school-data-view";
   else if (target === "universal-search") viewId = "universal-search-view";
   else if (target === "reports") viewId = "reports-view";
+  else if (target === "age-calculator") viewId = "age-calculator-view";
 
   const targetSec = document.getElementById(viewId);
   if (targetSec) {
