@@ -662,6 +662,16 @@ window.navigateState = function(state, push = true) {
   else if (target === "universal-search") viewId = "universal-search-view";
   else if (target === "reports") viewId = "reports-view";
   else if (target === "age-calculator") viewId = "age-calculator-view";
+  else if (target === "edit-logs") {
+    const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
+    if (!school || !window.isEditAllowed(school.editable)) {
+      setTimeout(() => {
+        window.navigateToTab("dashboard");
+      }, 0);
+      return;
+    }
+    viewId = "edit-logs-view";
+  }
 
   const targetSec = document.getElementById(viewId);
   if (targetSec) {

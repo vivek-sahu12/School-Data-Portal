@@ -139,7 +139,7 @@ const CLASS_ORDER = ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7",
 
 // Hardcoded class lists per user ID (keys must be lowercase)
 const USER_CLASS_BOUNDS = {
-  "23431102408": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431102408": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
   "23431116303": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
   // Add user ID mappings here manually (e.g., "username": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
 };
@@ -660,6 +660,14 @@ window.initBackgroundSyncTimer = function () {
       await syncEdits(pendingEdits);
     }
   }, 20000); // 20s interval
+};
+
+// Stop Background Sync Timer
+window.stopBackgroundSyncTimer = function () {
+  if (syncIntervalId) {
+    clearInterval(syncIntervalId);
+    syncIntervalId = null;
+  }
 };
 
 // Setup Event listeners for Edit Form controls

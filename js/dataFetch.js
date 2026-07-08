@@ -68,6 +68,10 @@ function initializeDataFetchWorkflow() {
     renderAppComponents(cached);
     updateEditButtonVisibility();
 
+    if (typeof window.applyPermissionsToUI === "function") {
+      window.applyPermissionsToUI();
+    }
+
     // Check if cache is older than 24 hours
     const lastFetch = localStorage.getItem(TIMEOUT_KEY);
     const age = lastFetch ? Date.now() - parseInt(lastFetch) : Infinity;
@@ -164,6 +168,11 @@ function updateEditButtonVisibility() {
     // Remove any visible edit buttons from detail popups
     const editBtn = document.getElementById("edit-student-btn");
     if (editBtn) editBtn.remove();
+
+    // Stop background sync timer if active
+    if (typeof window.stopBackgroundSyncTimer === "function") {
+      window.stopBackgroundSyncTimer();
+    }
   } else {
     // Permission GRANTED — start background sync timer if not already running
     if (typeof window.initBackgroundSyncTimer === "function") {
@@ -284,6 +293,9 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     } else {
       let sessionResult;
       try {
+        // Set checkSession timeout to 20 seconds.
+        // Google Apps Script can take 5-15 seconds to spin up containers on cold starts.
+        // A 20-second timeout ensures we avoid premature aborts under standard load.
         sessionResult = await fetchWithTimeout(ADMIN_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
@@ -291,7 +303,7 @@ async function runSyncPipeline(triggeredBy = 'auto') {
             userId: getStoredUserId(),
             deviceId: getStoredDeviceId()
           })
-        }, 10000); // 10 second timeout
+        }, 20000);
 
         const sessionData = await sessionResult.json();
         console.log('[Sync] Step 2: Response:', sessionData);
@@ -304,18 +316,15 @@ async function runSyncPipeline(triggeredBy = 'auto') {
           return; // STOP pipeline
         }
 
-        // Step 2b: Update editable in session if returned
+        // Step 2b: Update session values if returned
         if (sessionData && sessionData.valid === true) {
-          const serverEditable = sessionData.editable !== undefined ? sessionData.editable : sessionData.Editable;
+          const serverEditable = window.findValueIgnoreCaseAndSpaces(sessionData, 'editable');
           if (serverEditable !== undefined) {
             updateStoredEditable(serverEditable);
             console.log('[Sync] Step 2b: Editable updated to:', serverEditable);
           }
-          const serverReport = sessionData.report !== undefined ? sessionData.report : sessionData.Report;
-          const serverExcel = sessionData.excel !== undefined ? sessionData.excel : sessionData.Excel;
-          const serverStartClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'startclass');
-          const serverEndClass = window.findValueIgnoreCaseAndSpaces(sessionData, 'endclass');
-          const serverSubjects = window.findValueIgnoreCaseAndSpaces(sessionData, 'subjects');
+          const serverReport = window.findValueIgnoreCaseAndSpaces(sessionData, 'report');
+          const serverExcel = window.findValueIgnoreCaseAndSpaces(sessionData, 'excel');
 
           const updateKeys = ["school-portal-session", "sdip_session"];
           updateKeys.forEach(k => {
@@ -325,18 +334,12 @@ async function runSyncPipeline(triggeredBy = 'auto') {
                 const session = JSON.parse(raw);
                 if (serverReport !== undefined) session.report = serverReport;
                 if (serverExcel !== undefined) session.excel = serverExcel;
-                if (serverStartClass !== undefined) session.startClass = serverStartClass;
-                if (serverEndClass !== undefined) session.endClass = serverEndClass;
-                if (serverSubjects !== undefined) session.subjects = serverSubjects;
                 localStorage.setItem(k, JSON.stringify(session));
               } catch (e) { }
             }
           });
-          if (typeof updateReportsNavVisibility === "function") {
-            updateReportsNavVisibility();
-          }
-          if (typeof updateExcelButtonsVisibility === "function") {
-            updateExcelButtonsVisibility();
+          if (typeof window.applyPermissionsToUI === "function") {
+            window.applyPermissionsToUI();
           }
         }
 
@@ -394,7 +397,9 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     console.log('[Sync] Step 4: Updating UI...');
     try {
       refreshUIWithCachedData(); // re-render tables/dashboard from cache
-      updateEditButtonVisibility(); // show/hide edit based on current editable value
+      if (typeof window.applyPermissionsToUI === "function") {
+        window.applyPermissionsToUI();
+      }
       console.log('[Sync] Step 4: UI updated.');
     } catch (err) {
       console.error('[Sync] Step 4: UI update error:', err.message);
@@ -482,6 +487,11 @@ function renderAppComponents(data) {
 
   // Setup PDF configuration module
   initPdfExport(data);
+
+  // Render Edit Logs if module loaded
+  if (typeof window.initEditLogs === "function") {
+    window.initEditLogs(data);
+  }
 }
 
 window.renderAppComponents = renderAppComponents;

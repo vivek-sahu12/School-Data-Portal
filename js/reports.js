@@ -363,9 +363,10 @@ window.updateReportsNavVisibility = function () {
   if (sessionRaw) {
     try {
       const session = JSON.parse(sessionRaw);
-      const reportVal = session.report !== undefined ? session.report : session.Report;
-      const valStr = (reportVal !== undefined && reportVal !== null) ? reportVal.toString().trim().toLowerCase() : "";
-      isReportEnabled = valStr === "yes" || valStr === "true";
+      const reportVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
+        ? window.findValueIgnoreCaseAndSpaces(session, "report")
+        : (session.report !== undefined ? session.report : session.Report);
+      isReportEnabled = String(reportVal || "").trim() === "Yes";
     } catch (e) {
       console.error("Error reading report permission from sdip_session:", e);
     }

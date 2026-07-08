@@ -114,6 +114,10 @@
           <i data-lucide="cake"></i>
           <span>Age Calculator</span>
         </button>
+        <button class="nav-item hidden" data-target="edit-logs" id="nav-edit-logs">
+          <i data-lucide="clipboard-list"></i>
+          <span>Edit Logs</span>
+        </button>
       </nav>
 
       <!-- HEADER ACTIONS -->
@@ -715,12 +719,12 @@
               <div class="form-group">
                 <label for="age-calc-dob" class="filter-label">Date of Birth (DOB) <span
                     style="color: var(--danger);">*</span></label>
-                <input type="text" id="age-calc-dob">
+                <input type="text" id="age-calc-dob" class="form-input">
               </div>
               <div class="form-group">
                 <label for="age-calc-ason" class="filter-label">Calculate Age As On <span
                     style="color: var(--danger);">*</span></label>
-                <input type="text" id="age-calc-ason" value="2026-07-31">
+                <input type="text" id="age-calc-ason" class="form-input" value="2026-07-31">
               </div>
             </div>
 
@@ -744,6 +748,129 @@
             <h4 class="stat-group-title" style="margin-bottom: 12px; font-weight: 700; color: var(--text-primary);">Admission Eligibility</h4>
             <div id="age-eligibility-text">
               <!-- Dynamic banner populated by js -->
+            </div>
+          </div>
+        </section>
+
+        <!-- EDIT LOGS SCREEN -->
+        <section id="edit-logs-view" class="view-section hidden">
+          <!-- Screen Header -->
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">School Edit History Logs</h2>
+              <p class="view-subtitle">Monitor and review data modification logs for students in real time.</p>
+            </div>
+          </div>
+
+          <!-- Overview Cards Grid -->
+          <div class="metrics-grid" style="margin-bottom: 24px;">
+            <div class="metric-card clickable-card" id="edit-logs-total-card">
+              <div class="metric-icon-box primary">
+                <i data-lucide="history"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Total Logs</p>
+                <h3 id="edit-logs-total-count" class="metric-value">-</h3>
+              </div>
+            </div>
+            <div class="metric-card clickable-card" id="edit-logs-today-card">
+              <div class="metric-icon-box success">
+                <i data-lucide="calendar"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">Today's Changes</p>
+                <h3 id="edit-logs-today-count" class="metric-value">-</h3>
+              </div>
+            </div>
+            <div class="metric-card clickable-card" id="edit-logs-week-card">
+              <div class="metric-icon-box warning">
+                <i data-lucide="trending-up"></i>
+              </div>
+              <div class="metric-details">
+                <p class="metric-label">This Week's Changes</p>
+                <h3 id="edit-logs-week-count" class="metric-value">-</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters layout -->
+          <div class="filter-bar" id="edit-logs-filter-bar" style="margin-bottom: 20px;">
+            <!-- Search by value -->
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" placeholder="Search by Name, Scholar No, User ID..." class="search-input" id="edit-logs-search-input">
+            </div>
+
+            <!-- Class Dropdown -->
+            <div class="filter-dropdown-wrapper" id="edit-logs-class-filter-wrapper">
+              <select id="edit-logs-class-select" class="form-select">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+
+            <!-- Action Type Dropdown -->
+            <div class="filter-dropdown-wrapper" id="edit-logs-action-filter-wrapper">
+              <select id="edit-logs-action-select" class="form-select">
+                <option value="">All Action Types</option>
+                <option value="EDIT">Edit</option>
+                <option value="ADD">Add</option>
+                <option value="DELETE">Delete</option>
+              </select>
+            </div>
+
+            <!-- Date selection: Start Date -->
+            <div class="filter-dropdown-wrapper">
+              <input type="text" id="edit-logs-start-date" class="form-select" placeholder="Start Date" readonly style="cursor: pointer;">
+            </div>
+
+            <!-- Date selection: End Date -->
+            <div class="filter-dropdown-wrapper">
+              <input type="text" id="edit-logs-end-date" class="form-select" placeholder="End Date" readonly style="cursor: pointer;">
+            </div>
+
+            <!-- Actions: Reset -->
+            <div class="filter-actions-group">
+              <button class="btn-secondary reset-btn" id="edit-logs-reset-btn">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading Container -->
+          <div id="edit-logs-loading" class="loading-bar-wrapper hidden" style="padding: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <div class="loading-spinner"></div>
+            <span style="color: var(--text-secondary); font-weight: 500;">Filtering logs...</span>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-card" id="edit-logs-table-card">
+            <div class="table-status-bar">
+              <span id="edit-logs-row-count" class="text-sm font-medium text-muted">Showing 0 rows</span>
+            </div>
+            <div class="table-responsive">
+              <table id="edit-logs-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th class="hide-on-mobile">PEN</th>
+                    <th class="hide-on-mobile">Class</th>
+                    <th class="hide-on-mobile">Scholar No</th>
+                    <th>Student Name</th>
+                    <th class="hide-on-mobile">Action Type</th>
+                    <th style="text-align: center;">Details</th>
+                  </tr>
+                </thead>
+                <tbody id="edit-logs-table-body">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Empty state -->
+            <div id="edit-logs-empty-state" class="empty-state hidden" style="padding: 40px; text-align: center;">
+              <i data-lucide="search-code"></i>
+              <p>No edit history available.</p>
             </div>
           </div>
         </section>
@@ -824,6 +951,26 @@
     </div>
   </div>
 
+  <!-- EDIT LOG DETAIL MODAL -->
+  <div id="edit-log-detail-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Log Details</h3>
+        <button id="close-edit-log-modal" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" id="edit-log-modal-body" style="padding-top: 10px; overflow-y: auto; max-height: 60vh;">
+        <!-- Filled dynamically -->
+      </div>
+
+      <div class="modal-footer">
+        <button id="close-edit-log-modal-btn" class="btn-primary">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- STUDENT EDIT MODAL -->
   <div id="student-edit-modal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 650px; display: flex; flex-direction: column; max-height: 90vh;">
@@ -884,6 +1031,10 @@
             <i data-lucide="cake"></i>
             <span>Age Calculator</span>
           </button>
+          <button class="drawer-nav-item hidden" data-target="edit-logs" id="drawer-edit-logs">
+            <i data-lucide="clipboard-list"></i>
+            <span>Edit Logs</span>
+          </button>
         </div>
         <div class="mobile-drawer-footer">
           <button id="drawer-logout-btn" class="drawer-nav-item" style="color: var(--danger);">
@@ -924,6 +1075,7 @@
   <script src="js/reports.js"></script>
   <script src="js/datePicker.js"></script>
   <script src="js/ageCalculator.js"></script>
+  <script src="js/editLogs.js"></script>
 
   <!-- Main bootstrapper -->
   <script>

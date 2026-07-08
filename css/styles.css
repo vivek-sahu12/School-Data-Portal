@@ -1930,6 +1930,18 @@ select option {
 .mobile-only-text {
   display: none !important;
 }
+.desktop-only-col {
+  display: table-cell;
+}
+.mobile-only-col {
+  display: none !important;
+}
+.desktop-only-modifications {
+  display: block;
+}
+.mobile-only-modifications {
+  display: none !important;
+}
 @media (max-width: 768px) {
   .desktop-only-text {
     display: none !important;
@@ -1937,6 +1949,42 @@ select option {
   .mobile-only-text {
     display: inline !important;
   }
+  .desktop-only-col {
+    display: none !important;
+  }
+  .mobile-only-col {
+    display: table-cell !important;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .desktop-only-modifications {
+    display: none !important;
+  }
+  .mobile-only-modifications {
+    display: flex !important;
+  }
+}
+
+/* Clickable Overview Metric Cards Active States */
+.metric-card.clickable-card {
+  cursor: pointer;
+  border-width: 1px;
+}
+.metric-card.clickable-card.active-total {
+  border-color: #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+.metric-card.clickable-card.active-today {
+  border-color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+.metric-card.clickable-card.active-week {
+  border-color: #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
 }
 
 /* App Screen Entrance Transition */
@@ -2612,30 +2660,33 @@ select option {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Positioning on Desktop */
-.custom-datepicker-popup.desktop-popup {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 8px;
+/* Centered Custom Date Picker Modal Popup */
+.custom-datepicker-popup.centered-modal {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  bottom: auto !important;
+  right: auto !important;
+  width: calc(100% - 32px) !important;
+  max-width: 340px !important;
+  transform: translate(-50%, -50%) scale(0.95) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xl) !important;
+  z-index: 1010 !important;
+  padding: 20px 16px !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  margin: 0 !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-out, visibility 0.25s ease-out !important;
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  animation: none !important; /* Disable conflicting entry animation */
 }
 
-/* Positioning on Mobile (Bottom Sheet) */
-.custom-datepicker-popup.mobile-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: var(--shadow-xl);
-  z-index: 1010;
-  padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)) 16px;
-}
-
-.custom-datepicker-popup.mobile-sheet.active {
-  transform: translateY(0);
+.custom-datepicker-popup.centered-modal.active {
+  transform: translate(-50%, -50%) scale(1) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Backdrop */
@@ -2816,4 +2867,6 @@ select option {
 .picker-footer-btn:hover {
   background-color: var(--bg-surface-hover);
 }
+
+
 

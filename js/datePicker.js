@@ -45,6 +45,7 @@
 
     // Wrap the target input with premium datepicker container controls
     buildWrapper() {
+      const isMob = this.isMobile();
       // 1. Create Wrapper
       const wrapper = document.createElement("div");
       wrapper.className = "custom-datepicker-wrapper";
@@ -55,9 +56,15 @@
       
       // Style original input
       this.input.classList.add("custom-datepicker-input");
-      this.input.setAttribute("placeholder", "YYYY-MM-DD");
       this.input.setAttribute("autocomplete", "off");
+      this.input.setAttribute("placeholder", "YYYY-MM-DD");
       this.input.setAttribute("type", "text"); // Force text input type for manual typing
+      
+      if (isMob) {
+        this.input.setAttribute("readonly", "true"); // Prevent keyboard/native picker on mobile
+      } else {
+        this.input.removeAttribute("readonly"); // Allow manual typing on desktop
+      }
       
       // 2. Calendar Trigger Icon Button
       const iconBtn = document.createElement("button");
@@ -188,7 +195,7 @@
     }
 
     bindInputEvents() {
-      // 1. Format input on typing
+      // 1. Format input on typing (manual text input)
       this.input.addEventListener("input", (e) => {
         if (e.inputType === "deleteContentBackward") {
           this.validateInput(false); // Validate silently on deletion
@@ -202,7 +209,9 @@
         this.input.value = formatted;
         
         const newLen = formatted.length;
-        this.input.setSelectionRange(cursor + (newLen - oldLen), cursor + (newLen - oldLen));
+        if (cursor !== null) {
+          this.input.setSelectionRange(cursor + (newLen - oldLen), cursor + (newLen - oldLen));
+        }
         
         this.validateInput(false); // Validate silently as they type
       });
@@ -212,7 +221,12 @@
         this.validateInput(true);
       });
 
-      // 3. Open calendar on clicking anywhere in wrapper, input, or icon
+      // 3. Native change event listener for programmatic value changes
+      this.input.addEventListener("change", () => {
+        this.validateInput(false);
+      });
+
+      // 4. Open calendar on clicking anywhere in wrapper, input, or icon
       this.input.addEventListener("click", (e) => {
         e.stopPropagation();
         this.open();
@@ -264,65 +278,51 @@
       document.removeEventListener("click", this.clickOutsideHandler);
       document.removeEventListener("keydown", this.escKeyHandler);
 
-      // Restore scroll bars on mobile
-      if (this.isMobile()) {
-        document.body.style.overflow = "";
-      }
+      document.body.style.overflow = "";
 
       if (this.popup) {
-        if (this.isMobile()) {
-          this.popup.classList.remove("active");
-          if (this.backdrop) this.backdrop.classList.remove("active");
-          
-          setTimeout(() => {
-            if (this.popup && this.popup.parentNode) this.popup.parentNode.removeChild(this.popup);
-            if (this.backdrop && this.backdrop.parentNode) this.backdrop.parentNode.removeChild(this.backdrop);
-            this.popup = null;
-            this.backdrop = null;
-          }, 350); // slide out animation duration
-        } else {
-          if (this.popup.parentNode) this.popup.parentNode.removeChild(this.popup);
+        this.popup.classList.remove("active");
+        if (this.backdrop) this.backdrop.classList.remove("active");
+        
+        setTimeout(() => {
+          if (this.popup && this.popup.parentNode) this.popup.parentNode.removeChild(this.popup);
+          if (this.backdrop && this.backdrop.parentNode) this.backdrop.parentNode.removeChild(this.backdrop);
           this.popup = null;
-        }
+          this.backdrop = null;
+        }, 250); // slide out animation duration
       }
     }
 
     isMobile() {
-      return window.innerWidth <= 600;
+      return window.innerWidth <= 768;
     }
 
     // Construct popup elements in DOM (relative popover on desktop, bottom sheet on mobile)
     buildPopup() {
-      const isMob = this.isMobile();
+      // Prevent background page movement during display
+      document.body.style.overflow = "hidden";
+
+      // Create backdrop lock
+      const backdrop = document.createElement("div");
+      backdrop.className = "custom-datepicker-backdrop";
       
       const popup = document.createElement("div");
-      popup.className = `custom-datepicker-popup ${isMob ? 'mobile-sheet' : 'desktop-popup'}`;
+      popup.className = "custom-datepicker-popup centered-modal";
       
-      if (isMob) {
-        // Prevent background page movement during mobile display
-        document.body.style.overflow = "hidden";
+      document.body.appendChild(backdrop);
+      document.body.appendChild(popup);
+      
+      // Trigger reflow for slide animations
+      void backdrop.offsetWidth;
+      void popup.offsetWidth;
+      
+      backdrop.classList.add("active");
+      popup.classList.add("active");
 
-        // Create backdrop lock
-        const backdrop = document.createElement("div");
-        backdrop.className = "custom-datepicker-backdrop";
-        document.body.appendChild(backdrop);
-        document.body.appendChild(popup);
-        
-        // Trigger reflow for slide animations
-        void backdrop.offsetWidth;
-        void popup.offsetWidth;
-        
-        backdrop.classList.add("active");
-        popup.classList.add("active");
+      backdrop.addEventListener("click", () => this.close());
+      backdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
-        backdrop.addEventListener("click", () => this.close());
-        backdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
-
-        this.backdrop = backdrop;
-      } else {
-        this.wrapper.appendChild(popup);
-      }
-
+      this.backdrop = backdrop;
       this.popup = popup;
       this.popup.addEventListener("click", (e) => e.stopPropagation()); // prevent immediate wrapper closing
     }

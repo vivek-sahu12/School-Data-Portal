@@ -58,6 +58,23 @@ const isUidKey = (k) => {
  * @param {string} sheetKey 
  */
 function exportSheetToExcel(sheetKey) {
+  // Security block: Verify Excel export permission
+  const sdipRaw = localStorage.getItem("sdip_session");
+  let excelPermission = "No";
+  if (sdipRaw) {
+    try {
+      const session = JSON.parse(sdipRaw);
+      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
+    } catch (e) {}
+  }
+  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
+  if (!isExcelEnabled) {
+    if (typeof showToast === "function") {
+      showToast("Access Denied: Excel export is disabled.", "error");
+    }
+    return;
+  }
+
   const records = window.activeFilteredData[sheetKey] || [];
   if (records.length === 0) {
     showToast("No filtered records to export. Please adjust your search criteria.", "warning");
@@ -86,6 +103,23 @@ function exportSheetToExcel(sheetKey) {
  * Exports current active discrepancy/analysis report to CSV.
  */
 function exportReportToExcel() {
+  // Security block: Verify Excel export permission
+  const sdipRaw = localStorage.getItem("sdip_session");
+  let excelPermission = "No";
+  if (sdipRaw) {
+    try {
+      const session = JSON.parse(sdipRaw);
+      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
+    } catch (e) {}
+  }
+  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
+  if (!isExcelEnabled) {
+    if (typeof showToast === "function") {
+      showToast("Access Denied: Excel export is disabled.", "error");
+    }
+    return;
+  }
+
   const catId = REPORTS_STATE.activeCategory;
   const cat = REPORT_CATEGORIES.find(c => c.id === catId);
   if (!cat) return;
@@ -158,11 +192,11 @@ window.updateExcelButtonsVisibility = function() {
   if (sdipRaw) {
     try {
       const session = JSON.parse(sdipRaw);
-      excelPermission = session.excel !== undefined ? session.excel : (session.Excel !== undefined ? session.Excel : "No");
+      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
     } catch (e) {}
   }
   
-  const isExcelEnabled = excelPermission.toString().trim().toLowerCase() === "yes" || excelPermission.toString().trim().toLowerCase() === "true";
+  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
   
   const excelButtons = document.querySelectorAll(".excel-btn");
   excelButtons.forEach(btn => {

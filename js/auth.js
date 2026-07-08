@@ -89,8 +89,7 @@ window.isEditAllowed = function (editableValue) {
   if (isAdminViewingSession()) {
     return true;
   }
-  const valStr = (editableValue !== undefined && editableValue !== null) ? editableValue.toString().trim().toLowerCase() : "";
-  return valStr === "yes" || valStr === "true";
+  return String(editableValue || "").trim() === "Yes";
 };
 
 /**
@@ -189,13 +188,9 @@ async function attemptLogin(userId, password) {
       const schoolNameVal = data.schoolName || data.school_name || data['School Name'] || '';
       const sheetUrlVal = data.sheetUrl || data.sheet_url || data['Sheet URL'] || '';
       const logoUrlVal = data.logoUrl || data.logo_url || data['Logo URL'] || '';
-      const editableVal = data.editable !== undefined ? data.editable : (data.Editable !== undefined ? data.Editable : 'No');
-      const reportVal = data.report !== undefined ? data.report : (data.Report !== undefined ? data.Report : 'No');
-      const excelVal = data.excel !== undefined ? data.excel : (data.Excel !== undefined ? data.Excel : 'No');
-
-      const startClassVal = window.findValueIgnoreCaseAndSpaces(data, 'startclass') || '';
-      const endClassVal = window.findValueIgnoreCaseAndSpaces(data, 'endclass') || '';
-      const subjectsVal = window.findValueIgnoreCaseAndSpaces(data, 'subjects') || '';
+      const editableVal = window.findValueIgnoreCaseAndSpaces(data, 'editable') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'editable') : 'No';
+      const reportVal = window.findValueIgnoreCaseAndSpaces(data, 'report') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'report') : 'No';
+      const excelVal = window.findValueIgnoreCaseAndSpaces(data, 'excel') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'excel') : 'No';
 
       // Set session (store session token, school name, sheet url, logo url, editable, and userId)
       const sessionObj = {
@@ -205,10 +200,7 @@ async function attemptLogin(userId, password) {
         sheetUrl: sheetUrlVal,
         logoUrl: logoUrlVal,
         editable: editableVal,
-        excel: excelVal,
-        startClass: startClassVal,
-        endClass: endClassVal,
-        subjects: subjectsVal
+        excel: excelVal
       };
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionObj));
@@ -221,10 +213,7 @@ async function attemptLogin(userId, password) {
         editable: editableVal,
         role: data.role,
         report: reportVal,
-        excel: excelVal,
-        startClass: startClassVal,
-        endClass: endClassVal,
-        subjects: subjectsVal
+        excel: excelVal
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -240,8 +229,8 @@ async function attemptLogin(userId, password) {
         localStorage.removeItem("school-portal-logo-base64");
       }
 
-      if (typeof updateReportsNavVisibility === "function") {
-        updateReportsNavVisibility();
+      if (typeof window.applyPermissionsToUI === "function") {
+        window.applyPermissionsToUI();
       }
       return { success: true, school: sessionObj };
     } else {
@@ -353,7 +342,7 @@ async function verifySessionStillValid() {
       return false;
     }
 
-    const serverEditable = data.editable !== undefined ? data.editable : data.Editable;
+    const serverEditable = window.findValueIgnoreCaseAndSpaces(data, 'editable');
     if (serverEditable !== undefined) {
       session.editable = serverEditable;
       localStorage.setItem('sdip_session', JSON.stringify(session));
@@ -365,13 +354,19 @@ async function verifySessionStillValid() {
       }
     }
 
-    const serverReport = data.report !== undefined ? data.report : data.Report;
+    const serverReport = window.findValueIgnoreCaseAndSpaces(data, 'report');
     if (serverReport !== undefined) {
       session.report = serverReport;
       localStorage.setItem('sdip_session', JSON.stringify(session));
+      const sessionRaw2 = localStorage.getItem("school-portal-session");
+      if (sessionRaw2) {
+        const session2 = JSON.parse(sessionRaw2);
+        session2.report = serverReport;
+        localStorage.setItem("school-portal-session", JSON.stringify(session2));
+      }
     }
 
-    const serverExcel = data.excel !== undefined ? data.excel : data.Excel;
+    const serverExcel = window.findValueIgnoreCaseAndSpaces(data, 'excel');
     if (serverExcel !== undefined) {
       session.excel = serverExcel;
       localStorage.setItem('sdip_session', JSON.stringify(session));
@@ -383,11 +378,8 @@ async function verifySessionStillValid() {
       }
     }
 
-    if (typeof updateReportsNavVisibility === "function") {
-      updateReportsNavVisibility();
-    }
-    if (typeof updateExcelButtonsVisibility === "function") {
-      updateExcelButtonsVisibility();
+    if (typeof window.applyPermissionsToUI === "function") {
+      window.applyPermissionsToUI();
     }
 
     return true;
@@ -539,6 +531,11 @@ function showAppScreen(school) {
     }
   }
 
+  // Trigger visibility updates immediately based on the logged-in session settings
+  if (typeof window.applyPermissionsToUI === "function") {
+    window.applyPermissionsToUI();
+  }
+
   // Trigger data fetching workflow
   initializeDataFetchWorkflow();
 
@@ -601,6 +598,22 @@ function showToast(message, type = "info") {
     }
   }, 4000);
 }
+
+// Consolidated function to re-evaluate and apply all permission-gated UI features
+window.applyPermissionsToUI = function () {
+  if (typeof updateEditButtonVisibility === "function") {
+    updateEditButtonVisibility();
+  }
+  if (typeof updateReportsNavVisibility === "function") {
+    updateReportsNavVisibility();
+  }
+  if (typeof updateExcelButtonsVisibility === "function") {
+    updateExcelButtonsVisibility();
+  }
+  if (typeof window.updateEditLogsVisibility === "function") {
+    window.updateEditLogsVisibility();
+  }
+};
 
 // Check session on page load
 document.addEventListener("DOMContentLoaded", () => {
@@ -665,11 +678,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (typeof updateReportsNavVisibility === "function") {
-    updateReportsNavVisibility();
-  }
-  if (typeof updateExcelButtonsVisibility === "function") {
-    updateExcelButtonsVisibility();
+  if (typeof window.applyPermissionsToUI === "function") {
+    window.applyPermissionsToUI();
   }
 
   // Bind Login Form submission

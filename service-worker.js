@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portal-cache-v40';
+const CACHE_NAME = 'school-portal-cache-v50';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
   './js/reports.js',
   './js/datePicker.js',
   './js/ageCalculator.js',
+  './js/editLogs.js',
   './assets/icon.svg',
   './manifest.json',
   

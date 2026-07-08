@@ -8,7 +8,14 @@
     localStorage.setItem('school-portal-session', JSON.stringify({
       userId: "school001",
       schoolName: "ABC Public School",
-      sheetUrl: "https://script.google.com/macros/s/placeholder_abc/exec"
+      sheetUrl: "https://script.google.com/macros/s/placeholder_abc/exec",
+      editable: "Yes"
+    }));
+    localStorage.setItem('sdip_session', JSON.stringify({
+      username: "school001",
+      loginTime: Date.now(),
+      schoolName: "ABC Public School",
+      editable: "Yes"
     }));
     localStorage.setItem('school-portal-last-fetch', Date.now().toString());
     localStorage.setItem('school-portal-data', JSON.stringify({
@@ -25,6 +32,32 @@
       "School Data": [
         { "Name": "Aarav Sharma", "Class": "10", "Section": "A", "Gender": "Male", "Father Name": "Rakesh Sharma", "Address": "New Delhi" },
         { "Name": "Diya Patel", "Class": "10", "Section": "B", "Gender": "Female", "Father Name": "Vijay Patel", "Address": "Mumbai" }
+      ],
+      "Edit_log": [
+        {
+          "Timestamp": "2026-07-08 10:30:00",
+          "User_ID": "school001",
+          "Row_UID": "row_123",
+          "Class": "10",
+          "Scholar_No": "101",
+          "Student_Name": "Aarav Sharma",
+          "Action_Type": "EDIT",
+          "Changed_Fields": JSON.stringify(["Name", "Father Name"]),
+          "Previous_Values": JSON.stringify({"Name": "Aarav S.", "Father Name": "R. Sharma"}),
+          "New_Values": JSON.stringify({"Name": "Aarav Sharma", "Father Name": "Rakesh Sharma"})
+        },
+        {
+          "Timestamp": "2026-07-08 11:45:00",
+          "User_ID": "school002",
+          "Row_UID": "row_456",
+          "Class": "10",
+          "Scholar_No": "102",
+          "Student_Name": "Diya Patel",
+          "Action_Type": "ADD",
+          "Changed_Fields": JSON.stringify(["Name", "Class", "Section"]),
+          "Previous_Values": JSON.stringify({}),
+          "New_Values": JSON.stringify({"Name": "Diya Patel", "Class": "10", "Section": "B"})
+        }
       ]
     }));
 
