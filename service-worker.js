@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portal-cache-v50';
+const CACHE_NAME = 'school-portal-cache-v53';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

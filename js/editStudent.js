@@ -144,6 +144,38 @@ const USER_CLASS_BOUNDS = {
   // Add user ID mappings here manually (e.g., "username": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
 };
 
+// Hardcoded subject lists per user ID (keys must be lowercase)
+const USER_SUBJECTS = {
+  "23431102408": ["Arts", "Bio", "Commerce", "Math"],
+  "23431116303": ["Commerce", "Math", "Accountancy"]
+  // Add user ID -> subjects mapping manually here
+};
+
+function getCurrentUserId() {
+  const sessionRaw = localStorage.getItem("sdip_session") || localStorage.getItem("school-portal-session");
+  if (!sessionRaw) return "";
+  try {
+    const session = JSON.parse(sessionRaw);
+    return (session.username || session.userId || "").toString().trim();
+  } catch (e) {
+    return "";
+  }
+}
+
+function getUserSubjects(userId) {
+  const userKey = (userId || "").toString().trim().toLowerCase();
+  if (USER_SUBJECTS[userKey]) {
+    return USER_SUBJECTS[userKey];
+  }
+  const keys = Object.keys(USER_SUBJECTS);
+  for (const k of keys) {
+    if (k.toLowerCase().trim() === userKey) {
+      return USER_SUBJECTS[k];
+    }
+  }
+  return [];
+}
+
 function getClassRange(userId) {
   const userKey = (userId || "").toString().trim().toLowerCase();
 
@@ -232,7 +264,23 @@ function openEditForm(studentData) {
   };
   const keys = Object.keys(studentData).filter(k => !isUidKey(k));
 
+  const currentUserId = getCurrentUserId();
+  const userSubjects = getUserSubjects(currentUserId);
+
+  const subjectKey = Object.keys(studentData).find(k => {
+    const norm = k.toLowerCase().trim();
+    return norm === "subject" || norm === "stream";
+  }) || "Subject";
+
   keys.forEach(key => {
+    const keyLower = key.toLowerCase().trim();
+
+    // If user has configured subjects, we skip rendering the standard subject/stream input here
+    // since we will render it dynamically right under Class
+    if (userSubjects.length > 0 && (keyLower === "subject" || keyLower === "stream")) {
+      return;
+    }
+
     const formGroup = document.createElement("div");
     formGroup.style.display = "flex";
     formGroup.style.flexDirection = "column";
@@ -244,7 +292,6 @@ function openEditForm(studentData) {
     label.style.color = "var(--text-muted)";
     label.textContent = key;
 
-    const keyLower = key.toLowerCase().trim();
     let input;
 
     if (keyLower === "class") {
@@ -384,9 +431,92 @@ function openEditForm(studentData) {
     formGroup.appendChild(label);
     formGroup.appendChild(input);
     form.appendChild(formGroup);
+
+    // If key is Class and user has configured subjects, inject the dynamic subject select right below it
+    if (keyLower === "class" && userSubjects.length > 0) {
+      const dynamicSubjectGroup = document.createElement("div");
+      dynamicSubjectGroup.id = "dynamic-subject-group";
+      dynamicSubjectGroup.style.display = "none";
+      dynamicSubjectGroup.style.flexDirection = "column";
+      dynamicSubjectGroup.style.gap = "6px";
+      dynamicSubjectGroup.style.opacity = "0";
+      dynamicSubjectGroup.style.maxHeight = "0px";
+      dynamicSubjectGroup.style.overflow = "hidden";
+      dynamicSubjectGroup.style.transition = "opacity 0.2s ease, max-height 0.2s ease";
+
+      const dynamicLabel = document.createElement("label");
+      dynamicLabel.style.fontWeight = "500";
+      dynamicLabel.style.fontSize = "0.85rem";
+      dynamicLabel.style.color = "var(--text-muted)";
+      dynamicLabel.textContent = subjectKey;
+
+      const dynamicSelect = document.createElement("select");
+      dynamicSelect.name = subjectKey;
+      dynamicSelect.className = "form-input";
+      dynamicSelect.style.padding = "10px 14px";
+      dynamicSelect.style.border = "1px solid var(--border-color)";
+      dynamicSelect.style.borderRadius = "var(--radius-md)";
+      dynamicSelect.style.backgroundColor = "var(--bg-body)";
+      dynamicSelect.style.color = "var(--text-main)";
+      dynamicSelect.style.width = "100%";
+      dynamicSelect.style.boxSizing = "border-box";
+
+      const blankOpt = document.createElement("option");
+      blankOpt.value = "";
+      blankOpt.textContent = "Select Subject";
+      dynamicSelect.appendChild(blankOpt);
+
+      userSubjects.forEach(sub => {
+        const opt = document.createElement("option");
+        opt.value = sub;
+        opt.textContent = sub;
+        dynamicSelect.appendChild(opt);
+      });
+
+      // Pre-select if there is an initial value and it's allowed
+      const initialVal = (studentData[subjectKey] !== undefined && studentData[subjectKey] !== null) ? studentData[subjectKey].toString().trim() : "";
+      if (userSubjects.some(sub => sub.toLowerCase() === initialVal.toLowerCase())) {
+        const matchedSub = userSubjects.find(sub => sub.toLowerCase() === initialVal.toLowerCase());
+        dynamicSelect.value = matchedSub;
+      } else {
+        dynamicSelect.value = "";
+      }
+
+      dynamicSubjectGroup.appendChild(dynamicLabel);
+      dynamicSubjectGroup.appendChild(dynamicSelect);
+      form.appendChild(dynamicSubjectGroup);
+
+      // Listen for Class change to show/hide dynamic subject group
+      const classSelect = input;
+      const updateDynamicSubjectState = () => {
+        const selectedClass = classSelect.value.toString().trim();
+        const isHighClass = selectedClass === "11" || selectedClass === "12";
+        if (isHighClass) {
+          dynamicSubjectGroup.style.display = "flex";
+          // Force layout reflow
+          dynamicSubjectGroup.offsetHeight;
+          dynamicSubjectGroup.style.opacity = "1";
+          dynamicSubjectGroup.style.maxHeight = "100px";
+        } else {
+          dynamicSelect.value = "";
+          dynamicSubjectGroup.style.opacity = "0";
+          dynamicSubjectGroup.style.maxHeight = "0px";
+          setTimeout(() => {
+            if (classSelect.value.toString().trim() !== "11" && classSelect.value.toString().trim() !== "12") {
+              dynamicSubjectGroup.style.display = "none";
+            }
+          }, 200);
+        }
+      };
+
+      classSelect.addEventListener("change", updateDynamicSubjectState);
+      // Wait for layout/DOM injection, then trigger initial state
+      setTimeout(updateDynamicSubjectState, 0);
+    }
   });
 
   // Dynamic show/hide listener for Stream/Subject dropdown on high classes (11th & 12th)
+  // Only sets up if the standard subject/stream field was rendered (fallback/backwards compatibility)
   let classSelect = null;
   let subjectSelect = null;
   const selectElements = form.querySelectorAll("select");
@@ -395,7 +525,9 @@ function openEditForm(studentData) {
     if (nameLower === "class") {
       classSelect = select;
     } else if (nameLower === "subject" || nameLower === "stream") {
-      subjectSelect = select;
+      if (select.parentElement && select.parentElement.id !== "dynamic-subject-group") {
+        subjectSelect = select;
+      }
     }
   });
 
@@ -465,6 +597,25 @@ function closeEditForm(discardConfirmed = false) {
 function saveStudentEdit() {
   const form = document.getElementById("student-edit-form");
   if (!form || !originalStudentState) return;
+
+  // Validation for user-based subject configuration (Class 11/12 only)
+  const classInput = form.querySelector('[name="Class"]');
+  if (classInput) {
+    const selectedClass = classInput.value.toString().trim();
+    const currentUserId = getCurrentUserId();
+    const userSubjects = getUserSubjects(currentUserId);
+    if (userSubjects.length > 0 && (selectedClass === "11" || selectedClass === "12")) {
+      const subjectInput = form.querySelector('[name="Subject"]') || form.querySelector('[name="subject"]') || form.querySelector('[name="Stream"]') || form.querySelector('[name="stream"]');
+      if (subjectInput && !subjectInput.value.trim()) {
+        if (typeof showToast === "function") {
+          showToast("Subject is required for Class 11 and 12.", "error");
+        } else {
+          alert("Subject is required for Class 11 and 12.");
+        }
+        return; // Block save/submit
+      }
+    }
+  }
 
   const newValues = {};
   const changedFields = {};
