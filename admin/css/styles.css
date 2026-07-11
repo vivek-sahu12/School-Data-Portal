@@ -1481,29 +1481,34 @@ body.drawer-open-lock {
   }
 
   .school-card-toggles {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px;
-    background: var(--bg-secondary);
-    padding: 10px 6px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    background: var(--bg-secondary) !important;
+    padding: 10px 8px !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border) !important;
   }
 
   .toggle-group {
-    display: flex;
-    flex-direction: column !important;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: var(--bg-card);
+    padding: 8px 12px !important;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: left !important;
+    gap: 8px !important;
   }
 
   .toggle-group > span {
-    font-size: 9px;
-    font-weight: 700;
+    font-size: 11px !important;
+    font-weight: 600 !important;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
   }
 
   .admin-devices-num-input {
@@ -1568,4 +1573,49 @@ body.drawer-open-lock {
     width: 12px;
     height: 12px;
   }
+}
+
+/* Permissions Grid in Desktop Table */
+.permissions-grid {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.perm-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-secondary);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  min-width: 60px;
+}
+
+.perm-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Compact Toggle Switches */
+.switch-toggle.compact {
+  width: 32px !important;
+  height: 16px !important;
+}
+
+.switch-toggle.compact .switch-slider::before {
+  height: 10px !important;
+  width: 10px !important;
+  left: 3px !important;
+  bottom: 3px !important;
+}
+
+.switch-toggle.compact input:checked + .switch-slider::before {
+  transform: translateX(16px) !important;
 }

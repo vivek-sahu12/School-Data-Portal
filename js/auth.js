@@ -75,7 +75,10 @@ function getCurrentSchool() {
         schoolName: data.schoolName,
         sheetUrl: data.sheetUrl,
         logoUrl: data.logoUrl || "",
-        editable: "Yes"
+        editable: "Yes",
+        excel: data.excel || "No",
+        add: data.add || "Yes",
+        delete: data.delete || "Yes"
       };
     } catch (e) {
       console.error("Error parsing admin_viewing_school:", e);
@@ -191,6 +194,8 @@ async function attemptLogin(userId, password) {
       const editableVal = window.findValueIgnoreCaseAndSpaces(data, 'editable') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'editable') : 'No';
       const reportVal = window.findValueIgnoreCaseAndSpaces(data, 'report') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'report') : 'No';
       const excelVal = window.findValueIgnoreCaseAndSpaces(data, 'excel') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'excel') : 'No';
+      const addVal = window.findValueIgnoreCaseAndSpaces(data, 'add') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'add') : 'No';
+      const deleteVal = window.findValueIgnoreCaseAndSpaces(data, 'delete') !== undefined ? window.findValueIgnoreCaseAndSpaces(data, 'delete') : 'No';
 
       // Set session (store session token, school name, sheet url, logo url, editable, and userId)
       const sessionObj = {
@@ -200,7 +205,9 @@ async function attemptLogin(userId, password) {
         sheetUrl: sheetUrlVal,
         logoUrl: logoUrlVal,
         editable: editableVal,
-        excel: excelVal
+        excel: excelVal,
+        add: addVal,
+        delete: deleteVal
       };
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionObj));
@@ -213,7 +220,9 @@ async function attemptLogin(userId, password) {
         editable: editableVal,
         role: data.role,
         report: reportVal,
-        excel: excelVal
+        excel: excelVal,
+        add: addVal,
+        delete: deleteVal
       }));
       localStorage.setItem('skip_session_check', 'true');
       console.log('Saved session & set skip_session_check flag:', {
@@ -374,6 +383,30 @@ async function verifySessionStillValid() {
       if (sessionRaw2) {
         const session2 = JSON.parse(sessionRaw2);
         session2.excel = serverExcel;
+        localStorage.setItem("school-portal-session", JSON.stringify(session2));
+      }
+    }
+
+    const serverAdd = window.findValueIgnoreCaseAndSpaces(data, 'add');
+    if (serverAdd !== undefined) {
+      session.add = serverAdd;
+      localStorage.setItem('sdip_session', JSON.stringify(session));
+      const sessionRaw2 = localStorage.getItem("school-portal-session");
+      if (sessionRaw2) {
+        const session2 = JSON.parse(sessionRaw2);
+        session2.add = serverAdd;
+        localStorage.setItem("school-portal-session", JSON.stringify(session2));
+      }
+    }
+
+    const serverDelete = window.findValueIgnoreCaseAndSpaces(data, 'delete');
+    if (serverDelete !== undefined) {
+      session.delete = serverDelete;
+      localStorage.setItem('sdip_session', JSON.stringify(session));
+      const sessionRaw2 = localStorage.getItem("school-portal-session");
+      if (sessionRaw2) {
+        const session2 = JSON.parse(sessionRaw2);
+        session2.delete = serverDelete;
         localStorage.setItem("school-portal-session", JSON.stringify(session2));
       }
     }
@@ -599,6 +632,39 @@ function showToast(message, type = "info") {
   }, 4000);
 }
 
+window.updateAddStudentNavVisibility = function () {
+  const sdipRaw = localStorage.getItem("sdip_session");
+  let isAddEnabled = false;
+  if (sdipRaw) {
+    try {
+      const session = JSON.parse(sdipRaw);
+      const addVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
+        ? window.findValueIgnoreCaseAndSpaces(session, "add")
+        : session.add;
+      isAddEnabled = String(addVal || "").trim() === "Yes";
+    } catch (e) {}
+  }
+
+  // Admin viewing session bypass
+  if (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession()) {
+    isAddEnabled = true;
+  }
+
+  const desktopBtn = document.getElementById("nav-add-student");
+  const drawerBtn = document.getElementById("drawer-add-student");
+
+  if (isAddEnabled) {
+    if (desktopBtn) desktopBtn.classList.remove("hidden");
+    if (drawerBtn) drawerBtn.classList.remove("hidden");
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  } else {
+    if (desktopBtn) desktopBtn.classList.add("hidden");
+    if (drawerBtn) drawerBtn.classList.add("hidden");
+  }
+};
+
 // Consolidated function to re-evaluate and apply all permission-gated UI features
 window.applyPermissionsToUI = function () {
   if (typeof updateEditButtonVisibility === "function") {
@@ -612,6 +678,9 @@ window.applyPermissionsToUI = function () {
   }
   if (typeof window.updateEditLogsVisibility === "function") {
     window.updateEditLogsVisibility();
+  }
+  if (typeof window.updateAddStudentNavVisibility === "function") {
+    window.updateAddStudentNavVisibility();
   }
 };
 
@@ -633,6 +702,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Create a simulated school session using the school's actual userId if available
       const targetUserId = data.userId || "admin_viewing";
       const targetExcel = data.excel || "No";
+      const targetAdd = data.add || "Yes";
+      const targetDelete = data.delete || "Yes";
       const simSchool = {
         userId: targetUserId,
         sessionToken: "admin_token",
@@ -640,7 +711,9 @@ document.addEventListener("DOMContentLoaded", () => {
         sheetUrl: url,
         logoUrl: data.logoUrl || "",
         editable: "Yes", // Set editable = true always
-        excel: targetExcel
+        excel: targetExcel,
+        add: targetAdd,
+        delete: targetDelete
       };
 
       // Store in standard session keys so the app uses them
@@ -653,7 +726,9 @@ document.addEventListener("DOMContentLoaded", () => {
         logoUrl: data.logoUrl || "",
         editable: "Yes",
         role: "Admin",
-        excel: targetExcel
+        excel: targetExcel,
+        add: targetAdd,
+        delete: targetDelete
       }));
 
       // Ensure we clear any cached data from previous schools so we fetch it fresh

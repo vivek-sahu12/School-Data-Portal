@@ -250,18 +250,9 @@ window.getPredefinedSubjects = function () {
 // Open Edit Form Modal and render editable inputs
 let originalStudentState = null;
 
-function openEditForm(studentData) {
-  const modal = document.getElementById("student-edit-modal");
-  const form = document.getElementById("student-edit-form");
-  if (!modal || !form) return;
-
-  originalStudentState = JSON.parse(JSON.stringify(studentData));
+window.generateStudentFormFields = function (form, studentData, isAddFlow) {
   form.innerHTML = "";
-
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   const keys = Object.keys(studentData).filter(k => !isUidKey(k));
 
   const currentUserId = getCurrentUserId();
@@ -435,7 +426,7 @@ function openEditForm(studentData) {
     // If key is Class and user has configured subjects, inject the dynamic subject select right below it
     if (keyLower === "class" && userSubjects.length > 0) {
       const dynamicSubjectGroup = document.createElement("div");
-      dynamicSubjectGroup.id = "dynamic-subject-group";
+      dynamicSubjectGroup.id = isAddFlow ? "add-dynamic-subject-group" : "dynamic-subject-group";
       dynamicSubjectGroup.style.display = "none";
       dynamicSubjectGroup.style.flexDirection = "column";
       dynamicSubjectGroup.style.gap = "6px";
@@ -525,7 +516,8 @@ function openEditForm(studentData) {
     if (nameLower === "class") {
       classSelect = select;
     } else if (nameLower === "subject" || nameLower === "stream") {
-      if (select.parentElement && select.parentElement.id !== "dynamic-subject-group") {
+      const parentId = select.parentElement ? select.parentElement.id : "";
+      if (parentId !== "dynamic-subject-group" && parentId !== "add-dynamic-subject-group") {
         subjectSelect = select;
       }
     }
@@ -547,6 +539,15 @@ function openEditForm(studentData) {
     classSelect.addEventListener("change", updateSubjectFieldState);
     updateSubjectFieldState(); // Initial check
   }
+};
+
+function openEditForm(studentData) {
+  const modal = document.getElementById("student-edit-modal");
+  const form = document.getElementById("student-edit-form");
+  if (!modal || !form) return;
+
+  originalStudentState = JSON.parse(JSON.stringify(studentData));
+  window.generateStudentFormFields(form, studentData, false);
 
   // Show edit modal
   modal.classList.remove("hidden");
@@ -561,10 +562,7 @@ function closeEditForm(discardConfirmed = false) {
   if (!discardConfirmed) {
     // Check if form changed
     let hasChanges = false;
-    const isUidKey = (k) => {
-      const norm = k.toLowerCase().trim();
-      return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-    };
+    const isUidKey = window.isSystemColumn;
     const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
     for (const key of keys) {
@@ -621,10 +619,7 @@ function saveStudentEdit() {
   const changedFields = {};
   let hasChanges = false;
 
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
   for (const key of keys) {
@@ -720,12 +715,23 @@ async function syncEdits(editsToSync) {
   try {
     const payload = {
       action: "applyEdits",
-      edits: editsToSync.map(e => ({
-        row_uid: e.row_uid,
-        userId: e.userId,
-        changedFields: e.changedFields,
-        timestamp: e.timestamp
-      }))
+      edits: editsToSync.map(e => {
+        const item = {
+          action: e.action || "edit",
+          userId: e.userId,
+          timestamp: e.timestamp
+        };
+        if (e.row_uid) {
+          item.row_uid = e.row_uid;
+        }
+        if (e.changedFields) {
+          item.changedFields = e.changedFields;
+        }
+        if (e.data) {
+          item.data = e.data;
+        }
+        return item;
+      })
     };
 
     const response = await fetch(school.sheetUrl, {
@@ -845,9 +851,326 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Bind Add Student controls
+  const submitAddBtn = document.getElementById("submit-add-student-btn");
+  if (submitAddBtn) {
+    submitAddBtn.addEventListener("click", () => {
+      if (typeof window.submitAddStudent === "function") {
+        window.submitAddStudent();
+      }
+    });
+  }
+
+  const resetAddBtn = document.getElementById("reset-add-student-btn");
+  if (resetAddBtn) {
+    resetAddBtn.addEventListener("click", () => {
+      if (typeof window.resetAddStudentForm === "function") {
+        window.resetAddStudentForm();
+      }
+    });
+  }
+
+  // Bind Delete Student controls
+  const confirmDeleteBtn = document.getElementById("confirm-delete-student-btn");
+  if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener("click", () => {
+      if (typeof window.executeDeleteStudent === "function") {
+        window.executeDeleteStudent();
+      }
+    });
+  }
+
+  const cancelDeleteBtn = document.getElementById("cancel-delete-student-btn");
+  if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener("click", () => {
+      if (typeof window.cancelDeleteStudent === "function") {
+        window.cancelDeleteStudent();
+      }
+    });
+  }
+
+  const closeDeleteBtn = document.getElementById("close-delete-modal");
+  if (closeDeleteBtn) {
+    closeDeleteBtn.addEventListener("click", () => {
+      if (typeof window.cancelDeleteStudent === "function") {
+        window.cancelDeleteStudent();
+      }
+    });
+  }
+
+  const deleteModal = document.getElementById("delete-student-modal");
+  if (deleteModal) {
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) {
+        if (typeof window.cancelDeleteStudent === "function") {
+          window.cancelDeleteStudent();
+        }
+      }
+    });
+  }
+
   // Initialize auto sync if logged in and user has edit permissions
   const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
   if (school && window.isEditAllowed(school.editable)) {
     window.initBackgroundSyncTimer();
   }
 });
+
+// Add Student logic
+window.initAddStudentView = function () {
+  const form = document.getElementById("add-student-form");
+  if (!form) return;
+
+  // Let's only initialize if it's currently empty
+  if (form.children.length > 0) return;
+
+  // Get headers from first row of school data
+  let headers = [];
+  const cachedRaw = localStorage.getItem("school-portal-data");
+  if (cachedRaw) {
+    try {
+      const cached = JSON.parse(cachedRaw);
+      if (cached["School Data"] && cached["School Data"].length > 0) {
+        headers = Object.keys(cached["School Data"][0]);
+      }
+    } catch (e) {
+      console.error("Failed to read school data headers:", e);
+    }
+  }
+
+  if (headers.length === 0) {
+    headers = ["Class", "Section", "Roll No", "Scholar No", "Student Name", "Father Name", "Mother Name", "Gender", "Category", "Mobile No", "Aadhar No", "PEN", "Samagra ID", "Subject"];
+  }
+
+  // Create empty template
+  const template = {};
+  headers.forEach(h => {
+    template[h] = "";
+  });
+
+  window.generateStudentFormFields(form, template, true);
+};
+
+window.submitAddStudent = function () {
+  const form = document.getElementById("add-student-form");
+  if (!form) return;
+
+  // Validate Name/Student Name
+  const nameInput = form.querySelector('[name*="name" i]') || form.querySelector('[name*="Name" i]');
+  if (nameInput && !nameInput.value.trim()) {
+    if (typeof showToast === "function") showToast("Student Name is required.", "error");
+    else alert("Student Name is required.");
+    return;
+  }
+
+  // Validate Class
+  const classInput = form.querySelector('[name="Class"]') || form.querySelector('[name="class"]');
+  if (classInput && !classInput.value.trim()) {
+    if (typeof showToast === "function") showToast("Class is required.", "error");
+    else alert("Class is required.");
+    return;
+  }
+
+  // Validate Subject (if Class 11/12 and user has configured subjects)
+  if (classInput) {
+    const selectedClass = classInput.value.toString().trim();
+    const currentUserId = getCurrentUserId();
+    const userSubjects = getUserSubjects(currentUserId);
+    if (userSubjects.length > 0 && (selectedClass === "11" || selectedClass === "12")) {
+      const subjectInput = form.querySelector('[name="Subject"]') || form.querySelector('[name="subject"]') || form.querySelector('[name="Stream"]') || form.querySelector('[name="stream"]');
+      if (subjectInput && !subjectInput.value.trim()) {
+        if (typeof showToast === "function") showToast("Subject is required for Class 11 and 12.", "error");
+        else alert("Subject is required for Class 11 and 12.");
+        return;
+      }
+    }
+  }
+
+  // Extract all values
+  const formValues = {};
+  const inputs = form.querySelectorAll("input, select");
+  inputs.forEach(input => {
+    if (input.name) {
+      formValues[input.name] = input.value.trim();
+    }
+  });
+
+  // Display processing state
+  const submitBtn = document.getElementById("submit-add-student-btn");
+  const spinnerIcon = document.getElementById("add-student-spinner-icon");
+  const submitText = document.getElementById("add-student-submit-text");
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (spinnerIcon) spinnerIcon.classList.add("refresh-icon-spin");
+  if (submitText) submitText.textContent = "Adding...";
+
+  setTimeout(() => {
+    const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
+    const userId = school ? school.userId : "";
+    const tempUid = `add_temp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    const newRecord = {
+      row_uid: tempUid,
+      Status: "Active",
+      Added_Date: new Date().toISOString(),
+      ...formValues
+    };
+
+    // 1. Optimistically update local cached copy
+    const cachedRaw = localStorage.getItem("school-portal-data");
+    if (cachedRaw) {
+      try {
+        const cached = JSON.parse(cachedRaw);
+        if (!cached["School Data"]) cached["School Data"] = [];
+        cached["School Data"].push(newRecord);
+        localStorage.setItem("school-portal-data", JSON.stringify(cached));
+        if (window.activeOriginalData) {
+          window.activeOriginalData = cached;
+        }
+      } catch (err) {
+        console.error("Failed to update cached school data optimistically for add:", err);
+      }
+    }
+
+    // 2. Push to pending queue
+    let queue = getPendingQueue();
+    queue.push({
+      action: "add",
+      row_uid: tempUid,
+      userId: userId,
+      timestamp: Date.now(),
+      data: formValues,
+      status: "pending"
+    });
+    savePendingQueue(queue);
+
+    // 3. Reset processing state
+    if (submitBtn) submitBtn.disabled = false;
+    if (spinnerIcon) spinnerIcon.classList.remove("refresh-icon-spin");
+    if (submitText) submitText.textContent = "Add Student";
+
+    // 4. Reset form
+    form.reset();
+    if (classInput) {
+      classInput.dispatchEvent(new Event("change"));
+    }
+
+    // 5. Toast notification
+    if (typeof showToast === "function") {
+      showToast("Student added locally. Syncing in background...", "success");
+    }
+
+    // 6. Rerender table
+    if (typeof window.renderAppComponents === "function") {
+      const updatedData = JSON.parse(localStorage.getItem("school-portal-data"));
+      window.renderAppComponents(updatedData);
+    }
+
+    // 7. Trigger sync immediately
+    if (typeof window.syncPendingEditsImmediately === "function") {
+      window.syncPendingEditsImmediately();
+    }
+  }, 500);
+};
+
+window.resetAddStudentForm = function () {
+  const form = document.getElementById("add-student-form");
+  if (form && confirm("Are you sure you want to reset the form?")) {
+    form.reset();
+    const classInput = form.querySelector('[name="Class"]') || form.querySelector('[name="class"]');
+    if (classInput) {
+      classInput.dispatchEvent(new Event("change"));
+    }
+  }
+};
+
+// Delete Student logic
+let studentToDelete = null;
+
+window.confirmDeleteStudent = function (studentData) {
+  studentToDelete = studentData;
+  const modal = document.getElementById("delete-student-modal");
+  const msgEl = document.getElementById("delete-student-message");
+  if (!modal || !msgEl) return;
+
+  const nameVal = studentData["Student Name"] || studentData["Name"] || "Student";
+  const classVal = studentData["Class"] || "";
+  msgEl.textContent = `Are you sure you want to delete ${nameVal} (Class ${classVal})? This action cannot be undone from this screen.`;
+
+  modal.classList.remove("hidden");
+};
+
+window.executeDeleteStudent = function () {
+  if (!studentToDelete || !studentToDelete.row_uid) return;
+
+  const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
+  const userId = school ? school.userId : "";
+  const targetUid = studentToDelete.row_uid;
+
+  // 1. Optimistically remove from caches
+  const cachedRaw = localStorage.getItem("school-portal-data");
+  if (cachedRaw) {
+    try {
+      const cached = JSON.parse(cachedRaw);
+      if (cached["School Data"]) {
+        cached["School Data"] = cached["School Data"].filter(row => row.row_uid !== targetUid);
+        localStorage.setItem("school-portal-data", JSON.stringify(cached));
+        if (window.activeOriginalData) {
+          window.activeOriginalData = cached;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update cache optimistically for delete:", err);
+    }
+  }
+
+  if (window.activeFilteredData && window.activeFilteredData["School Data"]) {
+    window.activeFilteredData["School Data"] = window.activeFilteredData["School Data"].filter(row => row.row_uid !== targetUid);
+  }
+
+  // 2. Queue delete action
+  let queue = getPendingQueue();
+  queue.push({
+    action: "delete",
+    row_uid: targetUid,
+    userId: userId,
+    timestamp: Date.now(),
+    status: "pending"
+  });
+  savePendingQueue(queue);
+
+  // 3. Close modals
+  const deleteModal = document.getElementById("delete-student-modal");
+  if (deleteModal) deleteModal.classList.add("hidden");
+
+  const detailModal = document.getElementById("student-detail-modal");
+  if (detailModal) detailModal.classList.add("hidden");
+
+  if (history.state && history.state.modalOpen) {
+    history.back();
+  }
+
+  // 4. Toast notification
+  if (typeof showToast === "function") {
+    showToast("Student deleted locally. Syncing in background...", "success");
+  }
+
+  // 5. Trigger rerender
+  if (typeof window.renderAppComponents === "function") {
+    const updatedData = JSON.parse(localStorage.getItem("school-portal-data"));
+    window.renderAppComponents(updatedData);
+  }
+
+  // 6. Trigger sync immediately
+  if (typeof window.syncPendingEditsImmediately === "function") {
+    window.syncPendingEditsImmediately();
+  }
+
+  studentToDelete = null;
+};
+
+window.cancelDeleteStudent = function () {
+  const modal = document.getElementById("delete-student-modal");
+  if (modal) modal.classList.add("hidden");
+  studentToDelete = null;
+};

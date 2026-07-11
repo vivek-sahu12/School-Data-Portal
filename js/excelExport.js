@@ -48,10 +48,7 @@ function downloadCsvData(headers, records, filename) {
  * @param {string} k 
  * @returns {boolean}
  */
-const isUidKey = (k) => {
-  const norm = k.toLowerCase().trim();
-  return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-};
+const isUidKey = window.isSystemColumn;
 
 /**
  * Exports current active filtered worksheet data to CSV.

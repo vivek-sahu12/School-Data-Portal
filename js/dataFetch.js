@@ -32,7 +32,22 @@ function cacheSchoolData(data) {
   // Normalize worksheet keys by trimming whitespace
   const normalizedData = {};
   for (const key in data) {
-    normalizedData[key.trim()] = data[key];
+    const trimmedKey = key.trim();
+    let rows = data[key];
+    if (trimmedKey === "School Data" && Array.isArray(rows)) {
+      // Filter out soft-deleted records (where Status is "Deleted")
+      rows = rows.filter(row => {
+        const statusVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
+          ? window.findValueIgnoreCaseAndSpaces(row, "status")
+          : row.Status;
+        if (statusVal) {
+          const normStatus = String(statusVal).trim().toLowerCase();
+          return normStatus !== "deleted";
+        }
+        return true;
+      });
+    }
+    normalizedData[trimmedKey] = rows;
   }
   localStorage.setItem(DATA_KEY, JSON.stringify(normalizedData));
   localStorage.setItem(TIMEOUT_KEY, Date.now().toString());

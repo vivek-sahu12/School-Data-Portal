@@ -23,10 +23,7 @@ window.currentTableContextColumn = {
 
 // Helper to get compact column headers to display in the table
 window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColumn) {
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   const filteredOriginalHeaders = originalHeaders.filter(h => !isUidKey(h));
   const classKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "class") || "Class";
   const nameKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "name") || "Name";
@@ -99,10 +96,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     }
   }
 
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   const keys = Object.keys(studentData).filter(k => !isUidKey(k));
   let orderedKeys = [];
 
@@ -181,6 +175,48 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
   });
 
   body.appendChild(grid);
+
+  // Render Delete button in the header if delete is allowed and from School Data tab
+  const oldDeleteBtn = document.getElementById("delete-student-btn");
+  if (oldDeleteBtn) oldDeleteBtn.remove();
+
+  const sdipRaw = localStorage.getItem("sdip_session");
+  let deletePermission = "No";
+  if (sdipRaw) {
+    try {
+      const session = JSON.parse(sdipRaw);
+      deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
+    } catch (e) {}
+  }
+  let isDeleteAllowed = String(deletePermission || "").trim() === "Yes";
+  if (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession()) {
+    isDeleteAllowed = true;
+  }
+
+  if (sheetType === "school-data" && isDeleteAllowed) {
+    const header = modal.querySelector(".modal-header");
+    const closeBtn = document.getElementById("close-student-modal");
+    if (header && closeBtn) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.id = "delete-student-btn";
+      deleteBtn.className = "icon-btn";
+      deleteBtn.style.color = "var(--danger)";
+      deleteBtn.style.marginRight = "8px";
+      deleteBtn.title = "Delete Student";
+      deleteBtn.innerHTML = `<i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>`;
+      header.insertBefore(deleteBtn, closeBtn);
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      deleteBtn.addEventListener("click", () => {
+        if (typeof window.confirmDeleteStudent === "function") {
+          window.confirmDeleteStudent(studentData);
+        }
+      });
+    }
+  }
 
   // Render Edit button if editable and from School Data tab
   if (typeof injectEditButton === "function") {
@@ -358,10 +394,7 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
   // Populate Column dropdown with available sheet headers
   if (columnSelect && rows.length > 0) {
     columnSelect.innerHTML = "";
-    const isUidKey = (k) => {
-      const norm = k.toLowerCase().trim();
-      return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-    };
+    const isUidKey = window.isSystemColumn;
     const headers = Object.keys(rows[0]);
     headers.forEach(h => {
       if (isUidKey(h)) return; // skip internal columns
@@ -490,6 +523,24 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
       } else if (headerLower === "name" || headerLower === "student name") {
         td.className = "col-expand";
         if (typeof hasPendingEdit === "function" && hasPendingEdit(row.row_uid)) {
+          const queue = typeof getPendingQueue === "function" ? getPendingQueue() : [];
+          const entry = queue.find(e => e.row_uid === row.row_uid);
+          const action = entry ? (entry.action || "edit") : "edit";
+
+          let badgeText = "Pending";
+          let badgeBg = "var(--warning)";
+          let badgeIcon = "refresh-cw";
+
+          if (action === "add") {
+            badgeText = "Pending Add";
+            badgeBg = "var(--success)";
+            badgeIcon = "user-plus";
+          } else if (action === "delete") {
+            badgeText = "Pending Del";
+            badgeBg = "var(--danger)";
+            badgeIcon = "trash-2";
+          }
+
           const badge = document.createElement("span");
           badge.className = "pending-sync-badge";
           badge.style.display = "inline-flex";
@@ -498,10 +549,10 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
           badge.style.padding = "2px 6px";
           badge.style.fontSize = "10px";
           badge.style.fontWeight = "bold";
-          badge.style.backgroundColor = "var(--warning)";
+          badge.style.backgroundColor = badgeBg;
           badge.style.color = "var(--bg-surface)";
           badge.style.borderRadius = "4px";
-          badge.innerHTML = `<i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px; animation: spin 2s linear infinite;"></i>Pending`;
+          badge.innerHTML = `<i data-lucide="${badgeIcon}" style="width: 10px; height: 10px; margin-right: 3px;"></i>${badgeText}`;
           td.appendChild(badge);
         }
       }
@@ -672,6 +723,20 @@ window.navigateState = function(state, push = true) {
     }
     viewId = "edit-logs-view";
   }
+  else if (target === "add-student") {
+    const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
+    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim() === "Yes");
+    if (!isAddAllowed) {
+      setTimeout(() => {
+        window.navigateToTab("dashboard");
+      }, 0);
+      return;
+    }
+    viewId = "add-student-view";
+    if (typeof window.initAddStudentView === "function") {
+      window.initAddStudentView();
+    }
+  }
 
   const targetSec = document.getElementById(viewId);
   if (targetSec) {
@@ -786,6 +851,11 @@ window.closeAllModals = function() {
     } else {
       pdfModal.classList.add("hidden");
     }
+    closed = true;
+  }
+  const deleteModal = document.getElementById("delete-student-modal");
+  if (deleteModal && !deleteModal.classList.contains("hidden")) {
+    deleteModal.classList.add("hidden");
     closed = true;
   }
   return closed;

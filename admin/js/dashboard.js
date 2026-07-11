@@ -362,7 +362,7 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
     if (tableBody) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="6" class="admin-empty-row" style="text-align: center; padding: 32px; color: var(--text-muted);">
+          <td colspan="7" class="admin-empty-row" style="text-align: center; padding: 32px; color: var(--text-muted);">
             <i data-lucide="search" class="empty-icon" style="margin: 0 auto 12px auto; display: block; opacity: 0.5;"></i>
             <p>No schools matched your criteria.</p>
           </td>
@@ -393,6 +393,13 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
     const excelVal = school.excel || school.Excel || "";
     const excelStr = excelVal.toString().trim().toLowerCase();
     const isExcelEnabled = excelStr === "yes" || excelStr === "true";
+
+    const addVal = school.add || school.Add || "";
+    const addStr = addVal.toString().trim().toLowerCase();
+    const isAddEnabled = addStr === "yes" || addStr === "true";
+    const deleteVal = school.delete || school.Delete || "";
+    const deleteStr = deleteVal.toString().trim().toLowerCase();
+    const isDeleteEnabled = deleteStr === "yes" || deleteStr === "true";
 
     // Last login check
     let lastLoginStr = "Never";
@@ -431,22 +438,43 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           </label>
         </td>
         <td>
-          <label class="switch-toggle">
-            <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
-            <span class="switch-slider"></span>
-          </label>
-        </td>
-        <td>
-          <label class="switch-toggle">
-            <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
-            <span class="switch-slider"></span>
-          </label>
-        </td>
-        <td>
-          <label class="switch-toggle">
-            <input type="checkbox" class="excel-toggle-cb" data-userid="${school.userId}" ${isExcelEnabled ? 'checked' : ''}>
-            <span class="switch-slider"></span>
-          </label>
+          <div class="permissions-grid">
+            <div class="perm-item" title="Editable">
+              <span class="perm-label">Edit</span>
+              <label class="switch-toggle compact">
+                <input type="checkbox" class="editable-toggle-cb" data-userid="${school.userId}" ${isEditable ? 'checked' : ''}>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div class="perm-item" title="Report">
+              <span class="perm-label">Report</span>
+              <label class="switch-toggle compact">
+                <input type="checkbox" class="report-toggle-cb" data-userid="${school.userId}" ${isReportEnabled ? 'checked' : ''}>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div class="perm-item" title="Excel">
+              <span class="perm-label">Excel</span>
+              <label class="switch-toggle compact">
+                <input type="checkbox" class="excel-toggle-cb" data-userid="${school.userId}" ${isExcelEnabled ? 'checked' : ''}>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div class="perm-item" title="Add">
+              <span class="perm-label">Add</span>
+              <label class="switch-toggle compact">
+                <input type="checkbox" class="add-toggle-cb" data-userid="${school.userId}" ${isAddEnabled ? 'checked' : ''}>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div class="perm-item" title="Delete">
+              <span class="perm-label">Delete</span>
+              <label class="switch-toggle compact">
+                <input type="checkbox" class="delete-toggle-cb" data-userid="${school.userId}" ${isDeleteEnabled ? 'checked' : ''}>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
         </td>
         <td>
           <button class="device-badge-btn" data-userid="${school.userId}" title="Click to edit device limit">
@@ -514,19 +542,35 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
               <span class="switch-slider"></span>
             </label>
           </div>
-          <div class="toggle-group devices-group">
-            <span>Devices</span>
-            <button class="device-badge-btn" data-userid="${school.userId}" title="Click to edit device limit" style="padding: 2px 6px; font-size: 11px; height: 26px;">
-              <i data-lucide="smartphone" style="width: 12px; height: 12px;"></i>
-              <span>${parseInt(school.devices || school.Devices) || 1}</span>
-            </button>
+          <div class="toggle-group">
+            <span>Add</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="add-toggle-cb" data-userid="${school.userId}" ${isAddEnabled ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-group">
+            <span>Delete</span>
+            <label class="switch-toggle">
+              <input type="checkbox" class="delete-toggle-cb" data-userid="${school.userId}" ${isDeleteEnabled ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
           </div>
         </div>
         
         <div class="school-card-info-row">
-          <div class="info-item">
-            <span class="info-label">Last Login:</span>
-            <span class="info-value">${lastLoginStr}</span>
+          <div class="info-item" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="info-label">Devices Limit:</span>
+              <button class="device-badge-btn" data-userid="${school.userId}" title="Click to edit device limit" style="padding: 2px 8px; font-size: 11px; height: 26px; display: inline-flex; align-items: center; gap: 4px;">
+                <i data-lucide="smartphone" style="width: 12px; height: 12px;"></i>
+                <span>${parseInt(school.devices || school.Devices) || 1}</span>
+              </button>
+            </div>
+            <div style="text-align: right;">
+              <span class="info-label">Last Login:</span>
+              <span class="info-value">${lastLoginStr}</span>
+            </div>
           </div>
         </div>
         
@@ -681,6 +725,74 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       }
     };
 
+    // Helper to bind add toggle event
+    const bindAddToggle = (element) => {
+      const addCB = element.querySelector(".add-toggle-cb");
+      if (addCB) {
+        addCB.addEventListener("change", async () => {
+          const isChecked = addCB.checked;
+          const nextAdd = isChecked ? "Yes" : "No";
+          const oldVal = school.add || school.Add;
+
+          // Optimistic update state
+          school.add = nextAdd;
+          if (school.Add !== undefined) school.Add = nextAdd;
+          showToast(`Setting add permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Add", nextAdd);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Add field.");
+            }
+            showToast(`${school.schoolName} add permission updated`, "success");
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.add = oldVal;
+            if (school.Add !== undefined) school.Add = oldVal;
+            addCB.checked = !isChecked;
+            showToast(`Failed to update add permission: ${err.message}`, "error");
+            renderSchoolsList();
+          }
+        });
+      }
+    };
+
+    // Helper to bind delete toggle event
+    const bindDeleteToggle = (element) => {
+      const deleteCB = element.querySelector(".delete-toggle-cb");
+      if (deleteCB) {
+        deleteCB.addEventListener("change", async () => {
+          const isChecked = deleteCB.checked;
+          const nextDelete = isChecked ? "Yes" : "No";
+          const oldVal = school.delete || school.Delete;
+
+          // Optimistic update state
+          school.delete = nextDelete;
+          if (school.Delete !== undefined) school.Delete = nextDelete;
+          showToast(`Setting delete permission to ${isChecked ? 'Allowed' : 'Disabled'}`, "info");
+
+          try {
+            const res = await ApiService.updateField(school.userId, "Delete", nextDelete);
+            if (!res || !res.success) {
+              throw new Error(res.message || "Failed to update Delete field.");
+            }
+            showToast(`${school.schoolName} delete permission updated`, "success");
+            localStorage.setItem("admin_schools_data_cache", JSON.stringify({ schools: STATE.schools, sessions: STATE.sessions }));
+            renderSchoolsList();
+          } catch (err) {
+            // Revert
+            school.delete = oldVal;
+            if (school.Delete !== undefined) school.Delete = oldVal;
+            deleteCB.checked = !isChecked;
+            showToast(`Failed to update delete permission: ${err.message}`, "error");
+            renderSchoolsList();
+          }
+        });
+      }
+    };
+
     // Helper to bind devices input click event
     const bindDevicesInput = (element) => {
       const devicesBtn = element.querySelector(".device-badge-btn");
@@ -716,6 +828,8 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       bindEditableToggle(tr);
       bindReportToggle(tr);
       bindExcelToggle(tr);
+      bindAddToggle(tr);
+      bindDeleteToggle(tr);
       bindDevicesInput(tr);
       bindActions(tr);
     }
@@ -724,6 +838,8 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
       bindEditableToggle(card);
       bindReportToggle(card);
       bindExcelToggle(card);
+      bindAddToggle(card);
+      bindDeleteToggle(card);
       bindDevicesInput(card);
       bindActions(card);
     }

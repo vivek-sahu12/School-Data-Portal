@@ -150,10 +150,7 @@ function populateUniversalSearchColumns() {
 function getSheetHeaders(sheetName) {
   if (!universalOriginalData || !universalOriginalData[sheetName]) return [];
   const rows = universalOriginalData[sheetName];
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   return rows.length > 0 ? Object.keys(rows[0]).filter(k => !isUidKey(k)) : [];
 }
 
@@ -325,6 +322,24 @@ function executeUniversalSearch() {
       } else if (hLower === "name" || hLower === "student name") {
         td.className = "col-expand";
         if (row._sourceSheet === "School Data" && typeof hasPendingEdit === "function" && hasPendingEdit(row.row_uid)) {
+          const queue = typeof getPendingQueue === "function" ? getPendingQueue() : [];
+          const entry = queue.find(e => e.row_uid === row.row_uid);
+          const action = entry ? (entry.action || "edit") : "edit";
+
+          let badgeText = "Pending";
+          let badgeBg = "var(--warning)";
+          let badgeIcon = "refresh-cw";
+
+          if (action === "add") {
+            badgeText = "Pending Add";
+            badgeBg = "var(--success)";
+            badgeIcon = "user-plus";
+          } else if (action === "delete") {
+            badgeText = "Pending Del";
+            badgeBg = "var(--danger)";
+            badgeIcon = "trash-2";
+          }
+
           const badge = document.createElement("span");
           badge.className = "pending-sync-badge";
           badge.style.display = "inline-flex";
@@ -333,10 +348,10 @@ function executeUniversalSearch() {
           badge.style.padding = "2px 6px";
           badge.style.fontSize = "10px";
           badge.style.fontWeight = "bold";
-          badge.style.backgroundColor = "var(--warning)";
+          badge.style.backgroundColor = badgeBg;
           badge.style.color = "var(--bg-surface)";
           badge.style.borderRadius = "4px";
-          badge.innerHTML = `<i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px; animation: spin 2s linear infinite;"></i>Pending`;
+          badge.innerHTML = `<i data-lucide="${badgeIcon}" style="width: 10px; height: 10px; margin-right: 3px;"></i>${badgeText}`;
           td.appendChild(badge);
         }
       }

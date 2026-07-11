@@ -110,10 +110,7 @@ function openPdfModalForSheet(sheetKey) {
   }
 
   // Retrieve original column list from the first record, excluding UID keys
-  const isUidKey = (k) => {
-    const norm = k.toLowerCase().trim();
-    return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || norm.startsWith("_");
-  };
+  const isUidKey = window.isSystemColumn;
   pdfOriginalHeaders = Object.keys(records[0]).filter(col => !isUidKey(col));
   
   // Smart Default Selection based on report category

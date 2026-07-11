@@ -125,3 +125,17 @@ window.findValueIgnoreCaseAndSpaces = function(obj, searchKey) {
   }
   return undefined;
 };
+
+/**
+ * Shared utility function to check if a key is an internal system column.
+ * Internal columns like row_uid, Status, and Added_Date should never be displayed in the UI.
+ * @param {string} k 
+ * @returns {boolean}
+ */
+window.isSystemColumn = function(k) {
+  if (!k) return false;
+  const norm = k.toString().toLowerCase().trim();
+  return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || 
+         norm === "status" || norm === "added_date" || norm === "added-date" || norm === "added date" ||
+         norm.startsWith("_");
+};

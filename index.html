@@ -118,6 +118,10 @@
           <i data-lucide="clipboard-list"></i>
           <span>Edit Logs</span>
         </button>
+        <button class="nav-item hidden" data-target="add-student" id="nav-add-student">
+          <i data-lucide="user-plus"></i>
+          <span>Add Student</span>
+        </button>
       </nav>
 
       <!-- HEADER ACTIONS -->
@@ -881,6 +885,33 @@
           </div>
         </section>
 
+        <!-- ADD STUDENT SCREEN -->
+        <section id="add-student-view" class="view-section hidden">
+          <!-- Screen Header -->
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Add New Student</h2>
+              <p class="view-subtitle">Enter details below to add a student record to the School Data worksheet.</p>
+            </div>
+          </div>
+
+          <!-- Form Card -->
+          <div class="card" style="padding: 24px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 24px;">
+            <form id="add-student-form" class="edit-form-grid"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+              <!-- Dynamically populated from School Data headers -->
+            </form>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+              <button id="reset-add-student-btn" class="btn-secondary">Reset Form</button>
+              <button id="submit-add-student-btn" class="btn-primary">
+                <i data-lucide="user-plus" id="add-student-spinner-icon"></i>
+                <span id="add-student-submit-text">Add Student</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
@@ -1002,6 +1033,25 @@
     </div>
   </div>
 
+  <!-- DELETE STUDENT CONFIRMATION MODAL -->
+  <div id="delete-student-modal" class="modal-overlay hidden" style="z-index: 1100;">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Delete Student</h3>
+        <button id="close-delete-modal" class="icon-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding-top: 10px;">
+        <p id="delete-student-message" style="margin-bottom: 0; line-height: 1.5; color: var(--text-secondary);"></p>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <button id="cancel-delete-student-btn" class="btn-secondary">Cancel</button>
+        <button id="confirm-delete-student-btn" class="btn-primary" style="background-color: var(--danger); border-color: var(--danger);">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MOBILE MENU DRAWER -->
   <div id="mobile-drawer" class="mobile-drawer-overlay">
     <div class="mobile-drawer-content">
@@ -1040,6 +1090,10 @@
           <button class="drawer-nav-item hidden" data-target="edit-logs" id="drawer-edit-logs">
             <i data-lucide="clipboard-list"></i>
             <span>Edit Logs</span>
+          </button>
+          <button class="drawer-nav-item hidden" data-target="add-student" id="drawer-add-student">
+            <i data-lucide="user-plus"></i>
+            <span>Add Student</span>
           </button>
         </div>
         <div class="mobile-drawer-footer">
@@ -1106,6 +1160,9 @@
 
         const studentEditModal = document.getElementById("student-edit-modal");
         if (studentEditModal) studentEditModal.classList.add("hidden");
+
+        const deleteModal = document.getElementById("delete-student-modal");
+        if (deleteModal) deleteModal.classList.add("hidden");
 
         const drawer = document.getElementById("mobile-drawer");
         if (drawer) drawer.classList.remove("active");

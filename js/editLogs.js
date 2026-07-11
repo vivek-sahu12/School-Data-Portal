@@ -90,6 +90,28 @@
         }, 0);
       }
     }
+
+    // Toggle Add Student navigation based on current school permissions
+    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim() === "Yes");
+    const addNavBtn = document.getElementById("nav-add-student");
+    const addDrawerBtn = document.getElementById("drawer-add-student");
+
+    if (isAddAllowed) {
+      if (addNavBtn) addNavBtn.classList.remove("hidden");
+      if (addDrawerBtn) addDrawerBtn.classList.remove("hidden");
+    } else {
+      if (addNavBtn) addNavBtn.classList.add("hidden");
+      if (addDrawerBtn) addDrawerBtn.classList.add("hidden");
+
+      // Redirect to dashboard if trying to access unauthorized Add Student tab
+      if (window.currentActiveTab === "add-student") {
+        setTimeout(() => {
+          if (typeof window.navigateToTab === "function") {
+            window.navigateToTab("dashboard");
+          }
+        }, 0);
+      }
+    }
   };
 
   // Look up student PEN from all worksheets
