@@ -415,19 +415,12 @@ const REPORT_CATEGORIES = [
  * Exposes updateReportsNavVisibility globally
  */
 window.updateReportsNavVisibility = function () {
-  const sessionRaw = localStorage.getItem("sdip_session");
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   let isReportEnabled = false;
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      const reportVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
-        ? window.findValueIgnoreCaseAndSpaces(session, "report")
-        : (session.report !== undefined ? session.report : session.Report);
-      isReportEnabled = String(reportVal || "").trim() === "Yes";
-    } catch (e) {
-      console.error("Error reading report permission from sdip_session:", e);
-    }
-  }
+  const reportVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
+    ? window.findValueIgnoreCaseAndSpaces(session, "report")
+    : (session.report !== undefined ? session.report : session.Report);
+  isReportEnabled = String(reportVal || "").trim() === "Yes";
 
   const desktopNav = document.querySelector(".header-nav");
   const mobileNav = document.querySelector(".app-navigation");
@@ -562,14 +555,8 @@ function getCachedDatabase() {
  * Exposes renderReports globally
  */
 window.renderReports = function () {
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let deletePermission = "No";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-    } catch (e) {}
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
   const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
 
   const activeCategories = REPORT_CATEGORIES.filter(cat => {
@@ -1159,14 +1146,8 @@ function renderDetailSummaryCards(catId, filteredData, schoolData) {
 function renderActiveCategoryDetail() {
   const catId = REPORTS_STATE.activeCategory;
   if (catId === "deleted-students") {
-    const sdipRaw = localStorage.getItem("sdip_session");
-    let deletePermission = "No";
-    if (sdipRaw) {
-      try {
-        const session = JSON.parse(sdipRaw);
-        deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-      } catch (e) {}
-    }
+    const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+    const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
     const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
     if (!isDeleteAllowed) {
       REPORTS_STATE.activeCategory = null;

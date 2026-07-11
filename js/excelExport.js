@@ -56,14 +56,8 @@ const isUidKey = window.isSystemColumn;
  */
 function exportSheetToExcel(sheetKey) {
   // Security block: Verify Excel export permission
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let excelPermission = "No";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
-    } catch (e) {}
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
   const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
   if (!isExcelEnabled) {
     if (typeof showToast === "function") {
@@ -81,14 +75,8 @@ function exportSheetToExcel(sheetKey) {
   const headers = Object.keys(records[0]).filter(col => !isUidKey(col));
 
   // Determine current school details
-  const sessionRaw = localStorage.getItem("sdip_session");
-  let schoolName = "School";
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      schoolName = session.schoolName || "School";
-    } catch (e) {}
-  }
+  const sessionForName = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const schoolName = sessionForName.schoolName || "School";
   
   const cleanSchoolName = schoolName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   const cleanSheetName = sheetKey.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -101,14 +89,8 @@ function exportSheetToExcel(sheetKey) {
  */
 function exportReportToExcel() {
   // Security block: Verify Excel export permission
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let excelPermission = "No";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
-    } catch (e) {}
-  }
+  const sessionForExcel = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const excelPermission = window.findValueIgnoreCaseAndSpaces(sessionForExcel, "excel") || "No";
   const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
   if (!isExcelEnabled) {
     if (typeof showToast === "function") {
@@ -165,14 +147,8 @@ function exportReportToExcel() {
   const headers = Object.keys(formatted[0]);
   
   // Determine current school details
-  const sessionRaw = localStorage.getItem("sdip_session");
-  let schoolName = "School";
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      schoolName = session.schoolName || "School";
-    } catch (e) {}
-  }
+  const sessionForReportName = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const schoolName = sessionForReportName.schoolName || "School";
   
   const cleanSchoolName = schoolName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   const cleanCategoryName = cat.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -184,15 +160,8 @@ function exportReportToExcel() {
  * Expose globally to show/hide all Excel buttons based on active session permissions
  */
 window.updateExcelButtonsVisibility = function() {
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let excelPermission = "No";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
-    } catch (e) {}
-  }
-  
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
   const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
   
   const excelButtons = document.querySelectorAll(".excel-btn");

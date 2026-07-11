@@ -104,6 +104,9 @@ function initializeDataFetchWorkflow() {
 
 // Helper functions for Sync Pipeline
 function getStoredUserId() {
+  if (window.__adminViewSession) {
+    return window.__adminViewSession.userId || "";
+  }
   const sessionRaw = localStorage.getItem("sdip_session");
   if (sessionRaw) {
     try {
@@ -119,6 +122,9 @@ function getStoredDeviceId() {
 }
 
 function getStoredSheetUrl() {
+  if (window.__adminViewSession) {
+    return window.__adminViewSession.sheetUrl || "";
+  }
   const sessionRaw = localStorage.getItem("school-portal-session");
   if (sessionRaw) {
     try {
@@ -137,6 +143,11 @@ function getStoredSheetUrl() {
 }
 
 function updateStoredEditable(value) {
+  if (window.__adminViewSession) {
+    window.__adminViewSession.editable = value;
+    updateEditButtonVisibility();
+    return;
+  }
   // Update sdip_session
   const sdipRaw = localStorage.getItem("sdip_session");
   if (sdipRaw) {
@@ -160,15 +171,8 @@ function updateStoredEditable(value) {
 }
 
 function updateEditButtonVisibility() {
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let editable = "";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      editable = session.editable || "";
-    } catch (e) { }
-  }
-
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const editable = session.editable || "";
   const allowed = window.isEditAllowed(editable);
   if (!allowed) {
     // Close open edit modals gracefully
@@ -292,15 +296,19 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     // ── STEP 2: checkSession (Active/Inactive + session validity) ─
     console.log('[Sync] Step 2: Checking session validity...');
     let isAdminViewing = false;
-    const adminViewing = localStorage.getItem("admin_viewing_school");
-    const adminSession = localStorage.getItem("admin_session");
-    if (adminViewing && adminSession) {
-      try {
-        const sess = JSON.parse(adminSession);
-        if (sess && sess.sessionToken) {
-          isAdminViewing = true;
-        }
-      } catch (e) { }
+    if (window.__adminViewSession) {
+      isAdminViewing = true;
+    } else {
+      const adminViewing = localStorage.getItem("admin_viewing_school");
+      const adminSession = localStorage.getItem("admin_session");
+      if (adminViewing && adminSession) {
+        try {
+          const sess = JSON.parse(adminSession);
+          if (sess && sess.sessionToken) {
+            isAdminViewing = true;
+          }
+        } catch (e) { }
+      }
     }
 
     if (isAdminViewing) {

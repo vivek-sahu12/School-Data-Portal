@@ -28,16 +28,9 @@ function initDashboard(data) {
   // Update Configured Range status
   const rangeDisplay = document.getElementById("configured-range-display");
   if (rangeDisplay) {
-    const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
-    let startClass = "";
-    let endClass = "";
-    if (sessionRaw) {
-      try {
-        const session = JSON.parse(sessionRaw);
-        startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
-        endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
-      } catch(e) {}
-    }
+    const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+    const startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
+    const endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
     if (startClass && endClass) {
       rangeDisplay.textContent = `${startClass} to ${endClass}`;
     } else {

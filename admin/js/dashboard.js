@@ -896,20 +896,20 @@ function viewAsSchool(school) {
     return;
   }
 
-  const excelVal = school.excel || school.Excel || "";
-  const excelStr = excelVal.toString().trim().toLowerCase();
-  const isExcelEnabled = excelStr === "yes" || excelStr === "true" ? "Yes" : "No";
-
+  // Admin always gets full permissions in View as School mode
   const payload = {
+    userId: school.userId,
     schoolName: school.schoolName,
     sheetUrl: url,
     logoUrl: school.logoUrl,
-    userId: school.userId,
-    adminSession: true,
-    excel: isExcelEnabled
+    editable: "Yes",
+    report: "Yes",
+    excel: "Yes",
+    add: "Yes",
+    delete: "Yes"
   };
   localStorage.setItem("admin_viewing_school", JSON.stringify(payload));
-  showToast(`Bypassing auth and loading School View for ${school.schoolName}`, "success");
+  showToast(`Loading School View for ${school.schoolName}...`, "success");
 
   // Open main app in new tab
   window.open("../index.html", "_blank");

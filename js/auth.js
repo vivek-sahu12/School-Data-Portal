@@ -40,7 +40,8 @@ function convertDriveUrl(url) {
 /**
  * Helper to check if we are in a secure admin viewing session
  */
-function isAdminViewingSession() {
+window.isAdminViewingSession = function isAdminViewingSession() {
+  if (window.__adminViewSession) return true;
   const adminViewing = localStorage.getItem("admin_viewing_school");
   const adminSession = localStorage.getItem("admin_session");
   if (adminViewing && adminSession) {
@@ -52,19 +53,35 @@ function isAdminViewingSession() {
     }
   }
   return false;
-}
+};
+// Also keep local alias for auth.js internal calls
+const isAdminViewingSession = window.isAdminViewingSession;
 
 /**
  * Check if a user is currently logged in
  */
 function isLoggedIn() {
+  if (window.__adminViewSession) return true;
   return localStorage.getItem(SESSION_KEY) !== null;
 }
+
+window.getCurrentPermissions = function() {
+  if (window.__adminViewSession) return window.__adminViewSession;
+  try {
+    const session = JSON.parse(localStorage.getItem("sdip_session") || "{}");
+    return session;
+  } catch (e) {
+    return {};
+  }
+};
 
 /**
  * Retrieve current logged-in school metadata
  */
 function getCurrentSchool() {
+  if (window.__adminViewSession) {
+    return window.__adminViewSession;
+  }
   if (isAdminViewingSession()) {
     const adminViewing = localStorage.getItem("admin_viewing_school");
     try {
@@ -89,6 +106,9 @@ function getCurrentSchool() {
 }
 
 window.isEditAllowed = function (editableValue) {
+  if (window.__adminViewSession) {
+    return true;
+  }
   if (isAdminViewingSession()) {
     return true;
   }
@@ -259,6 +279,18 @@ async function attemptLogin(userId, password) {
  * Log out user and purge cache
  */
 async function logout() {
+  // If in admin view mode, redirect back to admin panel instead of normal logout
+  if (window.__adminViewSession) {
+    const adminSession = localStorage.getItem("admin_session");
+    const deviceId = localStorage.getItem("device_id");
+    window.__adminViewSession = null;
+    localStorage.clear();
+    if (adminSession) localStorage.setItem("admin_session", adminSession);
+    if (deviceId) localStorage.setItem("device_id", deviceId);
+    window.location.href = "admin/index.html";
+    return;
+  }
+
   // Check for pending edits in queue
   const queueRaw = localStorage.getItem("sdip_pending_edits");
   let hasPending = false;
@@ -318,6 +350,10 @@ async function logout() {
 }
 
 async function verifySessionStillValid() {
+  if (window.__adminViewSession) {
+    console.log("Admin viewing school session, skipping session validity check.");
+    return true;
+  }
   if (isAdminViewingSession()) {
     console.log("Admin viewing school session, skipping session validity check.");
     return true;
@@ -456,45 +492,39 @@ function showAppScreen(school) {
   const logoWrapper = document.querySelector(".logo-wrapper");
   if (logoEl) {
     try {
-      const sessionRaw = localStorage.getItem("sdip_session");
-      if (sessionRaw) {
-        const session = JSON.parse(sessionRaw);
-        const logoUrl = session.logoUrl;
-        const convertedUrl = convertDriveUrl(logoUrl);
-        if (convertedUrl) {
-          logoEl.src = convertedUrl;
-          logoEl.style.display = 'block';
-          // Remove SVG-style padding so the photo fills the wrapper
-          if (logoWrapper) {
-            logoWrapper.style.padding = '0';
-            logoWrapper.style.overflow = 'hidden';
-          }
-          logoEl.onerror = function () {
-            // Revert to default icon on failure
-            logoEl.src = 'assets/icon.svg';
-            logoEl.style.display = 'block';
-            if (logoWrapper) {
-              logoWrapper.style.padding = '6px';
-              logoWrapper.style.overflow = '';
-            }
-          };
-        } else {
+      const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+      const logoUrl = session.logoUrl;
+      const convertedUrl = convertDriveUrl(logoUrl);
+      if (convertedUrl) {
+        logoEl.src = convertedUrl;
+        logoEl.style.display = 'block';
+        // Remove SVG-style padding so the photo fills the wrapper
+        if (logoWrapper) {
+          logoWrapper.style.padding = '0';
+          logoWrapper.style.overflow = 'hidden';
+        }
+        logoEl.onerror = function () {
+          // Revert to default icon on failure
           logoEl.src = 'assets/icon.svg';
           logoEl.style.display = 'block';
-        }
+          if (logoWrapper) {
+            logoWrapper.style.padding = '6px';
+            logoWrapper.style.overflow = '';
+          }
+        };
       } else {
         logoEl.src = 'assets/icon.svg';
         logoEl.style.display = 'block';
       }
     } catch (e) {
-      console.error("Failed to read logoUrl from sdip_session:", e);
+      console.error("Failed to read logoUrl:", e);
       logoEl.src = 'assets/icon.svg';
       logoEl.style.display = 'block';
     }
   }
 
   // Inject Admin View Banner if viewing as admin
-  if (isAdminViewingSession()) {
+  if (window.__adminViewSession || isAdminViewingSession()) {
     if (!document.getElementById("admin-view-banner")) {
       const banner = document.createElement("div");
       banner.id = "admin-view-banner";
@@ -547,6 +577,8 @@ function showAppScreen(school) {
       document.getElementById("exit-admin-view-btn").addEventListener("click", () => {
         const adminSession = localStorage.getItem("admin_session");
         const deviceId = localStorage.getItem("device_id");
+        // Clear memory-only admin session
+        window.__adminViewSession = null;
         localStorage.clear();
         if (adminSession) {
           localStorage.setItem("admin_session", adminSession);
@@ -633,20 +665,15 @@ function showToast(message, type = "info") {
 }
 
 window.updateAddStudentNavVisibility = function () {
-  const sdipRaw = localStorage.getItem("sdip_session");
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   let isAddEnabled = false;
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      const addVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
-        ? window.findValueIgnoreCaseAndSpaces(session, "add")
-        : session.add;
-      isAddEnabled = String(addVal || "").trim() === "Yes";
-    } catch (e) {}
-  }
+  const addVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
+    ? window.findValueIgnoreCaseAndSpaces(session, "add")
+    : session.add;
+  isAddEnabled = String(addVal || "").trim() === "Yes";
 
   // Admin viewing session bypass
-  if (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession()) {
+  if (window.__adminViewSession || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession())) {
     isAddEnabled = true;
   }
 
@@ -686,7 +713,47 @@ window.applyPermissionsToUI = function () {
 
 // Check session on page load
 document.addEventListener("DOMContentLoaded", () => {
-  if (isAdminViewingSession()) {
+  const adminViewRaw = localStorage.getItem("admin_viewing_school");
+  if (adminViewRaw) {
+    try {
+      const data = JSON.parse(adminViewRaw);
+      const url = (data.sheetUrl || "").toString().trim();
+      if (!url || !url.startsWith("http")) {
+        localStorage.removeItem("admin_viewing_school");
+        showToast("Invalid School Sheet URL. Redirecting to admin...", "error");
+        setTimeout(() => {
+          window.location.href = "admin/index.html";
+        }, 2000);
+        return;
+      }
+      
+      // Store in memory variable instead of localStorage
+      window.__adminViewSession = {
+        userId: data.userId || "admin_viewing",
+        sessionToken: "admin_token",
+        schoolName: data.schoolName,
+        sheetUrl: url,
+        logoUrl: data.logoUrl || "",
+        editable: "Yes",
+        excel: "Yes",
+        add: "Yes",
+        delete: "Yes",
+        report: "Yes"
+      };
+
+      // Immediately delete admin_viewing_school from localStorage
+      localStorage.removeItem("admin_viewing_school");
+
+      // Ensure we clear any cached data from previous schools so we fetch it fresh
+      localStorage.removeItem("school-portal-data");
+      localStorage.removeItem("school-portal-last-fetch");
+
+      showAppScreen(window.__adminViewSession);
+    } catch (e) {
+      console.error("Failed to parse admin_viewing_school:", e);
+      showLoginScreen();
+    }
+  } else if (isAdminViewingSession()) {
     const adminViewing = localStorage.getItem("admin_viewing_school");
     try {
       const data = JSON.parse(adminViewing);

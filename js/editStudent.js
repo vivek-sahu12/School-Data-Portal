@@ -152,14 +152,8 @@ const USER_SUBJECTS = {
 };
 
 function getCurrentUserId() {
-  const sessionRaw = localStorage.getItem("sdip_session") || localStorage.getItem("school-portal-session");
-  if (!sessionRaw) return "";
-  try {
-    const session = JSON.parse(sessionRaw);
-    return (session.username || session.userId || "").toString().trim();
-  } catch (e) {
-    return "";
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  return (session.username || session.userId || "").toString().trim();
 }
 
 function getUserSubjects(userId) {
@@ -189,16 +183,9 @@ function getClassRange(userId) {
 
 // Predefined options helpers
 window.getPredefinedClasses = function () {
-  const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
-  let startClass = "";
-  let endClass = "";
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
-      endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
-    } catch (e) { }
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const startClass = window.findValueIgnoreCaseAndSpaces(session, 'startclass') || "";
+  const endClass = window.findValueIgnoreCaseAndSpaces(session, 'endclass') || "";
 
   const ORDER_DISPLAY = ["Nursery", "KG 1", "KG 2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const ORDER_NORM = ["nursery", "kg1", "kg2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
@@ -233,14 +220,8 @@ window.getPredefinedClasses = function () {
 };
 
 window.getPredefinedSubjects = function () {
-  const sessionRaw = localStorage.getItem("school-portal-session") || localStorage.getItem("sdip_session");
-  let subjectsStr = "";
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      subjectsStr = window.findValueIgnoreCaseAndSpaces(session, 'subjects') || "";
-    } catch (e) { }
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const subjectsStr = window.findValueIgnoreCaseAndSpaces(session, 'subjects') || "";
   if (!subjectsStr) {
     return ["Arts", "Commerce", "Math", "Bio"];
   }
@@ -291,8 +272,8 @@ window.generateStudentFormFields = function (form, studentData, isAddFlow) {
       input.className = "form-input";
 
       const dropdown = input;
-      const session = JSON.parse(localStorage.getItem('sdip_session')) || {};
-      const allowedClasses = getClassRange(session.username);
+      const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+      const allowedClasses = getClassRange(session.username || session.userId);
 
       allowedClasses.forEach(cls => {
         const opt = document.createElement('option');

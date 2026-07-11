@@ -335,11 +335,13 @@
                 <i data-lucide="rotate-ccw"></i>
                 <span>Reset</span>
               </button>
-              <button class="btn-primary pdf-btn" id="udise-pdf-btn" title="Export PDF" aria-label="Export PDF">
+              <button class="btn-primary pdf-btn" id="udise-pdf-btn">
                 <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
               </button>
-              <button class="btn-primary excel-btn hidden" id="udise-excel-btn" title="Export Excel" aria-label="Export Excel">
+              <button class="btn-primary excel-btn hidden" id="udise-excel-btn">
                 <i data-lucide="file-spreadsheet"></i>
+                <span>Export Excel</span>
               </button>
             </div>
           </div>
@@ -405,11 +407,13 @@
                 <i data-lucide="rotate-ccw"></i>
                 <span>Reset</span>
               </button>
-              <button class="btn-primary pdf-btn" id="three-point-zero-pdf-btn" title="Export PDF" aria-label="Export PDF">
+              <button class="btn-primary pdf-btn" id="three-point-zero-pdf-btn">
                 <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
               </button>
-              <button class="btn-primary excel-btn hidden" id="three-point-zero-excel-btn" title="Export Excel" aria-label="Export Excel">
+              <button class="btn-primary excel-btn hidden" id="three-point-zero-excel-btn">
                 <i data-lucide="file-spreadsheet"></i>
+                <span>Export Excel</span>
               </button>
             </div>
           </div>
@@ -474,11 +478,13 @@
                 <i data-lucide="rotate-ccw"></i>
                 <span>Reset</span>
               </button>
-              <button class="btn-primary pdf-btn" id="school-data-pdf-btn" title="Export PDF" aria-label="Export PDF">
+              <button class="btn-primary pdf-btn" id="school-data-pdf-btn">
                 <i data-lucide="file-text"></i>
+                <span>Export PDF</span>
               </button>
-              <button class="btn-primary excel-btn hidden" id="school-data-excel-btn" title="Export Excel" aria-label="Export Excel">
+              <button class="btn-primary excel-btn hidden" id="school-data-excel-btn">
                 <i data-lucide="file-spreadsheet"></i>
+                <span>Export Excel</span>
               </button>
             </div>
           </div>
@@ -554,11 +560,13 @@
                   <i data-lucide="rotate-ccw"></i>
                   <span>Reset</span>
                 </button>
-                <button class="btn-primary pdf-btn" id="universal-pdf-btn" title="Export PDF" aria-label="Export PDF">
+                <button class="btn-primary pdf-btn" id="universal-pdf-btn" style="height: 42px;">
                   <i data-lucide="file-text"></i>
+                  <span>Export PDF</span>
                 </button>
-                <button class="btn-primary excel-btn hidden" id="universal-excel-btn" title="Export Excel" aria-label="Export Excel">
+                <button class="btn-primary excel-btn hidden" id="universal-excel-btn" style="height: 42px;">
                   <i data-lucide="file-spreadsheet"></i>
+                  <span>Export Excel</span>
                 </button>
               </div>
             </div>
@@ -655,11 +663,13 @@
                   style="width: 100%;">
               </div>
               <div class="filter-actions-group" style="display: flex; gap: 8px;">
-                <button class="btn-primary pdf-btn" id="report-export-pdf-btn" title="Export PDF" aria-label="Export PDF">
+                <button class="btn-primary" id="report-export-pdf-btn">
                   <i data-lucide="file-text"></i>
+                  <span>Export PDF</span>
                 </button>
-                <button class="btn-primary excel-btn hidden" id="report-export-excel-btn" title="Export Excel" aria-label="Export Excel">
+                <button class="btn-primary excel-btn hidden" id="report-export-excel-btn">
                   <i data-lucide="file-spreadsheet"></i>
+                  <span>Export Excel</span>
                 </button>
               </div>
             </div>
@@ -886,13 +896,15 @@
           </div>
 
           <!-- Form Card -->
-          <div class="card" style="padding: 24px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 24px;">
+          <div class="card"
+            style="padding: 24px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 24px;">
             <form id="add-student-form" class="edit-form-grid"
               style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
               <!-- Dynamically populated from School Data headers -->
             </form>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+
+            <div
+              style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
               <button id="reset-add-student-btn" class="btn-secondary">Reset Form</button>
               <button id="submit-add-student-btn" class="btn-primary">
                 <i data-lucide="user-plus" id="add-student-spinner-icon"></i>
@@ -1035,9 +1047,11 @@
       <div class="modal-body" style="padding-top: 10px;">
         <p id="delete-student-message" style="margin-bottom: 0; line-height: 1.5; color: var(--text-secondary);"></p>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+      <div class="modal-footer"
+        style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
         <button id="cancel-delete-student-btn" class="btn-secondary">Cancel</button>
-        <button id="confirm-delete-student-btn" class="btn-primary" style="background-color: var(--danger); border-color: var(--danger);">Delete</button>
+        <button id="confirm-delete-student-btn" class="btn-primary"
+          style="background-color: var(--danger); border-color: var(--danger);">Delete</button>
       </div>
     </div>
   </div>
@@ -1054,9 +1068,11 @@
       <div class="modal-body" style="padding-top: 10px;">
         <p id="recover-student-message" style="margin-bottom: 0; line-height: 1.5; color: var(--text-secondary);"></p>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+      <div class="modal-footer"
+        style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
         <button id="cancel-recover-student-btn" class="btn-secondary">Cancel</button>
-        <button id="confirm-recover-student-btn" class="btn-primary" style="background-color: var(--success); border-color: var(--success);">Recover</button>
+        <button id="confirm-recover-student-btn" class="btn-primary"
+          style="background-color: var(--success); border-color: var(--success);">Recover</button>
       </div>
     </div>
   </div>

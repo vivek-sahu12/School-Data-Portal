@@ -180,14 +180,8 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
   const oldDeleteBtn = document.getElementById("delete-student-btn");
   if (oldDeleteBtn) oldDeleteBtn.remove();
 
-  const sdipRaw = localStorage.getItem("sdip_session");
-  let deletePermission = "No";
-  if (sdipRaw) {
-    try {
-      const session = JSON.parse(sdipRaw);
-      deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-    } catch (e) {}
-  }
+  const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
+  const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
   let isDeleteAllowed = String(deletePermission || "").trim() === "Yes";
   if (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession()) {
     isDeleteAllowed = true;
@@ -680,7 +674,7 @@ window.navigateState = function(state, push = true) {
   if (!state) return;
 
   // Ignore navigation if not logged in
-  if (!localStorage.getItem("sdip_session")) {
+  if (!localStorage.getItem("sdip_session") && !window.__adminViewSession) {
     return;
   }
 
@@ -813,7 +807,7 @@ window.navigateState = function(state, push = true) {
 
 // Initialize history state on page load
 window.addEventListener("load", () => {
-  if (localStorage.getItem("sdip_session")) {
+  if (localStorage.getItem("sdip_session") || window.__adminViewSession) {
     const initialState = {
       tab: window.currentActiveTab || "dashboard",
       reportCategory: (window.REPORTS_STATE && window.REPORTS_STATE.activeCategory) || null,
@@ -868,7 +862,7 @@ window.closeAllModals = function() {
 
 // Bind popstate event
 window.addEventListener("popstate", (event) => {
-  if (!localStorage.getItem("sdip_session")) {
+  if (!localStorage.getItem("sdip_session") && !window.__adminViewSession) {
     return;
   }
   

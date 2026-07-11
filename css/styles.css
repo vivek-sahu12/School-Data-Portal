@@ -951,23 +951,9 @@ mark.highlight {
   height: 36px;
 }
 
-.pdf-btn, .excel-btn {
-  width: 36px;
+.pdf-btn {
   height: 36px;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.excel-btn {
-  background-color: var(--success) !important;
-  border-color: var(--success) !important;
-}
-
-.excel-btn:hover {
-  filter: brightness(0.95);
+  padding: 0 16px;
 }
 
 .table-card {
@@ -1819,14 +1805,9 @@ select option {
     gap: 10px;
   }
 
-  .search-input, .form-select {
+  .search-input, .form-select, .pdf-btn {
     height: 34px;
     font-size: 0.825rem;
-  }
-
-  .pdf-btn, .excel-btn {
-    height: 34px !important;
-    width: 34px !important;
   }
 
   .universal-filter-bar {
