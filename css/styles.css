@@ -951,9 +951,10 @@ mark.highlight {
   height: 36px;
 }
 
-.pdf-btn {
+.pdf-btn, .excel-btn {
   height: 36px;
   padding: 0 16px;
+  font-size: 0.875rem;
 }
 
 .table-card {
@@ -1805,7 +1806,7 @@ select option {
     gap: 10px;
   }
 
-  .search-input, .form-select, .pdf-btn {
+  .search-input, .form-select, .pdf-btn, .excel-btn {
     height: 34px;
     font-size: 0.825rem;
   }
