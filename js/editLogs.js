@@ -191,6 +191,13 @@
           raw: log
         };
       });
+
+      // Sort by timestamp descending (newest changes first)
+      currentLogs.sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
     } catch (err) {
       console.error("Error processing edit logs:", err);
       currentLogs = [];

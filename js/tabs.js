@@ -858,6 +858,11 @@ window.closeAllModals = function() {
     deleteModal.classList.add("hidden");
     closed = true;
   }
+  const recoverModal = document.getElementById("recover-student-modal");
+  if (recoverModal && !recoverModal.classList.contains("hidden")) {
+    recoverModal.classList.add("hidden");
+    closed = true;
+  }
   return closed;
 };
 

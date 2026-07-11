@@ -834,6 +834,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeBtn = document.getElementById("close-student-edit");
   const editModal = document.getElementById("student-edit-modal");
 
+
   if (cancelBtn) {
     cancelBtn.addEventListener("click", () => closeEditForm(false));
   }
@@ -904,6 +905,45 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target === deleteModal) {
         if (typeof window.cancelDeleteStudent === "function") {
           window.cancelDeleteStudent();
+        }
+      }
+    });
+  }
+
+  // Bind Recover Student controls
+  const confirmRecoverBtn = document.getElementById("confirm-recover-student-btn");
+  if (confirmRecoverBtn) {
+    confirmRecoverBtn.addEventListener("click", () => {
+      if (typeof window.executeRecoverStudent === "function") {
+        window.executeRecoverStudent();
+      }
+    });
+  }
+
+  const cancelRecoverBtn = document.getElementById("cancel-recover-student-btn");
+  if (cancelRecoverBtn) {
+    cancelRecoverBtn.addEventListener("click", () => {
+      if (typeof window.cancelRecoverStudent === "function") {
+        window.cancelRecoverStudent();
+      }
+    });
+  }
+
+  const closeRecoverBtn = document.getElementById("close-recover-modal");
+  if (closeRecoverBtn) {
+    closeRecoverBtn.addEventListener("click", () => {
+      if (typeof window.cancelRecoverStudent === "function") {
+        window.cancelRecoverStudent();
+      }
+    });
+  }
+
+  const recoverModal = document.getElementById("recover-student-modal");
+  if (recoverModal) {
+    recoverModal.addEventListener("click", (e) => {
+      if (e.target === recoverModal) {
+        if (typeof window.cancelRecoverStudent === "function") {
+          window.cancelRecoverStudent();
         }
       }
     });
@@ -1107,12 +1147,25 @@ window.executeDeleteStudent = function () {
   const userId = school ? school.userId : "";
   const targetUid = studentToDelete.row_uid;
 
-  // 1. Optimistically remove from caches
+  // 1. Optimistically remove from caches & add to Deleted_Students
   const cachedRaw = localStorage.getItem("school-portal-data");
   if (cachedRaw) {
     try {
       const cached = JSON.parse(cachedRaw);
       if (cached["School Data"]) {
+        const deletedRow = cached["School Data"].find(row => row.row_uid === targetUid);
+        if (deletedRow) {
+          Object.keys(deletedRow).forEach(k => {
+            if (k.toLowerCase() === "status") {
+              deletedRow[k] = "Deleted";
+            }
+          });
+          deletedRow["Status"] = "Deleted";
+          if (!cached["Deleted_Students"]) cached["Deleted_Students"] = [];
+          if (!cached["Deleted_Students"].some(row => row.row_uid === targetUid)) {
+            cached["Deleted_Students"].push(deletedRow);
+          }
+        }
         cached["School Data"] = cached["School Data"].filter(row => row.row_uid !== targetUid);
         localStorage.setItem("school-portal-data", JSON.stringify(cached));
         if (window.activeOriginalData) {
@@ -1173,4 +1226,124 @@ window.cancelDeleteStudent = function () {
   const modal = document.getElementById("delete-student-modal");
   if (modal) modal.classList.add("hidden");
   studentToDelete = null;
+};
+
+// Recover Student logic
+let studentToRecover = null;
+
+window.confirmRecoverStudent = function (studentData) {
+  studentToRecover = studentData;
+  const modal = document.getElementById("recover-student-modal");
+  const msgEl = document.getElementById("recover-student-message");
+  if (!modal || !msgEl) return;
+
+  const nameVal = studentData["Student Name"] || studentData["Name"] || "Student";
+  const classVal = studentData["Class"] || "";
+  msgEl.textContent = `Are you sure you want to recover ${nameVal} (Class ${classVal}) and restore them to active status?`;
+
+  modal.classList.remove("hidden");
+};
+
+window.executeRecoverStudent = function () {
+  if (!studentToRecover || !studentToRecover.row_uid) return;
+
+  const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
+  const userId = school ? school.userId : "";
+  const targetUid = studentToRecover.row_uid;
+
+  // 1. Optimistically update cached data
+  const cachedRaw = localStorage.getItem("school-portal-data");
+  if (cachedRaw) {
+    try {
+      const cached = JSON.parse(cachedRaw);
+
+      // Ensure we have School Data array
+      if (!cached["School Data"]) cached["School Data"] = [];
+
+      // Update student record status in all case variants
+      const updatedStudent = { ...studentToRecover };
+      Object.keys(updatedStudent).forEach(k => {
+        if (k.toLowerCase() === "status") {
+          updatedStudent[k] = "Active";
+        }
+      });
+      updatedStudent["Status"] = "Active";
+
+      // Remove from Deleted_Students if present
+      if (cached["Deleted_Students"]) {
+        cached["Deleted_Students"] = cached["Deleted_Students"].filter(row => row.row_uid !== targetUid);
+      }
+
+      // Add to School Data (avoiding duplicates)
+      const idx = cached["School Data"].findIndex(row => row.row_uid === targetUid);
+      if (idx > -1) {
+        const item = cached["School Data"][idx];
+        Object.keys(item).forEach(k => {
+          if (k.toLowerCase() === "status") {
+            item[k] = "Active";
+          }
+        });
+        item["Status"] = "Active";
+      } else {
+        cached["School Data"].push(updatedStudent);
+      }
+
+      localStorage.setItem("school-portal-data", JSON.stringify(cached));
+      if (window.activeOriginalData) {
+        window.activeOriginalData = cached;
+      }
+    } catch (err) {
+      console.error("Failed to update cache optimistically for recovery:", err);
+    }
+  }
+
+  // 2. Queue recovery action
+  let queue = getPendingQueue();
+  queue.push({
+    action: "edit",
+    row_uid: targetUid,
+    userId: userId,
+    timestamp: Date.now(),
+    changedFields: {
+      Status: {
+        old: "Deleted",
+        new: "Active"
+      }
+    },
+    status: "pending"
+  });
+  savePendingQueue(queue);
+
+  // 3. Close recover modal
+  const recoverModal = document.getElementById("recover-student-modal");
+  if (recoverModal) recoverModal.classList.add("hidden");
+
+  // 4. Toast notification
+  if (typeof showToast === "function") {
+    showToast("Student recovery scheduled. Syncing in background...", "success");
+  }
+
+  // 5. Trigger rerender & update active category details if viewing Reports detail
+  if (typeof window.renderAppComponents === "function") {
+    const updatedData = JSON.parse(localStorage.getItem("school-portal-data"));
+    window.renderAppComponents(updatedData);
+  }
+
+  // If reports tab is active, re-render it
+  if (window.currentActiveTab === "reports" && typeof window.renderActiveCategoryDetail === "function" && window.REPORTS_STATE && window.REPORTS_STATE.activeCategory === "deleted-students") {
+    window.renderActiveCategoryDetail();
+  }
+
+  // 6. Trigger sync immediately
+  if (typeof window.syncPendingEditsImmediately === "function") {
+    window.syncPendingEditsImmediately();
+  }
+
+  studentToRecover = null;
+};
+
+window.cancelRecoverStudent = function () {
+  const modal = document.getElementById("recover-student-modal");
+  if (modal) modal.classList.add("hidden");
+  studentToRecover = null;
 };

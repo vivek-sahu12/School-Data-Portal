@@ -47,15 +47,29 @@ function doGet(e) {
     }
 
     var rows = [];
+    var deletedRows = [];
     for (var i = 1; i < data.length; i++) {
       var rowData = {};
       for (var j = 0; j < headers.length; j++) {
         var key = headers[j] ? headers[j].toString().trim() : "Column_" + j;
         rowData[key] = data[i][j];
       }
-      rows.push(rowData);
+      
+      if (sheetName === "School Data") {
+        var statusVal = rowData["Status"] || rowData["status"] || "";
+        if (statusVal.toString().trim().toLowerCase() === "deleted") {
+          deletedRows.push(rowData);
+        } else {
+          rows.push(rowData);
+        }
+      } else {
+        rows.push(rowData);
+      }
     }
     result[sheetName] = rows;
+    if (sheetName === "School Data") {
+      result["Deleted_Students"] = deletedRows;
+    }
   });
 
   return ContentService.createTextOutput(JSON.stringify(result))
@@ -106,11 +120,71 @@ function doPost(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 
+  // Ensure Status column exists
+  var statusIndex = -1;
+  for (var k = 0; k < headers.length; k++) {
+    if (headers[k].toString().trim().toLowerCase() === "status") {
+      statusIndex = k;
+      break;
+    }
+  }
+  if (statusIndex === -1) {
+    statusIndex = headers.length;
+    sheet.getRange(1, statusIndex + 1).setValue("Status");
+    headers.push("Status");
+    // Reload values to match headers length
+    dataRange = sheet.getDataRange();
+    values = dataRange.getValues();
+  }
+
   edits.forEach(function(edit) {
     var rowUid = edit.row_uid;
     var userId = edit.userId || "";
+    var action = edit.action || "edit";
     var changedFields = edit.changedFields || {};
-    
+
+    if (action === "add") {
+      try {
+        var rowData = edit.data || {};
+        var newRowValues = [];
+        for (var j = 0; j < headers.length; j++) {
+          var header = headers[j];
+          if (header === "row_uid") {
+            newRowValues.push(rowUid);
+          } else if (header.toLowerCase() === "status") {
+            newRowValues.push("Active");
+          } else if (rowData[header] !== undefined) {
+            newRowValues.push(rowData[header]);
+          } else {
+            newRowValues.push("");
+          }
+        }
+        sheet.appendRow(newRowValues);
+
+        // Log add event
+        var simulatedChangedFields = {};
+        for (var field in rowData) {
+          simulatedChangedFields[field] = {
+            old: "",
+            new: rowData[field]
+          };
+        }
+        logEdit(ss, userId, rowData, headers, simulatedChangedFields, "Add");
+
+        results.push({
+          row_uid: rowUid,
+          success: true
+        });
+      } catch (addErr) {
+        results.push({
+          row_uid: rowUid,
+          success: false,
+          message: addErr.message
+        });
+      }
+      return;
+    }
+
     // Locate row index matching rowUid
     var rowIndex = -1;
     for (var i = 1; i < values.length; i++) {
@@ -135,10 +209,74 @@ function doPost(e) {
       originalStudentData[headers[j]] = rowValues[j];
     }
 
+    if (action === "delete") {
+      try {
+        sheet.getRange(rowIndex + 1, statusIndex + 1).setValue("Deleted");
+        rowValues[statusIndex] = "Deleted";
+
+        var simulatedChangedFields = {
+          "Status": {
+            old: originalStudentData[headers[statusIndex]] || "",
+            new: "Deleted"
+          }
+        };
+
+        logEdit(ss, userId, originalStudentData, headers, simulatedChangedFields, "Delete");
+
+        results.push({
+          row_uid: rowUid,
+          success: true
+        });
+      } catch (delErr) {
+        results.push({
+          row_uid: rowUid,
+          success: false,
+          message: delErr.message
+        });
+      }
+      return;
+    }
+
+    if (action === "recover") {
+      try {
+        sheet.getRange(rowIndex + 1, statusIndex + 1).setValue("Active");
+        rowValues[statusIndex] = "Active";
+
+        var simulatedChangedFields = {
+          "Status": {
+            old: originalStudentData[headers[statusIndex]] || "",
+            new: "Active"
+          }
+        };
+
+        logEdit(ss, userId, originalStudentData, headers, simulatedChangedFields, "Recover");
+
+        results.push({
+          row_uid: rowUid,
+          success: true
+        });
+      } catch (recErr) {
+        results.push({
+          row_uid: rowUid,
+          success: false,
+          message: recErr.message
+        });
+      }
+      return;
+    }
+
+    // Default: action === "edit"
     try {
       // Update spreadsheet cells for changed fields
       for (var field in changedFields) {
-        var colIndex = headers.indexOf(field);
+        var colIndex = -1;
+        var normField = field.toString().trim().toLowerCase();
+        for (var k = 0; k < headers.length; k++) {
+          if (headers[k].toString().trim().toLowerCase() === normField) {
+            colIndex = k;
+            break;
+          }
+        }
         if (colIndex !== -1) {
           var newVal = changedFields[field].new;
           sheet.getRange(rowIndex + 1, colIndex + 1).setValue(newVal);
@@ -147,7 +285,7 @@ function doPost(e) {
       }
 
       // Log edit event in the edit_log sheet
-      logEdit(ss, userId, originalStudentData, headers, changedFields);
+      logEdit(ss, userId, originalStudentData, headers, changedFields, "Edit");
 
       results.push({
         row_uid: rowUid,
@@ -169,7 +307,7 @@ function doPost(e) {
 }
 
 // Log edit event helper
-function logEdit(ss, userId, studentRowValues, headers, changedFields) {
+function logEdit(ss, userId, studentRowValues, headers, changedFields, actionType) {
   var logSheet = ss.getSheetByName("edit_log");
   if (!logSheet) {
     logSheet = ss.insertSheet("edit_log");
@@ -199,13 +337,15 @@ function logEdit(ss, userId, studentRowValues, headers, changedFields) {
     newValues[field] = changedFields[field].new;
   });
 
+  var action = actionType || "Edit";
+
   logSheet.appendRow([
     new Date(),
     userId,
     classVal,
     scholarVal,
     nameVal,
-    "Edit",
+    action,
     JSON.stringify(changedFieldNames),
     JSON.stringify(oldValues),
     JSON.stringify(newValues)

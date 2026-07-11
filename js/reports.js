@@ -351,6 +351,63 @@ const REPORT_CATEGORIES = [
       const key = schoolHeaders.find(h => /samagra/i.test(h)) || "Samagra ID";
       return { "Name": row["Name"] || "-", "Class": row["Class"] || "-", "Samagra ID": row[key] || "-" };
     }
+  },
+  {
+    id: "deleted-students",
+    title: "Deleted Students",
+    description: "Recover soft-deleted student records and restore them to active status.",
+    icon: "trash-2",
+    badge: "Recovery",
+    headers: ["Name", "Class", "Section", "Scholar No", "Deleted On"],
+    filter: (row) => {
+      return true;
+    },
+    map: (row) => {
+      const nameVal = row["Name"] || row["student name"] || row["Student Name"] || "-";
+      const classVal = row["Class"] || "-";
+      const secKey = Object.keys(row).find(k => /section/i.test(k)) || "Section";
+      const secVal = row[secKey] || "-";
+      const scholarKey = Object.keys(row).find(k => /scholar/i.test(k)) || "Scholar No";
+      const scholarVal = row[scholarKey] || "-";
+      
+      let deletedOn = "-";
+      const cachedData = getCachedDatabase();
+      if (cachedData && cachedData["Edit_log"]) {
+        const editLogs = cachedData["Edit_log"];
+        const rowUid = row.row_uid || row.row_UID || row.rowUid || row.rowuid;
+        if (rowUid) {
+          const matchingLogs = editLogs.filter(log => {
+            const logUid = log.row_uid || log.row_UID || log.rowUid || log.rowuid;
+            const action = (log.Action_Type || log.action_type || log.action || "").toString().trim().toUpperCase();
+            return logUid === rowUid && action === "DELETE";
+          });
+          
+          if (matchingLogs.length > 0) {
+            matchingLogs.sort((a, b) => {
+              const timeA = new Date(a.Timestamp || a.timestamp || 0).getTime();
+              const timeB = new Date(b.Timestamp || b.timestamp || 0).getTime();
+              return timeB - timeA;
+            });
+            const timestamp = matchingLogs[0].Timestamp || matchingLogs[0].timestamp;
+            if (timestamp) {
+              if (typeof formatCellValue === "function") {
+                deletedOn = formatCellValue(timestamp);
+              } else {
+                deletedOn = new Date(timestamp).toLocaleString();
+              }
+            }
+          }
+        }
+      }
+      
+      return {
+        "Name": nameVal,
+        "Class": classVal,
+        "Section": secVal,
+        "Scholar No": scholarVal,
+        "Deleted On": deletedOn
+      };
+    }
   }
 ];
 
@@ -447,6 +504,9 @@ window.updateReportsNavVisibility = function () {
       if (dashNav) dashNav.click();
     }
   }
+  if (window.currentActiveTab === "reports" && typeof window.renderReports === "function") {
+    window.renderReports();
+  }
 };
 
 /**
@@ -502,6 +562,23 @@ function getCachedDatabase() {
  * Exposes renderReports globally
  */
 window.renderReports = function () {
+  const sdipRaw = localStorage.getItem("sdip_session");
+  let deletePermission = "No";
+  if (sdipRaw) {
+    try {
+      const session = JSON.parse(sdipRaw);
+      deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
+    } catch (e) {}
+  }
+  const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
+
+  const activeCategories = REPORT_CATEGORIES.filter(cat => {
+    if (cat.id === "deleted-students") {
+      return isDeleteAllowed;
+    }
+    return true;
+  });
+
   if (REPORTS_STATE.activeCategory) {
     document.getElementById("reports-main-header").classList.add("hidden");
     document.getElementById("reports-main-content").classList.add("hidden");
@@ -551,10 +628,12 @@ window.renderReports = function () {
   let totalIssues = 0;
   const discrepancyCounts = {};
 
-  REPORT_CATEGORIES.forEach(cat => {
+  activeCategories.forEach(cat => {
     if (!cat.isChart) {
       let count = 0;
-      if (cat.id === "b5") {
+      if (cat.id === "deleted-students") {
+        count = (cachedData["Deleted_Students"] || []).length;
+      } else if (cat.id === "b5") {
         const udiseData = cachedData["UDISE"] || [];
         const udiseHeaders = Object.keys(udiseData[0] || {});
         count = udiseData.filter(row => cat.filter(row, udiseHeaders, cachedData)).length;
@@ -562,7 +641,9 @@ window.renderReports = function () {
         count = schoolData.filter(row => cat.filter(row, schoolHeaders, cachedData, schoolData)).length;
       }
       discrepancyCounts[cat.id] = count;
-      totalIssues += count;
+      if (cat.id !== "deleted-students") {
+        totalIssues += count;
+      }
     }
   });
 
@@ -624,7 +705,7 @@ window.renderReports = function () {
   }
 
   // Build Dynamically Clickable Cards
-  REPORT_CATEGORIES.forEach(cat => {
+  activeCategories.forEach(cat => {
     let badgeText = "";
     let countBadgeColor = "var(--primary)";
     let countBadgeBg = "var(--primary-light)";
@@ -765,6 +846,16 @@ function populateClassFilter(schoolData) {
 function getCategoryRecords(cat, cachedData) {
   const schoolData = cachedData["School Data"] || [];
   const schoolHeaders = Object.keys(schoolData[0] || {});
+
+  if (cat.id === "deleted-students") {
+    const deletedStudents = cachedData["Deleted_Students"] || [];
+    return deletedStudents.map(row => {
+      const mapped = cat.map(row);
+      mapped._original = row;
+      mapped._sourceSheet = "School Data";
+      return mapped;
+    });
+  }
 
   if (cat.isChart) {
     const classesSet = new Set();
@@ -949,6 +1040,24 @@ function renderDetailSummaryCards(catId, filteredData, schoolData) {
 
   const totalEnrollment = schoolData.length || 1;
 
+  if (catId === "deleted-students") {
+    container.className = "metrics-grid";
+    const count = filteredData.length;
+    container.innerHTML = `
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm);">
+        <div style="background-color: var(--danger-light); color: var(--danger); width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
+        </div>
+        <div>
+          <h4 style="margin: 0; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Deleted Students</h4>
+          <p style="margin: 2px 0 0 0; font-size: 1.35rem; font-weight: 700; color: var(--text-primary);">${count}</p>
+        </div>
+      </div>
+    `;
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    return;
+  }
+
   if (catId === "c1") {
     let totalBoys = 0;
     let totalGirls = 0;
@@ -1049,8 +1158,37 @@ function renderDetailSummaryCards(catId, filteredData, schoolData) {
  */
 function renderActiveCategoryDetail() {
   const catId = REPORTS_STATE.activeCategory;
+  if (catId === "deleted-students") {
+    const sdipRaw = localStorage.getItem("sdip_session");
+    let deletePermission = "No";
+    if (sdipRaw) {
+      try {
+        const session = JSON.parse(sdipRaw);
+        deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
+      } catch (e) {}
+    }
+    const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
+    if (!isDeleteAllowed) {
+      REPORTS_STATE.activeCategory = null;
+      if (window.navigateState) {
+        window.navigateState({
+          tab: "reports",
+          reportCategory: null,
+          reportSubset: null
+        });
+      }
+      return;
+    }
+  }
+
   const cat = REPORT_CATEGORIES.find(c => c.id === catId);
   if (!cat) return;
+
+  // Reset visibility of table and mobile cards
+  const tableResponsive = document.querySelector("#reports-detail-content .table-responsive");
+  let cardsContainer = document.getElementById("report-mobile-cards");
+  if (tableResponsive) tableResponsive.style.display = "block";
+  if (cardsContainer) cardsContainer.style.display = "none";
 
   const tableEl = document.getElementById("report-detail-table");
   if (tableEl) {
@@ -1356,47 +1494,170 @@ function renderActiveCategoryDetail() {
       tbody.appendChild(gTr);
 
     } else {
-      filteredData.forEach(row => {
-        const tr = document.createElement("tr");
-        cat.headers.forEach(h => {
-          const td = document.createElement("td");
-          let val = row[h];
-          if (typeof formatCellValue === "function") {
-            val = formatCellValue(val);
-          }
-          td.textContent = (val !== undefined && val !== null) ? val : "";
-          if (h === "Class") {
-            td.className = "col-class";
-          } else if (h === "Name") {
-            td.className = "col-name";
-          } else {
-            td.className = "col-relevant";
-          }
-          tr.appendChild(td);
-        });
+      const isMobile = window.innerWidth <= 768;
 
-        // Add View Action Button
-        const actionTd = document.createElement("td");
-        actionTd.style.textAlign = "center";
-        const viewBtn = document.createElement("button");
-        viewBtn.className = "btn-secondary";
-        viewBtn.style.padding = "4px 8px";
-        viewBtn.style.fontSize = "0.75rem";
-        viewBtn.style.display = "inline-flex";
-        viewBtn.style.alignItems = "center";
-        viewBtn.style.gap = "4px";
-        viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i><span>View</span>`;
-        viewBtn.addEventListener("click", () => {
-          const targetRow = row._original || row;
-          if (typeof window.openStudentDetailModal === "function") {
-            window.openStudentDetailModal(targetRow, row._sourceSheet);
+      if (isMobile && cat.id === "deleted-students") {
+        if (tableResponsive) tableResponsive.style.display = "none";
+        if (!cardsContainer) {
+          cardsContainer = document.createElement("div");
+          cardsContainer.id = "report-mobile-cards";
+          cardsContainer.style.padding = "16px";
+          if (tableResponsive) {
+            tableResponsive.parentNode.insertBefore(cardsContainer, tableResponsive.nextSibling);
           }
-        });
-        actionTd.appendChild(viewBtn);
-        tr.appendChild(actionTd);
+        }
+        cardsContainer.style.display = "block";
+        cardsContainer.innerHTML = "";
 
-        tbody.appendChild(tr);
-      });
+        if (filteredData.length === 0) {
+          cardsContainer.innerHTML = `<div style="padding: 32px; text-align: center; color: var(--text-muted);">No matching records found.</div>`;
+        } else {
+          filteredData.forEach(row => {
+            const card = document.createElement("div");
+            card.className = "deleted-student-card";
+            card.style.cssText = `
+              background-color: var(--bg-surface);
+              border: 1px solid var(--border-color);
+              border-radius: var(--radius-md);
+              padding: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              box-shadow: var(--shadow-sm);
+              margin-bottom: 12px;
+            `;
+
+            const studentName = formatCellValue(row["Name"] || row["Student Name"] || "");
+            const scholarNo = formatCellValue(row["Scholar No"] || row["Scholar NO"] || "");
+            const classVal = formatCellValue(row["Class"] || "");
+            const sectionVal = formatCellValue(row["Section"] || "");
+            const deletedOn = formatCellValue(row["Deleted On"] || "");
+
+            card.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <div style="flex: 1; min-width: 0;">
+                  <h4 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${studentName}</h4>
+                  <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">Scholar No: ${scholarNo}</p>
+                </div>
+                <span style="background-color: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; white-space: nowrap;">Class ${classVal}-${sectionVal}</span>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+                <span>Deleted On:</span>
+                <span style="font-weight: 500; color: var(--text-secondary);">${deletedOn}</span>
+              </div>
+            `;
+
+            const btnContainer = document.createElement("div");
+            btnContainer.style.display = "flex";
+            btnContainer.style.gap = "12px";
+            btnContainer.style.marginTop = "8px";
+
+            const viewBtn = document.createElement("button");
+            viewBtn.className = "btn-secondary";
+            viewBtn.style.cssText = "flex: 1; padding: 8px; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;";
+            viewBtn.innerHTML = `<i data-lucide="eye" style="width: 16px; height: 16px;"></i><span>View</span>`;
+            viewBtn.addEventListener("click", () => {
+              const targetRow = row._original || row;
+              if (typeof window.openStudentDetailModal === "function") {
+                window.openStudentDetailModal(targetRow, row._sourceSheet);
+              }
+            });
+
+            const recoverBtn = document.createElement("button");
+            recoverBtn.className = "btn-primary";
+            recoverBtn.style.cssText = "flex: 1; padding: 8px; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; background-color: var(--success); border-color: var(--success);";
+            recoverBtn.innerHTML = `<i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i><span>Recover</span>`;
+            recoverBtn.addEventListener("click", () => {
+              const targetRow = row._original || row;
+              if (typeof window.confirmRecoverStudent === "function") {
+                window.confirmRecoverStudent(targetRow);
+              }
+            });
+
+            btnContainer.appendChild(viewBtn);
+            btnContainer.appendChild(recoverBtn);
+            card.appendChild(btnContainer);
+            cardsContainer.appendChild(card);
+          });
+        }
+        
+        if (typeof lucide !== "undefined") {
+          lucide.createIcons();
+        }
+      } else {
+        filteredData.forEach(row => {
+          const tr = document.createElement("tr");
+          cat.headers.forEach(h => {
+            const td = document.createElement("td");
+            let val = row[h];
+            if (typeof formatCellValue === "function") {
+              val = formatCellValue(val);
+            }
+            td.textContent = (val !== undefined && val !== null) ? val : "";
+            if (h === "Class") {
+              td.className = "col-class";
+            } else if (h === "Name") {
+              td.className = "col-name";
+            } else {
+              td.className = "col-relevant";
+            }
+            tr.appendChild(td);
+          });
+
+          // Add View Action Button
+          const actionTd = document.createElement("td");
+          actionTd.style.textAlign = "center";
+          
+          const btnContainer = document.createElement("div");
+          btnContainer.style.display = "inline-flex";
+          btnContainer.style.gap = "8px";
+          btnContainer.style.justifyContent = "center";
+          btnContainer.style.whiteSpace = "nowrap";
+
+          const viewBtn = document.createElement("button");
+          viewBtn.className = "btn-secondary";
+          viewBtn.style.padding = "4px 8px";
+          viewBtn.style.fontSize = "0.75rem";
+          viewBtn.style.display = "inline-flex";
+          viewBtn.style.alignItems = "center";
+          viewBtn.style.gap = "4px";
+          viewBtn.style.whiteSpace = "nowrap";
+          viewBtn.innerHTML = `<i data-lucide="eye" style="width: 14px; height: 14px;"></i><span>View</span>`;
+          viewBtn.addEventListener("click", () => {
+            const targetRow = row._original || row;
+            if (typeof window.openStudentDetailModal === "function") {
+              window.openStudentDetailModal(targetRow, row._sourceSheet);
+            }
+          });
+          btnContainer.appendChild(viewBtn);
+
+          if (cat.id === "deleted-students") {
+            const recoverBtn = document.createElement("button");
+            recoverBtn.className = "btn-primary";
+            recoverBtn.style.padding = "4px 8px";
+            recoverBtn.style.fontSize = "0.75rem";
+            recoverBtn.style.display = "inline-flex";
+            recoverBtn.style.alignItems = "center";
+            recoverBtn.style.gap = "4px";
+            recoverBtn.style.backgroundColor = "var(--success)";
+            recoverBtn.style.borderColor = "var(--success)";
+            recoverBtn.style.whiteSpace = "nowrap";
+            recoverBtn.innerHTML = `<i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i><span>Recover</span>`;
+            recoverBtn.addEventListener("click", () => {
+              const targetRow = row._original || row;
+              if (typeof window.confirmRecoverStudent === "function") {
+                window.confirmRecoverStudent(targetRow);
+              }
+            });
+            btnContainer.appendChild(recoverBtn);
+          }
+
+          actionTd.appendChild(btnContainer);
+          tr.appendChild(actionTd);
+
+          tbody.appendChild(tr);
+        });
+      }
     }
   }
 
