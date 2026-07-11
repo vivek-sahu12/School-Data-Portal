@@ -24,7 +24,10 @@ function downloadCsvData(headers, records, filename) {
   // Data rows
   records.forEach(row => {
     const rowValues = headers.map(h => {
-      const val = row[h];
+      let val = row[h];
+      if (typeof window.formatCellValue === "function") {
+        val = window.formatCellValue(val);
+      }
       const valStr = (val !== undefined && val !== null) ? val.toString() : "";
       return `"${valStr.replace(/"/g, '""')}"`;
     });
