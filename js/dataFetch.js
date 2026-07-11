@@ -437,16 +437,16 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     if (appLoading) appLoading.classList.add("hidden");
     setRefreshSpinner(false);
 
-    // Restore active view if we hid it
+    // Restore/Refresh active view safely via navigateState
     if (isDataLoaded()) {
-      const activeTab = window.currentActiveTab || "dashboard";
-      let activeViewId = "dashboard-view";
-      if (activeTab === "udise") activeViewId = "udise-view";
-      else if (activeTab === "three-point-zero") activeViewId = "three-point-zero-view";
-      else if (activeTab === "school-data") activeViewId = "school-data-view";
-      else if (activeTab === "universal-search") activeViewId = "universal-search-view";
-      const activeSec = document.getElementById(activeViewId);
-      if (activeSec) activeSec.classList.remove("hidden");
+      if (typeof window.navigateState === "function") {
+        const currentState = history.state || {
+          tab: window.currentActiveTab || "dashboard",
+          reportCategory: (window.REPORTS_STATE && window.REPORTS_STATE.activeCategory) || null,
+          reportSubset: (window.REPORTS_STATE && window.REPORTS_STATE.activeSubset) || null
+        };
+        window.navigateState(currentState, false);
+      }
     } else {
       if (retryContainer) retryContainer.classList.remove("hidden");
     }

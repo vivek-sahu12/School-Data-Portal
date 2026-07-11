@@ -39,32 +39,43 @@ function queuePendingEdit(row_uid, newChangedFields, originalRowValues) {
   const userId = school ? school.userId : "";
 
   if (entry) {
-    // Merge changed fields
-    for (const [field, diffObj] of Object.entries(newChangedFields)) {
-      if (entry.changedFields[field]) {
-        const originalOld = entry.changedFields[field].old;
-        const latestNew = diffObj.new;
-
-        if (originalOld === latestNew) {
-          // Reverted back to the original database value
-          delete entry.changedFields[field];
-        } else {
-          entry.changedFields[field].new = latestNew;
-        }
-      } else {
-        entry.changedFields[field] = {
-          old: diffObj.old,
-          new: diffObj.new
-        };
+    if (entry.action === "add") {
+      // It's an offline addition. Just update the data fields directly.
+      for (const [field, diffObj] of Object.entries(newChangedFields)) {
+        entry.data[field] = diffObj.new;
       }
-    }
+      entry.timestamp = Date.now();
+      entry.status = "pending";
+    } else if (entry.action === "delete") {
+      // Cannot edit a pending deleted student
+      return;
+    } else {
+      // Merge changed fields for standard edit
+      for (const [field, diffObj] of Object.entries(newChangedFields)) {
+        if (entry.changedFields[field]) {
+          const originalOld = entry.changedFields[field].old;
+          const latestNew = diffObj.new;
+
+          if (originalOld === latestNew) {
+            delete entry.changedFields[field];
+          } else {
+            entry.changedFields[field].new = latestNew;
+          }
+        } else {
+          entry.changedFields[field] = {
+            old: diffObj.old,
+            new: diffObj.new
+          };
+        }
+      }
 
     entry.timestamp = Date.now();
     entry.status = "pending";
 
-    // If no differences remain, discard the queue entry
-    if (Object.keys(entry.changedFields).length === 0) {
-      queue = queue.filter(e => e.row_uid !== row_uid);
+      // If no differences remain, discard the queue entry
+      if (Object.keys(entry.changedFields).length === 0) {
+        queue = queue.filter(e => e.row_uid !== row_uid);
+      }
     }
   } else {
     // Add new queue entry
@@ -532,6 +543,7 @@ function openEditForm(studentData) {
 
   // Show edit modal
   modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
 }
 
 // Close Edit Form with confirmation check
@@ -568,6 +580,9 @@ function closeEditForm(discardConfirmed = false) {
   const detailModal = document.getElementById("student-detail-modal");
   if (detailModal) {
     detailModal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
   }
   originalStudentState = null;
 }
@@ -1119,6 +1134,7 @@ window.confirmDeleteStudent = function (studentData) {
   msgEl.textContent = `Are you sure you want to delete ${nameVal} (Class ${classVal})? This action cannot be undone from this screen.`;
 
   modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
 };
 
 window.executeDeleteStudent = function () {
@@ -1162,15 +1178,33 @@ window.executeDeleteStudent = function () {
     window.activeFilteredData["School Data"] = window.activeFilteredData["School Data"].filter(row => row.row_uid !== targetUid);
   }
 
-  // 2. Queue delete action
+  // 2. Queue delete action safely against conflicts
   let queue = getPendingQueue();
-  queue.push({
-    action: "delete",
-    row_uid: targetUid,
-    userId: userId,
-    timestamp: Date.now(),
-    status: "pending"
-  });
+  const existingIndex = queue.findIndex(e => e.row_uid === targetUid);
+  
+  if (existingIndex > -1) {
+    if (queue[existingIndex].action === "add") {
+      // Offline add followed by offline delete = never existed on server
+      queue.splice(existingIndex, 1);
+    } else {
+      // Overwrite any existing 'edit' with 'delete'
+      queue[existingIndex] = {
+        action: "delete",
+        row_uid: targetUid,
+        userId: userId,
+        timestamp: Date.now(),
+        status: "pending"
+      };
+    }
+  } else {
+    queue.push({
+      action: "delete",
+      row_uid: targetUid,
+      userId: userId,
+      timestamp: Date.now(),
+      status: "pending"
+    });
+  }
   savePendingQueue(queue);
 
   // 3. Close modals
@@ -1205,7 +1239,10 @@ window.executeDeleteStudent = function () {
 
 window.cancelDeleteStudent = function () {
   const modal = document.getElementById("delete-student-modal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
   studentToDelete = null;
 };
 
@@ -1223,6 +1260,7 @@ window.confirmRecoverStudent = function (studentData) {
   msgEl.textContent = `Are you sure you want to recover ${nameVal} (Class ${classVal}) and restore them to active status?`;
 
   modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
 };
 
 window.executeRecoverStudent = function () {
@@ -1278,26 +1316,37 @@ window.executeRecoverStudent = function () {
     }
   }
 
-  // 2. Queue recovery action
+  // 2. Queue recovery action safely against conflicts
   let queue = getPendingQueue();
-  queue.push({
-    action: "edit",
-    row_uid: targetUid,
-    userId: userId,
-    timestamp: Date.now(),
-    changedFields: {
-      Status: {
-        old: "Deleted",
-        new: "Active"
-      }
-    },
-    status: "pending"
-  });
+  const existingIndex = queue.findIndex(e => e.row_uid === targetUid);
+  
+  if (existingIndex > -1 && queue[existingIndex].action === "delete") {
+    // Deleted offline, so server still thinks they are Active. Drop the local delete.
+    queue.splice(existingIndex, 1);
+  } else {
+    // No offline delete, must be a server-synced delete. Push edit to recover.
+    queue.push({
+      action: "edit",
+      row_uid: targetUid,
+      userId: userId,
+      timestamp: Date.now(),
+      changedFields: {
+        Status: {
+          old: "Deleted",
+          new: "Active"
+        }
+      },
+      status: "pending"
+    });
+  }
   savePendingQueue(queue);
 
   // 3. Close recover modal
   const recoverModal = document.getElementById("recover-student-modal");
-  if (recoverModal) recoverModal.classList.add("hidden");
+  if (recoverModal) {
+    recoverModal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
 
   // 4. Toast notification
   if (typeof showToast === "function") {
@@ -1325,6 +1374,9 @@ window.executeRecoverStudent = function () {
 
 window.cancelRecoverStudent = function () {
   const modal = document.getElementById("recover-student-modal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
   studentToRecover = null;
 };

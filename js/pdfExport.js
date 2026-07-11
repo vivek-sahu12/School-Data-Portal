@@ -124,7 +124,10 @@ function openPdfModalForSheet(sheetKey) {
   if (typeof window.pushModalHistory === "function") {
     window.pushModalHistory();
   }
-  if (modal) modal.classList.remove("hidden");
+  if (modal) {
+    modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
 }
 
 /**
@@ -137,7 +140,10 @@ function closePdfModal(fromPopState = false) {
     return;
   }
   const modal = document.getElementById("pdf-export-modal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
   activePdfSheetKey = null;
   pdfOriginalHeaders = [];
   selectedPdfColumnsOrdered = [];

@@ -221,6 +221,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     window.pushModalHistory();
   }
   modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
 };
 
 /**
@@ -234,6 +235,7 @@ window.closeStudentDetailModal = function() {
   const modal = document.getElementById("student-detail-modal");
   if (modal) {
     modal.classList.add("hidden");
+    document.body.style.overflow = "";
   }
 };
 
@@ -857,6 +859,11 @@ window.closeAllModals = function() {
     recoverModal.classList.add("hidden");
     closed = true;
   }
+  
+  if (closed) {
+    document.body.style.overflow = "";
+  }
+  
   return closed;
 };
 

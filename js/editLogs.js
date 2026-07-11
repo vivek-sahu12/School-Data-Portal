@@ -192,6 +192,59 @@
         };
       });
 
+      // Merge with pending local queue
+      if (typeof getPendingQueue === "function") {
+        const queue = getPendingQueue();
+        if (queue && queue.length > 0) {
+          queue.forEach(qItem => {
+            let sName = "", cVal = "", sNo = "", parsedFields = [], parsedPrev = {}, parsedNew = {};
+            
+            if (qItem.action === "add" && qItem.data) {
+              sName = qItem.data["Student Name"] || qItem.data["Name"] || "";
+              cVal = qItem.data["Class"] || "";
+              sNo = qItem.data["Scholar No"] || qItem.data["Scholar NO"] || "";
+              parsedFields = Object.keys(qItem.data);
+              parsedNew = qItem.data;
+            } else {
+              const sd = data["School Data"] || [];
+              const student = sd.find(r => r.row_uid === qItem.row_uid);
+              if (student) {
+                sName = student["Student Name"] || student["Name"] || "";
+                cVal = student["Class"] || "";
+                sNo = student["Scholar No"] || student["Scholar NO"] || "";
+              }
+              if (qItem.action === "edit" && qItem.changedFields) {
+                parsedFields = Object.keys(qItem.changedFields);
+                for (const k in qItem.changedFields) {
+                  parsedPrev[k] = qItem.changedFields[k].old;
+                  parsedNew[k] = qItem.changedFields[k].new;
+                }
+              }
+            }
+
+            let actionLabel = "EDIT";
+            if (qItem.action === "add") actionLabel = "ADD";
+            if (qItem.action === "delete") actionLabel = "DELETE";
+
+            currentLogs.push({
+              timestamp: new Date(qItem.timestamp).toISOString(),
+              userId: qItem.userId || "",
+              rowUid: qItem.row_uid,
+              classVal: cVal,
+              scholarNo: sNo,
+              studentName: sName,
+              actionType: actionLabel,
+              changedFields: parsedFields,
+              previousValues: parsedPrev,
+              newValues: parsedNew,
+              pen: findStudentPen(data, qItem.row_uid, sNo, cVal, sName),
+              raw: qItem,
+              isPending: true
+            });
+          });
+        }
+      }
+
       // Sort by timestamp descending (newest changes first)
       currentLogs.sort((a, b) => {
         const timeA = new Date(a.timestamp || 0).getTime();
@@ -371,12 +424,17 @@
         ? `<span style="padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700; ${badgeStyle}">${log.actionType}</span>`
         : "-";
 
+      let pendingBadge = "";
+      if (log.isPending) {
+        pendingBadge = `<span class="pending-sync-badge" style="display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 6px; font-size: 10px; font-weight: bold; background-color: var(--warning); color: var(--bg-surface); border-radius: 4px;"><i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px;"></i>Pending Sync</span>`;
+      }
+
       tr.innerHTML = `
         <td>${formattedTime || "-"}</td>
         <td class="hide-on-mobile">${log.pen || "-"}</td>
         <td class="hide-on-mobile">${log.classVal || "-"}</td>
         <td class="hide-on-mobile">${log.scholarNo || "-"}</td>
-        <td style="font-weight: 600; color: var(--text-primary);">${log.studentName || "-"}</td>
+        <td style="font-weight: 600; color: var(--text-primary);">${log.studentName || "-"}${pendingBadge}</td>
         <td class="hide-on-mobile">${actionText}</td>
         <td style="text-align: center;">
           <button type="button" class="btn-secondary view-detail-btn" style="height: 32px; padding: 0 12px; font-size: 0.8rem;">View</button>
@@ -390,6 +448,10 @@
 
       tbody.appendChild(tr);
     });
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
   }
 
   // Open Edit Log Details Modal showing comparison grids

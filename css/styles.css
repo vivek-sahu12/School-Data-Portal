@@ -102,7 +102,7 @@ html, body {
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -263,7 +263,7 @@ button, select, input {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: radial-gradient(circle at 10% 20%, var(--primary-light) 0%, transparent 60%),
               radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
               var(--bg-primary);
@@ -388,7 +388,7 @@ button, select, input {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
 }
 
 /* HEADER */
@@ -1142,6 +1142,7 @@ mark.highlight {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -1662,7 +1663,7 @@ select option {
 /* MOBILE ONLY SCREEN RULES (max-width: 768px) */
 @media (max-width: 768px) {
   .app-container {
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
   }
@@ -1807,8 +1808,16 @@ select option {
   }
 
   .search-input, .form-select, .pdf-btn, .excel-btn {
-    height: 34px;
-    font-size: 0.825rem;
+    height: 44px;
+    font-size: 0.9rem;
+  }
+
+  .icon-btn, .btn-primary, .btn-secondary, .picker-nav-btn, .picker-footer-btn, .custom-datepicker-icon-btn, #reset-btn, [id$="-reset-btn"] {
+    min-height: 44px;
+  }
+  
+  .picker-nav-btn {
+    width: 44px !important;
   }
 
   .universal-filter-bar {
@@ -2653,6 +2662,7 @@ select option {
   z-index: 1000;
   user-select: none;
   box-sizing: border-box;
+  overscroll-behavior: contain;
   animation: pickerFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
