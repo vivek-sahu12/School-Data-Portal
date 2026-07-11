@@ -491,6 +491,9 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
             <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">
               <i data-lucide="monitor"></i><span>Sessions</span>
             </button>
+            <button class="btn-action-text view-school-btn view-as-school-btn" data-userid="${school.userId}">
+              <i data-lucide="eye"></i><span>View as School</span>
+            </button>
           </div>
         </td>
       `;
@@ -580,6 +583,9 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           </button>
           <button class="btn-action-text sessions-btn view-sessions-btn" data-userid="${school.userId}">
             <i data-lucide="monitor"></i><span>Sessions</span>
+          </button>
+          <button class="btn-action-text view-school-btn view-as-school-btn" data-userid="${school.userId}">
+            <i data-lucide="eye"></i><span>View</span>
           </button>
         </div>
       `;
@@ -819,6 +825,13 @@ function populateSchoolsContainer(tableBody, cardsContainer, filteredSchools) {
           const sessionSearchInput = document.getElementById("sessions-search-input");
           if (sessionSearchInput) sessionSearchInput.value = school.userId;
           switchTab("sessions");
+        });
+      }
+
+      const viewSchoolBtn = element.querySelector(".view-as-school-btn");
+      if (viewSchoolBtn) {
+        viewSchoolBtn.addEventListener("click", () => {
+          viewAsSchool(school);
         });
       }
     };
