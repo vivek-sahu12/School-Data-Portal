@@ -61,7 +61,7 @@ function exportSheetToExcel(sheetKey) {
   // Security block: Verify Excel export permission
   const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   const excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
-  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
+  const isExcelEnabled = String(excelPermission || "").trim().toLowerCase() === "yes";
   if (!isExcelEnabled) {
     if (typeof showToast === "function") {
       showToast("Access Denied: Excel export is disabled.", "error");
@@ -94,7 +94,7 @@ function exportReportToExcel() {
   // Security block: Verify Excel export permission
   const sessionForExcel = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   const excelPermission = window.findValueIgnoreCaseAndSpaces(sessionForExcel, "excel") || "No";
-  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
+  const isExcelEnabled = String(excelPermission || "").trim().toLowerCase() === "yes";
   if (!isExcelEnabled) {
     if (typeof showToast === "function") {
       showToast("Access Denied: Excel export is disabled.", "error");
@@ -165,7 +165,7 @@ function exportReportToExcel() {
 window.updateExcelButtonsVisibility = function() {
   const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   const excelPermission = window.findValueIgnoreCaseAndSpaces(session, "excel") || "No";
-  const isExcelEnabled = String(excelPermission || "").trim() === "Yes";
+  const isExcelEnabled = String(excelPermission || "").trim().toLowerCase() === "yes";
   
   const excelButtons = document.querySelectorAll(".excel-btn");
   excelButtons.forEach(btn => {

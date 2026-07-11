@@ -92,7 +92,7 @@
     }
 
     // Toggle Add Student navigation based on current school permissions
-    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim() === "Yes");
+    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim().toLowerCase() === "yes");
     const addNavBtn = document.getElementById("nav-add-student");
     const addDrawerBtn = document.getElementById("drawer-add-student");
 
@@ -183,7 +183,7 @@
           classVal: cVal,
           scholarNo: sNo,
           studentName: sName,
-          actionType: log.Action_Type || log.action_type || log.Action_type || "",
+          actionType: String(log.Action_Type || log.action_type || log.Action_type || "").toUpperCase(),
           changedFields: parsedFields,
           previousValues: parsedPrev,
           newValues: parsedNew,
@@ -220,6 +220,13 @@
                   parsedNew[k] = qItem.changedFields[k].new;
                 }
               }
+            }
+
+            // Fallback to locally captured meta from queue time (crucial for delete/edit offline)
+            if (qItem.displayMeta) {
+              if (!sName && qItem.displayMeta.studentName) sName = qItem.displayMeta.studentName;
+              if (!cVal && qItem.displayMeta.classVal) cVal = qItem.displayMeta.classVal;
+              if (!sNo && qItem.displayMeta.scholarNo) sNo = qItem.displayMeta.scholarNo;
             }
 
             let actionLabel = "EDIT";
@@ -346,7 +353,7 @@
         if (classVal && log.classVal !== classVal) return false;
 
         // 2. Action Type Filter
-        if (action && log.actionType !== action) return false;
+        if (action && log.actionType && log.actionType.toUpperCase() !== action.toUpperCase()) return false;
 
         // 3. Search Filter (Name, Scholar No, User ID)
         if (search) {
@@ -426,7 +433,11 @@
 
       let pendingBadge = "";
       if (log.isPending) {
-        pendingBadge = `<span class="pending-sync-badge" style="display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 6px; font-size: 10px; font-weight: bold; background-color: var(--warning); color: var(--bg-surface); border-radius: 4px;"><i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px;"></i>Pending Sync</span>`;
+        if (log.raw && log.raw.status === "failed") {
+          pendingBadge = `<span class="pending-sync-badge" style="display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 6px; font-size: 10px; font-weight: bold; background-color: var(--danger); color: white; border-radius: 4px;" title="${log.raw.message || 'Failed'}"><i data-lucide="alert-triangle" style="width: 10px; height: 10px; margin-right: 3px;"></i>Failed - Retry</span>`;
+        } else {
+          pendingBadge = `<span class="pending-sync-badge" style="display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 6px; font-size: 10px; font-weight: bold; background-color: var(--warning); color: var(--bg-surface); border-radius: 4px;"><i data-lucide="refresh-cw" style="width: 10px; height: 10px; margin-right: 3px;"></i>Pending Sync</span>`;
+        }
       }
 
       tr.innerHTML = `

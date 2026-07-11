@@ -348,6 +348,8 @@ async function runSyncPipeline(triggeredBy = 'auto') {
           }
           const serverReport = window.findValueIgnoreCaseAndSpaces(sessionData, 'report');
           const serverExcel = window.findValueIgnoreCaseAndSpaces(sessionData, 'excel');
+          const serverAdd = window.findValueIgnoreCaseAndSpaces(sessionData, 'add');
+          const serverDelete = window.findValueIgnoreCaseAndSpaces(sessionData, 'delete');
 
           const updateKeys = ["school-portal-session", "sdip_session"];
           updateKeys.forEach(k => {
@@ -357,6 +359,8 @@ async function runSyncPipeline(triggeredBy = 'auto') {
                 const session = JSON.parse(raw);
                 if (serverReport !== undefined) session.report = serverReport;
                 if (serverExcel !== undefined) session.excel = serverExcel;
+                if (serverAdd !== undefined) session.add = serverAdd;
+                if (serverDelete !== undefined) session.delete = serverDelete;
                 localStorage.setItem(k, JSON.stringify(session));
               } catch (e) { }
             }
@@ -391,6 +395,12 @@ async function runSyncPipeline(triggeredBy = 'auto') {
 
       // Save to localStorage with new timestamp
       saveDataToCache(freshData);
+      
+      // Reconcile pending display entries against the fresh data
+      if (typeof window.resolveSyncedPendingEdits === "function") {
+        window.resolveSyncedPendingEdits(freshData);
+      }
+      
       console.log('[Sync] Step 3: Data fetched and cached successfully.');
 
       // Refresh cached logo as well

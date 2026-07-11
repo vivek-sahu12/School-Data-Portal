@@ -420,7 +420,7 @@ window.updateReportsNavVisibility = function () {
   const reportVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
     ? window.findValueIgnoreCaseAndSpaces(session, "report")
     : (session.report !== undefined ? session.report : session.Report);
-  isReportEnabled = String(reportVal || "").trim() === "Yes";
+  isReportEnabled = String(reportVal || "").trim().toLowerCase() === "yes";
 
   const desktopNav = document.querySelector(".header-nav");
   const mobileNav = document.querySelector(".app-navigation");
@@ -557,7 +557,7 @@ function getCachedDatabase() {
 window.renderReports = function () {
   const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-  const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
+  const isDeleteAllowed = String(deletePermission || "").trim().toLowerCase() === "yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
 
   const activeCategories = REPORT_CATEGORIES.filter(cat => {
     if (cat.id === "deleted-students") {
@@ -1148,7 +1148,7 @@ function renderActiveCategoryDetail() {
   if (catId === "deleted-students") {
     const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
     const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-    const isDeleteAllowed = String(deletePermission || "").trim() === "Yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
+    const isDeleteAllowed = String(deletePermission || "").trim().toLowerCase() === "yes" || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession());
     if (!isDeleteAllowed) {
       REPORTS_STATE.activeCategory = null;
       if (window.navigateState) {

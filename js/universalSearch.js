@@ -330,7 +330,11 @@ function executeUniversalSearch() {
           let badgeBg = "var(--warning)";
           let badgeIcon = "refresh-cw";
 
-          if (action === "add") {
+          if (entry && entry.status === "failed") {
+            badgeText = "Failed Sync";
+            badgeBg = "var(--danger)";
+            badgeIcon = "alert-triangle";
+          } else if (action === "add") {
             badgeText = "Pending Add";
             badgeBg = "var(--success)";
             badgeIcon = "user-plus";

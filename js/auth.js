@@ -112,7 +112,7 @@ window.isEditAllowed = function (editableValue) {
   if (isAdminViewingSession()) {
     return true;
   }
-  return String(editableValue || "").trim() === "Yes";
+  return String(editableValue || "").trim().toLowerCase() === "yes";
 };
 
 /**
@@ -670,7 +670,7 @@ window.updateAddStudentNavVisibility = function () {
   const addVal = typeof window.findValueIgnoreCaseAndSpaces === "function"
     ? window.findValueIgnoreCaseAndSpaces(session, "add")
     : session.add;
-  isAddEnabled = String(addVal || "").trim() === "Yes";
+  isAddEnabled = String(addVal || "").trim().toLowerCase() === "yes";
 
   // Admin viewing session bypass
   if (window.__adminViewSession || (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession())) {

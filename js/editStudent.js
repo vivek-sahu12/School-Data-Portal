@@ -69,8 +69,8 @@ function queuePendingEdit(row_uid, newChangedFields, originalRowValues) {
         }
       }
 
-    entry.timestamp = Date.now();
-    entry.status = "pending";
+      entry.timestamp = Date.now();
+      entry.status = "pending";
 
       // If no differences remain, discard the queue entry
       if (Object.keys(entry.changedFields).length === 0) {
@@ -84,7 +84,12 @@ function queuePendingEdit(row_uid, newChangedFields, originalRowValues) {
       userId: userId,
       timestamp: Date.now(),
       changedFields: newChangedFields,
-      status: "pending"
+      status: "pending",
+      displayMeta: originalRowValues ? {
+        studentName: originalRowValues["Student Name"] || originalRowValues["Name"] || "",
+        classVal: originalRowValues["Class"] || "",
+        scholarNo: originalRowValues["Scholar No"] || originalRowValues["Scholar NO"] || originalRowValues.scholar_no || ""
+      } : {}
     };
     queue.push(entry);
   }
@@ -150,15 +155,20 @@ const CLASS_ORDER = ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7",
 
 // Hardcoded class lists per user ID (keys must be lowercase)
 const USER_CLASS_BOUNDS = {
-  "23431102408": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
-  "23431116303": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+  "23431102405": ["KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431102408": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431106502": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431108103": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8"],
+  "23431115905": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+  "23431116303": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
   // Add user ID mappings here manually (e.g., "username": ["Nursery", "KG1", "KG2", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"])
 };
 
 // Hardcoded subject lists per user ID (keys must be lowercase)
 const USER_SUBJECTS = {
-  "23431102408": ["Arts", "Bio", "Commerce", "Math"],
-  "23431116303": ["Commerce", "Math", "Accountancy"]
+  "23431115905": ["Arts", "Bio", "Commerce", "Math"],
+  "23431116303": ["Arts", "Bio", "Commerce", "Math"]
+
   // Add user ID -> subjects mapping manually here
 };
 
@@ -748,8 +758,13 @@ async function syncEdits(editsToSync) {
 
     results.forEach(res => {
       if (res.success) {
-        // Remove successful edits
-        queue = queue.filter(e => e.row_uid !== res.row_uid);
+        // Mark as synced, but defer UI removal until fresh data fetch
+        const entry = queue.find(e => e.row_uid === res.row_uid);
+        if (entry) {
+          entry.status = "synced_waiting_for_refresh";
+          // Record when we considered it synced to prevent matching old logs
+          entry.syncedAt = Date.now();
+        }
       } else {
         // Mark failed edits
         const entry = queue.find(e => e.row_uid === res.row_uid);
@@ -822,6 +837,68 @@ window.stopBackgroundSyncTimer = function () {
     syncIntervalId = null;
   }
 };
+
+// Called after checkSession fetches fresh data to reconcile display entries
+window.resolveSyncedPendingEdits = function (freshData) {
+  let queue = getPendingQueue();
+  if (!queue || queue.length === 0) return;
+
+  const editLog = freshData["Edit_log"] || [];
+  let changed = false;
+
+  queue.forEach(qItem => {
+    if (qItem.status === "synced_waiting_for_refresh") {
+      let actionLabel = "EDIT";
+      if (qItem.action === "add") actionLabel = "ADD";
+      if (qItem.action === "delete") actionLabel = "DELETE";
+      if (qItem.action === "recover") actionLabel = "RECOVER";
+
+      // Match against server Edit_log by row_uid and action type.
+      // Make sure the server log's timestamp is reasonably fresh to avoid matching old identical actions.
+      const matched = editLog.some(log => {
+        const rUid = log.Row_UID || log.Row_uid || log.row_uid || log.rowUid || "";
+        const aType = log.Action_Type || log.action_type || log.Action_type || "";
+        const logTime = new Date(log.Timestamp || log.timestamp || 0).getTime();
+
+        const typeMatch = aType.toUpperCase() === actionLabel;
+        // Accept logs created at or after the local queue time (with a 60s tolerance for clock drift)
+        const timeMatch = logTime >= (qItem.timestamp - 60000);
+
+        let uidMatch = rUid === qItem.row_uid;
+        if (!uidMatch && qItem.action === "add" && qItem.data) {
+          // For ADD actions, the server assigns a real UID, so the temp UID won't match.
+          // Fall back to matching by Student Name and Scholar No.
+          const sName = String(qItem.data["Student Name"] || qItem.data["Name"] || "").trim().toLowerCase();
+          const sNo = String(qItem.data["Scholar No"] || qItem.data["Scholar NO"] || "").trim().toLowerCase();
+
+          const logName = String(log.Student_Name || log.student_name || log.Student_name || "").trim().toLowerCase();
+          const logSNo = String(log["Scholar No"] || log["Scholar NO"] || log.Scholar_No || log.scholar_no || log.Scholar_no || "").trim().toLowerCase();
+
+          uidMatch = (sName === logName && sNo === logSNo);
+        }
+
+        return uidMatch && typeMatch && timeMatch;
+      });
+
+      if (matched) {
+        qItem.status = "confirmed_resolved";
+      } else {
+        // The item was marked success by applyEdits but didn't show up in Edit_log!
+        // Keep it visible but mark as failed so the user knows.
+        qItem.status = "failed";
+        qItem.message = "Failed to confirm in server logs. Please retry.";
+      }
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    // Completely remove confirmed items from the queue so they disappear from UI
+    queue = queue.filter(q => q.status !== "confirmed_resolved");
+    savePendingQueue(queue);
+  }
+};
+
 
 // Setup Event listeners for Edit Form controls
 document.addEventListener("DOMContentLoaded", () => {
@@ -1076,7 +1153,12 @@ window.submitAddStudent = function () {
       userId: userId,
       timestamp: Date.now(),
       data: formValues,
-      status: "pending"
+      status: "pending",
+      displayMeta: {
+        studentName: formValues["Student Name"] || formValues["Name"] || "",
+        classVal: formValues["Class"] || "",
+        scholarNo: formValues["Scholar No"] || formValues["Scholar NO"] || formValues.scholar_no || ""
+      }
     });
     savePendingQueue(queue);
 
@@ -1181,7 +1263,7 @@ window.executeDeleteStudent = function () {
   // 2. Queue delete action safely against conflicts
   let queue = getPendingQueue();
   const existingIndex = queue.findIndex(e => e.row_uid === targetUid);
-  
+
   if (existingIndex > -1) {
     if (queue[existingIndex].action === "add") {
       // Offline add followed by offline delete = never existed on server
@@ -1193,7 +1275,12 @@ window.executeDeleteStudent = function () {
         row_uid: targetUid,
         userId: userId,
         timestamp: Date.now(),
-        status: "pending"
+        status: "pending",
+        displayMeta: {
+          studentName: studentToDelete["Student Name"] || studentToDelete["Name"] || "",
+          classVal: studentToDelete["Class"] || "",
+          scholarNo: studentToDelete["Scholar No"] || studentToDelete["Scholar NO"] || studentToDelete.scholar_no || ""
+        }
       };
     }
   } else {
@@ -1202,7 +1289,12 @@ window.executeDeleteStudent = function () {
       row_uid: targetUid,
       userId: userId,
       timestamp: Date.now(),
-      status: "pending"
+      status: "pending",
+      displayMeta: {
+        studentName: studentToDelete["Student Name"] || studentToDelete["Name"] || "",
+        classVal: studentToDelete["Class"] || "",
+        scholarNo: studentToDelete["Scholar No"] || studentToDelete["Scholar NO"] || studentToDelete.scholar_no || ""
+      }
     });
   }
   savePendingQueue(queue);
@@ -1319,7 +1411,7 @@ window.executeRecoverStudent = function () {
   // 2. Queue recovery action safely against conflicts
   let queue = getPendingQueue();
   const existingIndex = queue.findIndex(e => e.row_uid === targetUid);
-  
+
   if (existingIndex > -1 && queue[existingIndex].action === "delete") {
     // Deleted offline, so server still thinks they are Active. Drop the local delete.
     queue.splice(existingIndex, 1);
@@ -1336,7 +1428,12 @@ window.executeRecoverStudent = function () {
           new: "Active"
         }
       },
-      status: "pending"
+      status: "pending",
+      displayMeta: {
+        studentName: studentToRecover["Student Name"] || studentToRecover["Name"] || "",
+        classVal: studentToRecover["Class"] || "",
+        scholarNo: studentToRecover["Scholar No"] || studentToRecover["Scholar NO"] || studentToRecover.scholar_no || ""
+      }
     });
   }
   savePendingQueue(queue);

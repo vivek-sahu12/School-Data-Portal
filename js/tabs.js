@@ -182,7 +182,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
 
   const session = window.getCurrentPermissions ? window.getCurrentPermissions() : {};
   const deletePermission = window.findValueIgnoreCaseAndSpaces(session, "delete") || "No";
-  let isDeleteAllowed = String(deletePermission || "").trim() === "Yes";
+  let isDeleteAllowed = String(deletePermission || "").trim().toLowerCase() === "yes";
   if (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession()) {
     isDeleteAllowed = true;
   }
@@ -527,7 +527,11 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
           let badgeBg = "var(--warning)";
           let badgeIcon = "refresh-cw";
 
-          if (action === "add") {
+          if (entry && entry.status === "failed") {
+            badgeText = "Failed Sync";
+            badgeBg = "var(--danger)";
+            badgeIcon = "alert-triangle";
+          } else if (action === "add") {
             badgeText = "Pending Add";
             badgeBg = "var(--success)";
             badgeIcon = "user-plus";
@@ -721,7 +725,7 @@ window.navigateState = function(state, push = true) {
   }
   else if (target === "add-student") {
     const school = typeof getCurrentSchool === "function" ? getCurrentSchool() : null;
-    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim() === "Yes");
+    const isAddAllowed = school && (typeof window.isAdminViewingSession === "function" && window.isAdminViewingSession() || String(window.findValueIgnoreCaseAndSpaces(school, "add") || "").trim().toLowerCase() === "yes");
     if (!isAddAllowed) {
       setTimeout(() => {
         window.navigateToTab("dashboard");

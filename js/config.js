@@ -13,7 +13,7 @@ const ADMIN_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWAgTor7dm1Ua
  */
 function debounce(func, wait) {
   let timeout;
-  return function(...args) {
+  return function (...args) {
     const context = this;
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
@@ -28,10 +28,10 @@ function debounce(func, wait) {
 function normalizeClassName(cls) {
   if (!cls) return "";
   return cls.toString()
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, "") // Remove all spaces
-            .replace(/^class/g, ""); // Strip leading 'class' prefix
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "") // Remove all spaces
+    .replace(/^class/g, ""); // Strip leading 'class' prefix
 }
 
 /**
@@ -44,16 +44,16 @@ function sortClasses(classList) {
   return Array.from(classList).sort((a, b) => {
     const normA = normalizeClassName(a);
     const normB = normalizeClassName(b);
-    
+
     const indexA = ORDER.indexOf(normA);
     const indexB = ORDER.indexOf(normB);
-    
+
     if (indexA !== -1 && indexB !== -1) {
       return indexA - indexB;
     }
     if (indexA !== -1) return -1;
     if (indexB !== -1) return 1;
-    
+
     // Fallback natural sort for unknown classes
     return a.toString().localeCompare(b.toString(), undefined, { numeric: true, sensitivity: 'base' });
   });
@@ -67,14 +67,14 @@ function sortClasses(classList) {
 function convertDriveUrl(url) {
   if (!url) return "";
   const str = url.toString().trim();
-  
+
   // Extract file ID from various Google Drive URL formats
   let fileId = null;
 
   // Match standard /file/d/FILE_ID/ format
   const fileDMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch && fileDMatch[1]) fileId = fileDMatch[1];
-  
+
   // Match id=FILE_ID query parameter format (e.g. open?id=FILE_ID or uc?id=FILE_ID)
   if (!fileId) {
     const idQueryMatch = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -91,7 +91,7 @@ function convertDriveUrl(url) {
   if (fileId) {
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
-  
+
   return str;
 }
 
@@ -100,7 +100,7 @@ function convertDriveUrl(url) {
  */
 function formatCellValue(value) {
   if (value === undefined || value === null || value === '') return '';
-  
+
   if (value instanceof Date) {
     if (!isNaN(value)) {
       return value.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -122,7 +122,7 @@ function formatCellValue(value) {
 /**
  * Normalizes keys to locate values case/space-insensitively
  */
-window.findValueIgnoreCaseAndSpaces = function(obj, searchKey) {
+window.findValueIgnoreCaseAndSpaces = function (obj, searchKey) {
   if (!obj || typeof obj !== 'object') return undefined;
   const cleanSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
   for (const key in obj) {
@@ -140,10 +140,10 @@ window.findValueIgnoreCaseAndSpaces = function(obj, searchKey) {
  * @param {string} k 
  * @returns {boolean}
  */
-window.isSystemColumn = function(k) {
+window.isSystemColumn = function (k) {
   if (!k) return false;
   const norm = k.toString().toLowerCase().trim();
-  return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" || 
-         norm === "status" || norm === "added_date" || norm === "added-date" || norm === "added date" ||
-         norm.startsWith("_");
+  return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" ||
+    norm === "status" || norm === "added_date" || norm === "added-date" || norm === "added date" ||
+    norm.startsWith("_");
 };
