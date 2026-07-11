@@ -289,7 +289,10 @@ function generatePdfReport() {
     const tableBody = records.map((row, idx) => {
       const rowData = selectedPdfColumnsOrdered.map(colName => {
         if (colName.startsWith("__blank_")) return "";
-        const val = row[colName];
+        let val = row[colName];
+        if (typeof formatCellValue === "function") {
+          val = formatCellValue(val);
+        }
         return (val !== undefined && val !== null) ? val.toString() : "";
       });
       return [(idx + 1).toString(), ...rowData];
@@ -305,7 +308,10 @@ function generatePdfReport() {
       } else {
         let maxL = colName.length;
         records.forEach(row => {
-          const val = row[colName];
+          let val = row[colName];
+          if (typeof formatCellValue === "function") {
+            val = formatCellValue(val);
+          }
           if (val !== undefined && val !== null) {
             const len = val.toString().length;
             if (len > maxL) maxL = len;

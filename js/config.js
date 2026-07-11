@@ -99,10 +99,18 @@ function convertDriveUrl(url) {
  * Format ISO dates for India locale display
  */
 function formatCellValue(value) {
-  if (!value) return '';
-  const str = value.toString();
-  // Detect ISO date string
-  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+  if (value === undefined || value === null || value === '') return '';
+  
+  if (value instanceof Date) {
+    if (!isNaN(value)) {
+      return value.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+    return '';
+  }
+
+  const str = String(value).trim();
+  // Detect ISO date string (with T) or plain YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}(T|$|\s)/.test(str)) {
     const d = new Date(str);
     if (!isNaN(d)) {
       return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });

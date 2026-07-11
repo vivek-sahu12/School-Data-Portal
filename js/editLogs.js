@@ -511,8 +511,13 @@
         `;
 
         keys.forEach(k => {
-          const oldVal = (log.previousValues && log.previousValues[k] !== undefined) ? log.previousValues[k] : "-";
-          const newVal = (log.newValues && log.newValues[k] !== undefined) ? log.newValues[k] : "-";
+          let oldVal = (log.previousValues && log.previousValues[k] !== undefined) ? log.previousValues[k] : "-";
+          let newVal = (log.newValues && log.newValues[k] !== undefined) ? log.newValues[k] : "-";
+
+          if (typeof formatCellValue === "function") {
+            if (oldVal !== "-") oldVal = formatCellValue(oldVal);
+            if (newVal !== "-") newVal = formatCellValue(newVal);
+          }
 
           changesHtml += `
             <tr style="border-bottom: 1px solid var(--border-color);">
@@ -536,8 +541,13 @@
         `;
 
         keys.forEach(k => {
-          const oldVal = (log.previousValues && log.previousValues[k] !== undefined) ? log.previousValues[k] : "-";
-          const newVal = (log.newValues && log.newValues[k] !== undefined) ? log.newValues[k] : "-";
+          let oldVal = (log.previousValues && log.previousValues[k] !== undefined) ? log.previousValues[k] : "-";
+          let newVal = (log.newValues && log.newValues[k] !== undefined) ? log.newValues[k] : "-";
+
+          if (typeof formatCellValue === "function") {
+            if (oldVal !== "-") oldVal = formatCellValue(oldVal);
+            if (newVal !== "-") newVal = formatCellValue(newVal);
+          }
 
           changesHtml += `
             <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px;">
