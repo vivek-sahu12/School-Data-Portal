@@ -87,14 +87,9 @@ function initializeDataFetchWorkflow() {
       window.applyPermissionsToUI();
     }
 
-    // Check if cache is older than 24 hours
-    const lastFetch = localStorage.getItem(TIMEOUT_KEY);
-    const age = lastFetch ? Date.now() - parseInt(lastFetch) : Infinity;
-
-    if (age > REFRESH_INTERVAL_MS) {
-      console.log("[Sync] Cached data is older than 24 hours. Triggering runSyncPipeline('pageload').");
-      runSyncPipeline('pageload');
-    }
+    // ALWAYS fetch fresh data in the background (stale-while-revalidate)
+    console.log("[Sync] Cached data rendered instantly. Triggering background runSyncPipeline('pageload').");
+    runSyncPipeline('pageload');
   } else {
     // First time login - no cached data exists. Must run sync pipeline now.
     console.log("[Sync] No cached data exists. Triggering runSyncPipeline('pageload').");
@@ -268,8 +263,8 @@ async function runSyncPipeline(triggeredBy = 'auto') {
     document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
     if (skeletonLoader) skeletonLoader.classList.remove("hidden");
   } else {
-    // Show lightweight top loading bar if we have cached data to display
-    if (appLoading) appLoading.classList.remove("hidden");
+    // Silent background fetch - do NOT show appLoading bar or skeleton loader.
+    // The setRefreshSpinner(true) above already shows the spinning icon.
   }
 
   if (triggeredBy === 'manual') {
@@ -385,8 +380,31 @@ async function runSyncPipeline(triggeredBy = 'auto') {
       // Add a cache-busting timestamp to bypass Google's network caches
       sheetUrl = `${sheetUrl}${sheetUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
-      const dataResult = await fetchWithTimeout(sheetUrl, {}, 45000);
-      const freshData = await dataResult.json();
+      let dataResult;
+      let freshData;
+      let fetchAttempts = 0;
+      const maxFetchAttempts = 2; // 1 initial attempt + 1 silent retry
+
+      while (fetchAttempts < maxFetchAttempts) {
+        try {
+          fetchAttempts++;
+          // Use a 90-second timeout. 1500 rows x 35 columns + Apps Script cold start can take well over 45s.
+          dataResult = await fetchWithTimeout(sheetUrl, {}, 90000);
+          freshData = await dataResult.json();
+          break; // Success, exit retry loop
+        } catch (fetchErr) {
+          if (fetchAttempts < maxFetchAttempts) {
+            console.warn(`[Sync] Data fetch attempt ${fetchAttempts} failed, retrying silently...`, fetchErr);
+            // Wait 2 seconds before retry to let Apps Script cool down
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Append _retry to cache-buster to ensure we don't reuse an aborted connection
+            sheetUrl = `${getStoredSheetUrl()}`;
+            sheetUrl = `${sheetUrl}${sheetUrl.includes('?') ? '&' : '?'}t=${Date.now()}_retry`;
+          } else {
+            throw fetchErr; // Re-throw on final attempt failure
+          }
+        }
+      }
 
       // Validate response has expected structure
       if (!freshData || typeof freshData !== 'object') {

@@ -165,9 +165,22 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
 
     const value = document.createElement("span");
     value.className = "detail-value";
-    value.textContent = (studentData[key] !== undefined && studentData[key] !== null && studentData[key] !== "") 
-      ? formatCellValue(studentData[key]) 
+    
+    const rawVal = studentData[key];
+    const displayValue = (rawVal !== undefined && rawVal !== null && rawVal !== "") 
+      ? formatCellValue(rawVal) 
       : "-";
+
+    if (displayValue !== "-" && /phone|mobile|contact/i.test(key)) {
+      const cleanedNumber = displayValue.replace(/[^\d+]/g, '');
+      if (cleanedNumber) {
+        value.innerHTML = `<a href="tel:${cleanedNumber}" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Call ${cleanedNumber}"><i data-lucide="phone" style="width: 14px; height: 14px;"></i>${displayValue}</a>`;
+      } else {
+        value.textContent = displayValue;
+      }
+    } else {
+      value.textContent = displayValue;
+    }
 
     group.appendChild(label);
     group.appendChild(value);
@@ -220,6 +233,12 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
   if (typeof window.pushModalHistory === "function") {
     window.pushModalHistory();
   }
+  
+  // Ensure all newly created icons (including phone) are rendered
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 };
