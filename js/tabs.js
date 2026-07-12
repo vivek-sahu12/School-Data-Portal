@@ -23,7 +23,7 @@ window.currentTableContextColumn = {
 
 // Helper to get compact column headers to display in the table
 window.getTableHeadersToRender = function(originalHeaders, isMobile, contextColumn) {
-  const isUidKey = window.isSystemColumn;
+  const isUidKey = window.isInternalField;
   const filteredOriginalHeaders = originalHeaders.filter(h => !isUidKey(h));
   const classKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "class") || "Class";
   const nameKey = filteredOriginalHeaders.find(h => h.toLowerCase() === "name") || "Name";
@@ -96,7 +96,7 @@ window.openStudentDetailModal = function(studentData, sourcePrefix) {
     }
   }
 
-  const isUidKey = window.isSystemColumn;
+  const isUidKey = window.isInternalField;
   const keys = Object.keys(studentData).filter(k => !isUidKey(k));
   let orderedKeys = [];
 
@@ -409,7 +409,7 @@ function populateDropdownFilters(rows, classSelect, columnSelect, domPrefix) {
   // Populate Column dropdown with available sheet headers
   if (columnSelect && rows.length > 0) {
     columnSelect.innerHTML = "";
-    const isUidKey = window.isSystemColumn;
+    const isUidKey = window.isInternalField;
     const headers = Object.keys(rows[0]);
     headers.forEach(h => {
       if (isUidKey(h)) return; // skip internal columns
@@ -608,7 +608,7 @@ function renderTable(domPrefix, filteredRows, originalHeaders) {
 /**
  * Handle dashboard chart slice clicks to filter rows and change tabs
  */
-window.handleChartSegmentClick = function(type, value) {
+window.handleChartSegmentClick = function(type, value, extraContext) {
   const selectSource = document.getElementById("dashboard-source-select");
   if (!selectSource) return;
   const sourceName = selectSource.value; // "School Data", "UDISE", or "3.0"
@@ -663,6 +663,20 @@ window.handleChartSegmentClick = function(type, value) {
       if (categoryKey) {
         columnSelect.value = categoryKey;
         window.currentTableContextColumn[domPrefix] = categoryKey;
+      }
+    }
+    
+    searchInput.value = value;
+  } else if (type === "Subject") {
+    classSelect.value = extraContext || "";
+    
+    const records = window.activeOriginalData ? window.activeOriginalData[sourceName] : [];
+    if (records.length > 0) {
+      const headers = Object.keys(records[0]);
+      const subjectKey = headers.find(h => /^subject/i.test(h));
+      if (subjectKey) {
+        columnSelect.value = subjectKey;
+        window.currentTableContextColumn[domPrefix] = subjectKey;
       }
     }
     

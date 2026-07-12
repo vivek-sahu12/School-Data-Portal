@@ -51,7 +51,7 @@ function downloadCsvData(headers, records, filename) {
  * @param {string} k 
  * @returns {boolean}
  */
-const isUidKey = window.isSystemColumn;
+const isUidKey = window.isInternalField;
 
 /**
  * Exports current active filtered worksheet data to CSV.

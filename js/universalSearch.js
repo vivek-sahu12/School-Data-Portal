@@ -150,7 +150,7 @@ function populateUniversalSearchColumns() {
 function getSheetHeaders(sheetName) {
   if (!universalOriginalData || !universalOriginalData[sheetName]) return [];
   const rows = universalOriginalData[sheetName];
-  const isUidKey = window.isSystemColumn;
+  const isUidKey = window.isInternalField;
   return rows.length > 0 ? Object.keys(rows[0]).filter(k => !isUidKey(k)) : [];
 }
 

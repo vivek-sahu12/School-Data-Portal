@@ -94,6 +94,7 @@ function calculateAndRenderDashboard(sourceName) {
   renderGenderChart(rows);
   renderCategoryChart(rows);
   renderClassChart(rows);
+  renderSubjectDistribution(rows);
 }
 
 /**
@@ -409,4 +410,97 @@ function renderInsights(rows) {
     tile.appendChild(valEl);
     container.appendChild(tile);
   });
+}
+
+
+/**
+ * Render subject distribution for Class 11 and Class 12
+ */
+function renderSubjectDistribution(rows) {
+  const mainGrid = document.getElementById("subject-distribution-grid");
+  const card11 = document.getElementById("class11-subject-card");
+  const container11 = document.getElementById("class11-subject-stats-container");
+  const card12 = document.getElementById("class12-subject-card");
+  const container12 = document.getElementById("class12-subject-stats-container");
+
+  if (!mainGrid || !card11 || !container11 || !card12 || !container12) return;
+
+  // Reset visibility and content
+  mainGrid.style.display = "none";
+  card11.style.display = "none";
+  card12.style.display = "none";
+  container11.innerHTML = "";
+  container12.innerHTML = "";
+
+  if (!rows || rows.length === 0) return;
+
+  const headers = Object.keys(rows[0] || {});
+  const classKey = headers.find(h => h.toLowerCase() === "class");
+  const subjectKey = headers.find(h => /^subject/i.test(h)); // Match "Subject", "Subjects", etc.
+
+  // If there's no subject column, we don't render anything
+  if (!classKey || !subjectKey) return;
+
+  const processClassSubjects = (className, container, card) => {
+    const classRows = rows.filter(r => {
+      const c = (r[classKey] || "").toString().trim();
+      return c === className;
+    });
+
+    if (classRows.length === 0) return false;
+
+    const subjectCounts = {};
+    let hasData = false;
+
+    classRows.forEach(row => {
+      const subjStr = row[subjectKey] ? row[subjectKey].toString().trim() : "";
+      if (subjStr && subjStr !== "-" && subjStr.toLowerCase() !== "none" && subjStr.toLowerCase() !== "null") {
+        const subjects = subjStr.split(",").map(s => s.trim()).filter(s => s);
+        subjects.forEach(s => {
+          subjectCounts[s] = (subjectCounts[s] || 0) + 1;
+          hasData = true;
+        });
+      }
+    });
+
+    if (!hasData) return false;
+
+    // Sort by count descending
+    const sortedSubjects = Object.keys(subjectCounts).sort((a, b) => subjectCounts[b] - subjectCounts[a]);
+
+    sortedSubjects.forEach(subject => {
+      const tile = document.createElement("div");
+      tile.className = "stat-tile"; 
+      tile.style.borderLeft = "4px solid var(--primary)";
+      
+      // The CSS class .stat-tile already has cursor: pointer and hover effects
+      tile.addEventListener("click", () => {
+        if (typeof window.handleChartSegmentClick === 'function') {
+          window.handleChartSegmentClick("Subject", subject, className);
+        }
+      });
+
+      const labelEl = document.createElement("span");
+      labelEl.className = "stat-tile-label";
+      labelEl.textContent = subject;
+
+      const valEl = document.createElement("span");
+      valEl.className = "stat-tile-value";
+      valEl.textContent = subjectCounts[subject];
+
+      tile.appendChild(labelEl);
+      tile.appendChild(valEl);
+      container.appendChild(tile);
+    });
+
+    card.style.display = ""; // restore default display
+    return true;
+  };
+
+  const has11 = processClassSubjects("11", container11, card11);
+  const has12 = processClassSubjects("12", container12, card12);
+
+  if (has11 || has12) {
+    mainGrid.style.display = ""; // restore default layout
+  }
 }

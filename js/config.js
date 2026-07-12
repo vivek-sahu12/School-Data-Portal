@@ -140,9 +140,9 @@ window.findValueIgnoreCaseAndSpaces = function (obj, searchKey) {
  * @param {string} k 
  * @returns {boolean}
  */
-window.isSystemColumn = function (k) {
-  if (!k) return false;
-  const norm = k.toString().toLowerCase().trim();
+window.isInternalField = function (key) {
+  if (!key) return false;
+  const norm = key.toString().toLowerCase().trim();
   return norm === "row_uid" || norm === "row-uid" || norm === "row uid" || norm === "rowuid" ||
     norm === "status" || norm === "added_date" || norm === "added-date" || norm === "added date" ||
     norm.startsWith("_");

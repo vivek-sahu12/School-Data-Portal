@@ -254,7 +254,7 @@ let originalStudentState = null;
 
 window.generateStudentFormFields = function (form, studentData, isAddFlow) {
   form.innerHTML = "";
-  const isUidKey = window.isSystemColumn;
+  const isUidKey = window.isInternalField;
   const keys = Object.keys(studentData).filter(k => !isUidKey(k));
 
   const currentUserId = getCurrentUserId();
@@ -565,7 +565,7 @@ function closeEditForm(discardConfirmed = false) {
   if (!discardConfirmed) {
     // Check if form changed
     let hasChanges = false;
-    const isUidKey = window.isSystemColumn;
+    const isUidKey = window.isInternalField;
     const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
     for (const key of keys) {
@@ -625,7 +625,7 @@ function saveStudentEdit() {
   const changedFields = {};
   let hasChanges = false;
 
-  const isUidKey = window.isSystemColumn;
+  const isUidKey = window.isInternalField;
   const keys = Object.keys(originalStudentState).filter(k => !isUidKey(k));
 
   for (const key of keys) {
